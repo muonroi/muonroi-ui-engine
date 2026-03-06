@@ -1,0 +1,26 @@
+﻿{
+  "name": "@muonroi/ui-engine-rule-components-primeng",
+  "version": "0.1.0",
+  "description": "PrimeNG wrappers for Muonroi rule web components",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "npm run -w @muonroi/ui-engine-core build && npm run -w @muonroi/ui-engine-primeng build && tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@muonroi/ui-engine-core": "workspace:*",
+    "@muonroi/ui-engine-primeng": "workspace:*",
+    "@muonroi/ui-engine-rule-components": "workspace:*"
+  },
+  "peerDependencies": {
+    "primeng": ">=17"
+  }
+}

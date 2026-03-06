@@ -1,0 +1,24 @@
+﻿{
+  "name": "@muonroi/ui-engine-signalr",
+  "version": "0.1.0",
+  "description": "SignalR schema watcher for Muonroi UI Engine",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@microsoft/signalr": "^8.0.7",
+    "@muonroi/ui-engine-core": "workspace:*"
+  }
+}

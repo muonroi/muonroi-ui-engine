@@ -1,0 +1,40 @@
+{
+  "name": "@muonroi/ui-engine-rule-components",
+  "version": "0.1.0",
+  "description": "Muonroi rule engine web components",
+  "type": "module",
+  "main": "dist/muonroi-rule-components.esm.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/muonroi-rule-components.esm.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.json --emitDeclarationOnly",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@muonroi/ui-engine-core": "workspace:*",
+    "lit": "^3.2.0",
+    "@dnd-kit/core": "^6.3.0",
+    "@dnd-kit/sortable": "^8.0.0",
+    "@tanstack/virtual-core": "^3.10.0",
+    "monaco-editor": "^0.52.0",
+    "zustand": "^5.0.0",
+    "@microsoft/signalr": "^8.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.11",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.8",
+    "happy-dom": "^15.10.2"
+  }
+}

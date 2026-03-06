@@ -1,0 +1,19 @@
+{
+  "name": "@muonroi/ui-engine-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Muonroi UI Engine runtime workspace",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build -ws --if-present",
+    "test": "npm run test -ws --if-present",
+    "lint": "npm run lint -ws --if-present"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.10.1",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,8 @@
+node_modules/
+packages/*/dist/
+_tmp/
+TestResults/
+**/bin/
+**/obj/
+__pycache__/
+*.pyc

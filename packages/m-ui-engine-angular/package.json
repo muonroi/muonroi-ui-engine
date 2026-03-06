@@ -1,0 +1,29 @@
+{
+  "name": "@muonroi/ui-engine-angular",
+  "version": "0.1.0",
+  "description": "Angular helper mappings for Muonroi UI Engine",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run -w @muonroi/ui-engine-core build && tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@muonroi/ui-engine-core": "workspace:*",
+    "@muonroi/ui-engine-rule-components": "workspace:*"
+  },
+  "peerDependencies": {
+    "@angular/common": ">=17",
+    "@angular/core": ">=17",
+    "rxjs": ">=7"
+  }
+}

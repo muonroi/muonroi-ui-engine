@@ -1,0 +1,31 @@
+{
+  "name": "@muonroi/ui-engine-react",
+  "version": "0.1.0",
+  "description": "React helper mappings for Muonroi UI Engine",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run -w @muonroi/ui-engine-core build && tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@muonroi/ui-engine-core": "workspace:*",
+    "@muonroi/ui-engine-rule-components": "workspace:*",
+    "@lit/react": "^1.0.8"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.2"
+  }
+}

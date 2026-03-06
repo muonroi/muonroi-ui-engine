@@ -1,0 +1,27 @@
+{
+  "name": "@muonroi/ui-engine-primeng",
+  "version": "0.1.0",
+  "description": "PrimeNG adapter for Muonroi UI engine",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "npm run -w @muonroi/ui-engine-core build && tsc -p tsconfig.json",
+    "test": "npm run -w @muonroi/ui-engine-core build && vitest run"
+  },
+  "dependencies": {
+    "@muonroi/ui-engine-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "primeng": ">=17"
+  }
+}

@@ -1,0 +1,17 @@
+﻿@import "tailwindcss";
+@source "../**/*.{ts,js,html}";
+
+@theme {
+  --color-mu-primary: oklch(55% 0.2 250);
+  --color-mu-surface: oklch(98% 0 0);
+  --color-mu-border: oklch(85% 0 0);
+  --color-mu-danger: oklch(55% 0.22 25);
+  --color-mu-success: oklch(55% 0.18 145);
+  --font-sans: "Inter Variable", system-ui, sans-serif;
+  --radius-card: 0.5rem;
+}
+
+:host {
+  font-family: var(--font-sans);
+  color: oklch(20% 0.02 255);
+}
