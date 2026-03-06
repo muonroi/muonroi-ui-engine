@@ -90,7 +90,7 @@ exports[`catalog snapshot > matches snapshot 1`] = `
       "tokenSource": "header",
     },
     "dataSources": [],
-    "generatedAtUtc": "2026-03-04T05:28:41.404Z",
+    "generatedAtUtc": "<normalized>",
     "generationHints": {
       "outputBasePath": "./src/generated/ui-engine",
       "watchEnabled": true,

@@ -184,6 +184,15 @@ describe("catalog snapshot", () => {
   });
 
   it("matches snapshot", () => {
-    expect({ manifest, apis, rules, bindings, graph }).toMatchSnapshot();
+    expect({
+      manifest: {
+        ...manifest,
+        generatedAtUtc: "<normalized>"
+      },
+      apis,
+      rules,
+      bindings,
+      graph
+    }).toMatchSnapshot();
   });
 });

@@ -15,7 +15,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "npm run -w @muonroi/ui-engine-core build && tsc -p tsconfig.json"
+    "build": "npm run -w @muonroi/ui-engine-core build && npm run -w @muonroi/ui-engine-rule-components build && tsc -p tsconfig.json"
   },
   "dependencies": {
     "@muonroi/ui-engine-core": "workspace:*",

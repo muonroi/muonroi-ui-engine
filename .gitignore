@@ -6,3 +6,6 @@ TestResults/
 **/obj/
 __pycache__/
 *.pyc
+*.tsbuildinfo
+*.pem
+*.snk
