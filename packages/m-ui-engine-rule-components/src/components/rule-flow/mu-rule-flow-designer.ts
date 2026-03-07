@@ -1,6 +1,9 @@
-﻿import { LitElement, html, unsafeCSS } from "lit";
+import { LitElement, html, unsafeCSS } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
+
+const M_FEATURE_KEY = "rule-flow-designer";
 
 @customElement("mu-rule-flow-designer")
 export class MuRuleFlowDesigner extends LitElement {
@@ -10,6 +13,11 @@ export class MuRuleFlowDesigner extends LitElement {
   graphJson = "";
 
   render() {
+    const licenseGate = MRenderCommercialLicenseGate(M_FEATURE_KEY);
+    if (licenseGate) {
+      return licenseGate;
+    }
+
     return html`
       <section class="rounded-lg border border-[var(--color-mu-border)] bg-white p-4">
         <h3 class="mb-3 text-lg font-semibold">Rule Flow Designer</h3>
@@ -27,4 +35,5 @@ export class MuRuleFlowDesigner extends LitElement {
     `;
   }
 }
+
 

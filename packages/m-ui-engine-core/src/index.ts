@@ -6,3 +6,4 @@ export * from "./auth-profile.js";
 export * from "./adapters.js";
 export * from "./validation.js";
 export * from "./bootstrap.js";
+export * from "./license/MLicenseVerifier.js";

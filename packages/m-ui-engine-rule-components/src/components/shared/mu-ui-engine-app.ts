@@ -8,6 +8,7 @@ import type {
   MUiEngineNavigationNode,
   MUiEngineScreen
 } from "@muonroi/ui-engine-core";
+import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
 
 interface MUiSchemaHashPayload {
@@ -16,6 +17,8 @@ interface MUiSchemaHashPayload {
   openApiHash?: string | null;
   generatedAtUtc: string;
 }
+
+const M_FEATURE_KEY = "ui-engine-app";
 
 @customElement("mu-ui-engine-app")
 export class MuUiEngineApp extends LitElement {
@@ -267,6 +270,11 @@ export class MuUiEngineApp extends LitElement {
   }
 
   render() {
+    const licenseGate = MRenderCommercialLicenseGate(M_FEATURE_KEY);
+    if (licenseGate) {
+      return licenseGate;
+    }
+
     if (this.mLoading) {
       return html`<section class="rounded-lg border border-dashed border-[var(--color-mu-border)] bg-white p-4">Loading runtime...</section>`;
     }
@@ -383,3 +391,4 @@ export class MuUiEngineApp extends LitElement {
     `;
   }
 }
+

@@ -1,7 +1,10 @@
-﻿import { LitElement, html, unsafeCSS } from "lit";
+import { LitElement, html, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { MDecisionTableModel } from "../../models.js";
+import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
+
+const M_FEATURE_KEY = "decision-table-list";
 
 @customElement("mu-decision-table-list")
 export class MuDecisionTableList extends LitElement {
@@ -38,6 +41,11 @@ export class MuDecisionTableList extends LitElement {
   }
 
   render() {
+    const licenseGate = MRenderCommercialLicenseGate(M_FEATURE_KEY);
+    if (licenseGate) {
+      return licenseGate;
+    }
+
     return html`
       <section class="space-y-3 rounded-lg border border-[var(--color-mu-border)] bg-white p-4">
         <header class="flex items-center justify-between">
@@ -65,4 +73,6 @@ export class MuDecisionTableList extends LitElement {
     `;
   }
 }
+
+
 

@@ -1,6 +1,9 @@
-﻿import { LitElement, html, unsafeCSS } from "lit";
+import { LitElement, html, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
+
+const M_FEATURE_KEY = "rule-test-runner";
 
 @customElement("mu-rule-test-runner")
 export class MuRuleTestRunner extends LitElement {
@@ -27,6 +30,11 @@ export class MuRuleTestRunner extends LitElement {
   }
 
   render() {
+    const licenseGate = MRenderCommercialLicenseGate(M_FEATURE_KEY);
+    if (licenseGate) {
+      return licenseGate;
+    }
+
     return html`
       <section class="space-y-2 rounded-lg border border-[var(--color-mu-border)] bg-white p-4">
         <h3 class="text-base font-semibold">Rule Test Runner</h3>
@@ -37,4 +45,5 @@ export class MuRuleTestRunner extends LitElement {
     `;
   }
 }
+
 

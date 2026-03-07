@@ -1,6 +1,9 @@
-﻿import { LitElement, html, unsafeCSS } from "lit";
+import { LitElement, html, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
+
+const M_FEATURE_KEY = "nrules-editor";
 
 @customElement("mu-nrules-editor")
 export class MuNrulesEditor extends LitElement {
@@ -40,6 +43,11 @@ export class MuNrulesEditor extends LitElement {
   }
 
   render() {
+    const licenseGate = MRenderCommercialLicenseGate(M_FEATURE_KEY);
+    if (licenseGate) {
+      return licenseGate;
+    }
+
     return html`
       <section class="space-y-3 rounded-lg border border-[var(--color-mu-border)] bg-white p-4">
         <h3 class="text-lg font-semibold">NRules Editor</h3>
@@ -63,4 +71,5 @@ export class MuNrulesEditor extends LitElement {
     `;
   }
 }
+
 
