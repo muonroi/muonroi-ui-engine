@@ -56,13 +56,13 @@ importers:
       '@muonroi/ui-engine-core':
         specifier: workspace:*
         version: link:../m-ui-engine-core
-      '@muonroi/ui-engine-rule-components':
-        specifier: workspace:*
-        version: link:../m-ui-engine-rule-components
       react:
         specifier: '>=18'
         version: 19.2.4
     devDependencies:
+      '@muonroi/ui-engine-rule-components':
+        specifier: workspace:*
+        version: link:../m-ui-engine-rule-components
       '@types/react':
         specifier: ^19.2.2
         version: 19.2.14
