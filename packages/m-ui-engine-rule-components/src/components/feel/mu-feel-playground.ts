@@ -1,7 +1,10 @@
-﻿import { LitElement, html, unsafeCSS } from "lit";
+import { LitElement, html, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import { MFeelService } from "../../services/feel-service.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
+
+const M_FEATURE_KEY = "feel-playground";
 
 @customElement("mu-feel-playground")
 export class MuFeelPlayground extends LitElement {
@@ -96,6 +99,11 @@ export class MuFeelPlayground extends LitElement {
   }
 
   render() {
+    const licenseGate = MRenderCommercialLicenseGate(M_FEATURE_KEY);
+    if (licenseGate) {
+      return licenseGate;
+    }
+
     const exampleGroups = Object.entries(this.mExamples);
     return html`
       <section class="space-y-3 rounded-lg border border-[var(--color-mu-border)] bg-white p-4">
@@ -138,4 +146,5 @@ export class MuFeelPlayground extends LitElement {
     `;
   }
 }
+
 

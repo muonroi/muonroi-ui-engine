@@ -4,6 +4,7 @@ import type {
   MUiEngineNavigationNode,
   MUiEngineScreen
 } from "@muonroi/ui-engine-core";
+import { MLicenseVerifier } from "@muonroi/ui-engine-core";
 
 export interface MAngularRouteDefinition {
   path: string;
@@ -168,7 +169,19 @@ export function MAngularApiServiceFactory<TService>(
   return create(options.baseApiUrl, options.authProfile, options.authContext);
 }
 
-export async function MLoadRuleEngineCustomElements(): Promise<void> {
+export interface MLoadRuleEngineCustomElementsOptions {
+  activationProof?: string | null;
+  publicKeyPem?: string;
+}
+
+export async function MLoadRuleEngineCustomElements(options?: MLoadRuleEngineCustomElementsOptions): Promise<void> {
+  const activationProof = options?.activationProof?.trim() ?? "";
+  if (activationProof) {
+    await MLicenseVerifier.initialize(activationProof, {
+      publicKeyPem: options?.publicKeyPem
+    });
+  }
+
   await import("@muonroi/ui-engine-rule-components");
 }
 

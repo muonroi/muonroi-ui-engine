@@ -1,12 +1,14 @@
 import { LitElement, html, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { MDecisionTableModel, MDecisionTableVersionInfo } from "../../models.js";
+import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import { MCreateDecisionTableStore, type MDecisionTableStore } from "../../store/decision-table-store.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
 
 const M_DEFAULT_API_BASE = "/api/v1/decision-tables";
 const M_DEFAULT_HISTORY_ENDPOINT = `${M_DEFAULT_API_BASE}/{id}/versions`;
 const M_DEFAULT_HISTORY_VERSION_ENDPOINT = `${M_DEFAULT_API_BASE}/{id}/versions/{v}`;
+const M_FEATURE_KEY = "decision-table";
 
 @customElement("mu-decision-table")
 export class MuDecisionTable extends LitElement {
@@ -368,6 +370,11 @@ export class MuDecisionTable extends LitElement {
   }
 
   render() {
+    const licenseGate = MRenderCommercialLicenseGate(M_FEATURE_KEY);
+    if (licenseGate) {
+      return licenseGate;
+    }
+
     if (!this.mTable) {
       return html`<div class="rounded-lg border border-dashed border-[var(--color-mu-border)] p-6 text-sm text-zinc-500">Loading decision table...</div>`;
     }
@@ -469,3 +476,4 @@ export class MuDecisionTable extends LitElement {
     `;
   }
 }
+

@@ -1,4 +1,9 @@
-import type { MUiEngineAction, MUiEngineNavigationGroup, MUiEngineScreen } from "@muonroi/ui-engine-core";
+import {
+  MLicenseVerifier,
+  type MUiEngineAction,
+  type MUiEngineNavigationGroup,
+  type MUiEngineScreen
+} from "@muonroi/ui-engine-core";
 import React from "react";
 import { createComponent } from "@lit/react";
 import "@muonroi/ui-engine-rule-components";
@@ -21,6 +26,22 @@ export interface MReactUiModel {
   navigation: MReactNavigationGroup[];
   screens: MUiEngineScreen[];
   actions: MUiEngineAction[];
+}
+
+export interface MLoadRuleEngineCustomElementsOptions {
+  activationProof?: string | null;
+  publicKeyPem?: string;
+}
+
+export async function MLoadRuleEngineCustomElements(options?: MLoadRuleEngineCustomElementsOptions): Promise<void> {
+  const activationProof = options?.activationProof?.trim() ?? "";
+  if (activationProof) {
+    await MLicenseVerifier.initialize(activationProof, {
+      publicKeyPem: options?.publicKeyPem
+    });
+  }
+
+  await import("@muonroi/ui-engine-rule-components");
 }
 
 export function MCreateReactUiModel(
