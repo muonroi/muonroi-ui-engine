@@ -18,12 +18,20 @@
     "build": "npm run -w @muonroi/ui-engine-core build && npm run -w @muonroi/ui-engine-rule-components build && tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@muonroi/ui-engine-core": "workspace:*",
+    "@muonroi/ui-engine-core": "workspace:*"
+  },
+  "devDependencies": {
     "@muonroi/ui-engine-rule-components": "workspace:*"
   },
   "peerDependencies": {
     "@angular/common": ">=17",
     "@angular/core": ">=17",
+    "@muonroi/ui-engine-rule-components": ">=0.1.0",
     "rxjs": ">=7"
+  },
+  "peerDependenciesMeta": {
+    "@muonroi/ui-engine-rule-components": {
+      "optional": true
+    }
   }
 }
