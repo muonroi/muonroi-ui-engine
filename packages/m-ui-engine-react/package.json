@@ -19,13 +19,19 @@
   },
   "dependencies": {
     "@muonroi/ui-engine-core": "workspace:*",
-    "@muonroi/ui-engine-rule-components": "workspace:*",
     "@lit/react": "^1.0.8"
   },
   "peerDependencies": {
+    "@muonroi/ui-engine-rule-components": ">=0.1.0",
     "react": ">=18"
   },
+  "peerDependenciesMeta": {
+    "@muonroi/ui-engine-rule-components": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@muonroi/ui-engine-rule-components": "workspace:*",
     "@types/react": "^19.2.2"
   }
 }

@@ -6,7 +6,6 @@ import {
 } from "@muonroi/ui-engine-core";
 import React from "react";
 import { createComponent } from "@lit/react";
-import "@muonroi/ui-engine-rule-components";
 
 export interface MReactNavigationItem {
   id: string;
