@@ -47,12 +47,15 @@ export interface MValidationResultPayload {
   warnings?: string[];
 }
 
-export interface MDecisionTableVersionSnapshot {
+export interface MDecisionTableVersionInfo {
   tableId: string;
   version: number;
   changeType: string;
   actor?: string | null;
   reason?: string | null;
   timestamp: string;
+}
+
+export interface MDecisionTableVersionSnapshot extends MDecisionTableVersionInfo {
   table: MDecisionTableModel;
 }

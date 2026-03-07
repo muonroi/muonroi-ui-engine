@@ -1,0 +1,115 @@
+name: Publish npm Packages
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+jobs:
+  publish-oss:
+    name: Publish OSS to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        package_dir:
+          - packages/m-ui-engine-core
+          - packages/m-ui-engine-react
+          - packages/m-ui-engine-angular
+          - packages/m-ui-engine-primeng
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test (if exists)
+        run: pnpm run --if-present test
+
+      - name: Publish package (skip existing)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          PKG_NAME=$(node -p "require('./${{ matrix.package_dir }}/package.json').name")
+          PKG_VERSION=$(node -p "require('./${{ matrix.package_dir }}/package.json').version")
+
+          if npm view "${PKG_NAME}@${PKG_VERSION}" version --registry=https://registry.npmjs.org >/dev/null 2>&1; then
+            echo "${PKG_NAME}@${PKG_VERSION} is already published on npm. Skipping."
+            exit 0
+          fi
+
+          pnpm --filter "${PKG_NAME}" publish --access public --no-git-checks --provenance
+
+  publish-commercial:
+    name: Publish Commercial to GitHub Packages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        package_dir:
+          - packages/m-ui-engine-rule-components
+          - packages/m-ui-engine-rule-components-primeng
+          - packages/m-ui-engine-signalr
+          - packages/m-ui-engine-sync
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          registry-url: https://npm.pkg.github.com
+          scope: '@muonroi'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test (if exists)
+        run: pnpm run --if-present test
+
+      - name: Publish package (skip existing)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PKG_NAME=$(node -p "require('./${{ matrix.package_dir }}/package.json').name")
+          PKG_VERSION=$(node -p "require('./${{ matrix.package_dir }}/package.json').version")
+
+          if npm view "${PKG_NAME}@${PKG_VERSION}" version --registry=https://npm.pkg.github.com >/dev/null 2>&1; then
+            echo "${PKG_NAME}@${PKG_VERSION} is already published on GitHub Packages. Skipping."
+            exit 0
+          fi
+
+          pnpm --filter "${PKG_NAME}" publish --no-git-checks --registry https://npm.pkg.github.com
