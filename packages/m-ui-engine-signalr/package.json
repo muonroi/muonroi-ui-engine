@@ -1,6 +1,6 @@
-﻿{
+{
   "name": "@muonroi/ui-engine-signalr",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "SignalR schema watcher for Muonroi UI Engine",
   "type": "module",
   "main": "dist/index.js",
@@ -22,3 +22,4 @@
     "@muonroi/ui-engine-core": "workspace:*"
   }
 }
+
