@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-sync",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Muonroi UI Engine sync CLI",
   "bin": {
     "mui-engine-sync": "./bin/mui-engine-sync.cjs"
@@ -9,3 +9,4 @@
     "bin"
   ]
 }
+

@@ -1,6 +1,6 @@
-﻿{
+{
   "name": "@muonroi/ui-engine-rule-components-primeng",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "PrimeNG wrappers for Muonroi rule web components",
   "type": "module",
   "main": "dist/index.js",
@@ -24,3 +24,4 @@
     "primeng": ">=17"
   }
 }
+

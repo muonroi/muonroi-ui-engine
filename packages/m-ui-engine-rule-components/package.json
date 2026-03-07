@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-rule-components",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Muonroi rule engine web components",
   "type": "module",
   "main": "dist/muonroi-rule-components.esm.js",
@@ -38,3 +38,4 @@
     "happy-dom": "^15.10.2"
   }
 }
+
