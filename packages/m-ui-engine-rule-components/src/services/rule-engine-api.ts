@@ -1,4 +1,4 @@
-﻿import type { MDecisionTableModel } from "../models.js";
+﻿import type { MDecisionTableModel, MDecisionTableVersionInfo, MDecisionTableVersionSnapshot } from "../models.js";
 
 export interface MRuleEngineApiOptions {
   baseUrl: string;
@@ -57,6 +57,14 @@ export class MRuleEngineApi {
 
   public async MExportDecisionTable(id: string, format: "excel" | "json" | "xml" | "dmn"): Promise<Blob> {
     return await this.MRequestBlob(`/decision-tables/${id}/export/${format}`);
+  }
+
+  public async MListDecisionTableVersions(id: string): Promise<MDecisionTableVersionInfo[]> {
+    return await this.MRequest<MDecisionTableVersionInfo[]>(`/decision-tables/${id}/versions`);
+  }
+
+  public async MGetDecisionTableVersion(id: string, version: number): Promise<MDecisionTableVersionSnapshot> {
+    return await this.MRequest<MDecisionTableVersionSnapshot>(`/decision-tables/${id}/versions/${version}`);
   }
 
   public async MListNRules(): Promise<MNRulesDefinition[]> {

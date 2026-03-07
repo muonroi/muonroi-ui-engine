@@ -1,15 +1,19 @@
-﻿import { LitElement, html, unsafeCSS } from "lit";
+import { LitElement, html, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { MDecisionTableModel, MDecisionTableVersionSnapshot } from "../../models.js";
+import type { MDecisionTableModel, MDecisionTableVersionInfo } from "../../models.js";
 import { MCreateDecisionTableStore, type MDecisionTableStore } from "../../store/decision-table-store.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
+
+const M_DEFAULT_API_BASE = "/api/v1/decision-tables";
+const M_DEFAULT_HISTORY_ENDPOINT = `${M_DEFAULT_API_BASE}/{id}/versions`;
+const M_DEFAULT_HISTORY_VERSION_ENDPOINT = `${M_DEFAULT_API_BASE}/{id}/versions/{v}`;
 
 @customElement("mu-decision-table")
 export class MuDecisionTable extends LitElement {
   static styles = [unsafeCSS(tailwindStyles)];
 
   @property({ type: String, attribute: "api-base" })
-  apiBase = "/api/v1/decision-tables";
+  apiBase = M_DEFAULT_API_BASE;
 
   @property({ type: String, attribute: "validate-endpoint" })
   validateEndpoint = "/api/v1/decision-tables/{id}/validate";
@@ -21,7 +25,10 @@ export class MuDecisionTable extends LitElement {
   feelEndpoint = "/api/v1/feel/autocomplete";
 
   @property({ type: String, attribute: "history-endpoint" })
-  historyEndpoint = "/api/v1/decision-tables/{id}/versions";
+  historyEndpoint = M_DEFAULT_HISTORY_ENDPOINT;
+
+  @property({ type: String, attribute: "history-version-endpoint" })
+  historyVersionEndpoint = M_DEFAULT_HISTORY_VERSION_ENDPOINT;
 
   @property({ type: String, attribute: "reorder-endpoint" })
   reorderEndpoint = "/api/v1/decision-tables/{id}/rows/reorder";
@@ -45,13 +52,25 @@ export class MuDecisionTable extends LitElement {
   private mValidationWarnings: string[] = [];
 
   @state()
-  private mVersionHistory: MDecisionTableVersionSnapshot[] = [];
+  private mVersionHistory: MDecisionTableVersionInfo[] = [];
 
   @state()
   private mLeftVersion = 0;
 
   @state()
   private mRightVersion = 0;
+
+  @state()
+  private mLeftTable: MDecisionTableModel | null = null;
+
+  @state()
+  private mRightTable: MDecisionTableModel | null = null;
+
+  @state()
+  private mDiffLoading = false;
+
+  @state()
+  private mDiffError = "";
 
   @state()
   private mDragStartRowIndex = -1;
@@ -61,6 +80,7 @@ export class MuDecisionTable extends LitElement {
 
   private readonly mStore: MDecisionTableStore = MCreateDecisionTableStore();
   private mUnsubscribe?: () => void;
+  private mVersionRequestId = 0;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -199,10 +219,13 @@ export class MuDecisionTable extends LitElement {
       this.mLeftVersion = 0;
       this.mRightVersion = 0;
       this.mVersionHistory = [];
+      this.mLeftTable = null;
+      this.mRightTable = null;
+      this.mDiffError = "";
       return;
     }
 
-    await this.mStore.getState().loadHistory(this.historyEndpoint).catch(() => undefined);
+    await this.mStore.getState().loadHistory(this.MResolveHistoryEndpoint()).catch(() => undefined);
     if (this.mVersionHistory.length > 0) {
       const sorted = [...this.mVersionHistory].sort((left, right) => right.version - left.version);
       this.mLeftVersion = sorted[0]?.version ?? 0;
@@ -211,14 +234,93 @@ export class MuDecisionTable extends LitElement {
       this.mLeftVersion = 0;
       this.mRightVersion = 0;
     }
+
+    await this.MLoadSelectedVersions();
   }
 
-  private MLeftSnapshot(): MDecisionTableVersionSnapshot | undefined {
-    return this.mVersionHistory.find((x) => x.version === this.mLeftVersion);
+  private MResolveHistoryEndpoint(): string {
+    const trimmed = (this.historyEndpoint ?? "").trim();
+    const apiBaseTrimmed = (this.apiBase ?? "").trim();
+    if (trimmed && !(trimmed === M_DEFAULT_HISTORY_ENDPOINT && apiBaseTrimmed && apiBaseTrimmed !== M_DEFAULT_API_BASE)) {
+      return trimmed;
+    }
+
+    return `${this.apiBase.replace(/\/$/, "")}/{id}/versions`;
   }
 
-  private MRightSnapshot(): MDecisionTableVersionSnapshot | undefined {
-    return this.mVersionHistory.find((x) => x.version === this.mRightVersion);
+  private MResolveVersionEndpoint(): string {
+    const explicit = (this.historyVersionEndpoint ?? "").trim();
+    const apiBaseTrimmed = (this.apiBase ?? "").trim();
+    if (
+      explicit &&
+      !(explicit === M_DEFAULT_HISTORY_VERSION_ENDPOINT && apiBaseTrimmed && apiBaseTrimmed !== M_DEFAULT_API_BASE)
+    ) {
+      return explicit;
+    }
+
+    const history = this.MResolveHistoryEndpoint();
+    if (history.includes("{v}")) {
+      return history;
+    }
+
+    return `${history.replace(/\/$/, "")}/{v}`;
+  }
+
+  private async MLoadSelectedVersions(): Promise<void> {
+    const versionEndpoint = this.MResolveVersionEndpoint();
+    const leftVersion = this.mLeftVersion;
+    const rightVersion = this.mRightVersion;
+
+    if (leftVersion <= 0 && rightVersion <= 0) {
+      this.mLeftTable = null;
+      this.mRightTable = null;
+      this.mDiffError = "";
+      return;
+    }
+
+    const requestId = ++this.mVersionRequestId;
+    this.mDiffLoading = true;
+    this.mDiffError = "";
+
+    try {
+      const leftPromise =
+        leftVersion > 0 ? this.mStore.getState().loadVersionSnapshot(versionEndpoint, leftVersion) : Promise.resolve(null);
+      const rightPromise =
+        rightVersion > 0
+          ? rightVersion === leftVersion
+            ? leftPromise
+            : this.mStore.getState().loadVersionSnapshot(versionEndpoint, rightVersion)
+          : Promise.resolve(null);
+      const [left, right] = await Promise.all([leftPromise, rightPromise]);
+      if (requestId !== this.mVersionRequestId) {
+        return;
+      }
+
+      this.mLeftTable = left?.table ?? null;
+      this.mRightTable = right?.table ?? null;
+    } catch (error) {
+      if (requestId !== this.mVersionRequestId) {
+        return;
+      }
+
+      this.mLeftTable = null;
+      this.mRightTable = null;
+      this.mDiffError = error instanceof Error ? error.message : "Failed to load version snapshots.";
+    } finally {
+      if (requestId === this.mVersionRequestId) {
+        this.mDiffLoading = false;
+      }
+    }
+  }
+
+  private MHandleLeftVersionChange(event: Event): void {
+    this.mLeftVersion = Number((event.target as HTMLSelectElement).value || 0);
+    void this.MLoadSelectedVersions();
+  }
+
+  private MHandleRightVersionChange(event: Event): void {
+    this.mRightVersion = Number((event.target as HTMLSelectElement).value || 0);
+    void this.MLoadSelectedVersions();
   }
 
   private MOnScroll(event: Event): void {
@@ -271,8 +373,7 @@ export class MuDecisionTable extends LitElement {
     }
 
     const errorColumnIds = this.MResolveErrorColumnIds();
-    const leftSnapshot = this.MLeftSnapshot();
-    const rightSnapshot = this.MRightSnapshot();
+    const sortedHistory = [...this.mVersionHistory].sort((left, right) => right.version - left.version);
 
     return html`
       <section class="space-y-4 rounded-xl border border-[var(--color-mu-border)] bg-[var(--color-mu-surface)] p-4">
@@ -330,6 +431,8 @@ export class MuDecisionTable extends LitElement {
               <section class="space-y-2 rounded border border-[var(--color-mu-border)] bg-white p-3">
                 <header class="flex flex-wrap items-center gap-2">
                   <h4 class="font-semibold">Version diff</h4>
+                  ${this.mDiffLoading ? html`<span class="animate-pulse text-xs text-zinc-400">Loading...</span>` : html``}
+                  ${this.mDiffError ? html`<span class="text-xs text-red-500">${this.mDiffError}</span>` : html``}
                   <button class="rounded border border-[var(--color-mu-border)] px-2 py-1 text-xs" @click=${this.MLoadHistory}>
                     Reload history
                   </button>
@@ -338,11 +441,9 @@ export class MuDecisionTable extends LitElement {
                     <select
                       class="rounded border border-[var(--color-mu-border)] px-1 py-0.5"
                       .value=${String(this.mLeftVersion)}
-                      @change=${(e: Event) => (this.mLeftVersion = Number((e.target as HTMLSelectElement).value || 0))}
+                      @change=${this.MHandleLeftVersionChange}
                     >
-                      ${this.mVersionHistory
-                        .sort((left, right) => right.version - left.version)
-                        .map((item) => html`<option value=${item.version}>v${item.version}</option>`)}
+                      ${sortedHistory.map((item) => html`<option value=${item.version}>v${item.version} (${item.changeType})</option>`)}
                     </select>
                   </label>
                   <label class="text-xs">
@@ -350,19 +451,17 @@ export class MuDecisionTable extends LitElement {
                     <select
                       class="rounded border border-[var(--color-mu-border)] px-1 py-0.5"
                       .value=${String(this.mRightVersion)}
-                      @change=${(e: Event) => (this.mRightVersion = Number((e.target as HTMLSelectElement).value || 0))}
+                      @change=${this.MHandleRightVersionChange}
                     >
-                      ${this.mVersionHistory
-                        .sort((left, right) => right.version - left.version)
-                        .map((item) => html`<option value=${item.version}>v${item.version}</option>`)}
+                      ${sortedHistory.map((item) => html`<option value=${item.version}>v${item.version} (${item.changeType})</option>`)}
                     </select>
                   </label>
                 </header>
                 <mu-dt-version-diff
                   .leftVersion=${this.mLeftVersion}
                   .rightVersion=${this.mRightVersion}
-                  .leftTable=${leftSnapshot?.table ?? null}
-                  .rightTable=${rightSnapshot?.table ?? null}
+                  .leftTable=${this.mLeftTable}
+                  .rightTable=${this.mRightTable}
                 ></mu-dt-version-diff>
               </section>
             `}
@@ -370,4 +469,3 @@ export class MuDecisionTable extends LitElement {
     `;
   }
 }
-

@@ -3,6 +3,7 @@ import type {
   MDecisionTableCell,
   MDecisionTableColumn,
   MDecisionTableModel,
+  MDecisionTableVersionInfo,
   MDecisionTableVersionSnapshot,
   MDecisionTableRow,
   MValidationError,
@@ -15,7 +16,8 @@ export interface DecisionTableEditorState {
   selectedRowIds: Set<string>;
   validationErrors: MValidationError[];
   validationWarnings: string[];
-  versionHistory: MDecisionTableVersionSnapshot[];
+  versionHistory: MDecisionTableVersionInfo[];
+  versionSnapshots: Record<number, MDecisionTableVersionSnapshot>;
   history: { past: MDecisionTableModel[]; future: MDecisionTableModel[] };
 
   loadTable(id: string, apiBase: string): Promise<void>;
@@ -35,6 +37,7 @@ export interface DecisionTableEditorState {
   validate(endpoint: string): Promise<void>;
   exportTable(endpoint: string, format: string): Promise<Blob>;
   loadHistory(endpoint: string, page?: number, pageSize?: number): Promise<void>;
+  loadVersionSnapshot(endpoint: string, version: number): Promise<MDecisionTableVersionSnapshot | null>;
 }
 
 export type MDecisionTableStore = ReturnType<typeof MCreateDecisionTableStore>;
@@ -49,6 +52,7 @@ export function MCreateDecisionTableStore() {
     validationErrors: [],
     validationWarnings: [],
     versionHistory: [],
+    versionSnapshots: {},
     history: { past: [], future: [] },
 
     async loadTable(id, apiBase) {
@@ -65,6 +69,7 @@ export function MCreateDecisionTableStore() {
         validationErrors: [],
         validationWarnings: [],
         versionHistory: [],
+        versionSnapshots: {},
         history: { past: [], future: [] }
       });
     },
@@ -94,6 +99,7 @@ export function MCreateDecisionTableStore() {
         validationErrors: [],
         validationWarnings: [],
         versionHistory: [],
+        versionSnapshots: {},
         history: { past: [], future: [] }
       });
     },
@@ -432,27 +438,77 @@ export function MCreateDecisionTableStore() {
       return await response.blob();
     },
 
-    async loadHistory(endpoint, page = 1, pageSize = 20) {
+    async loadHistory(endpoint, page, pageSize) {
       const table = get().table;
       if (!table) {
-        set({ versionHistory: [] });
+        set({ versionHistory: [], versionSnapshots: {} });
         return;
       }
 
       if (!table.id?.trim()) {
-        set({ versionHistory: [] });
+        set({ versionHistory: [], versionSnapshots: {} });
         return;
       }
 
       const rawUrl = endpoint.replace("{id}", encodeURIComponent(table.id));
-      const separator = rawUrl.includes("?") ? "&" : "?";
-      const response = await fetch(`${rawUrl}${separator}page=${page}&pageSize=${pageSize}`);
+      const hasPaging = Number.isInteger(page) || Number.isInteger(pageSize);
+      let url = rawUrl;
+      if (hasPaging) {
+        const resolvedPage = typeof page === "number" && Number.isInteger(page) && page > 0 ? page : 1;
+        const resolvedPageSize = typeof pageSize === "number" && Number.isInteger(pageSize) && pageSize > 0 ? pageSize : 20;
+        const separator = rawUrl.includes("?") ? "&" : "?";
+        url = `${rawUrl}${separator}page=${resolvedPage}&pageSize=${resolvedPageSize}`;
+      }
+
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`Unable to load history for decision table ${table.id}`);
       }
 
-      const payload = (await response.json()) as MDecisionTableVersionSnapshot[];
-      set({ versionHistory: payload ?? [] });
+      const payload = (await response.json()) as MDecisionTableVersionInfo[] | { items?: MDecisionTableVersionInfo[] };
+      const items = Array.isArray(payload) ? payload : (payload.items ?? []);
+      set({
+        versionHistory: items.map((item) => MNormalizeVersionInfo(item)),
+        versionSnapshots: {}
+      });
+    },
+
+    async loadVersionSnapshot(endpoint, version) {
+      if (!Number.isInteger(version) || version <= 0) {
+        return null;
+      }
+
+      const state = get();
+      const table = state.table;
+      if (!table?.id?.trim()) {
+        return null;
+      }
+
+      const cached = state.versionSnapshots[version];
+      if (cached) {
+        return cached;
+      }
+
+      const id = encodeURIComponent(table.id);
+      const versionRaw = encodeURIComponent(String(version));
+      const withId = endpoint.replace("{id}", id);
+      const url = withId.includes("{v}") ? withId.replace("{v}", versionRaw) : `${withId.replace(/\/$/, "")}/${versionRaw}`;
+
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Unable to load version ${version} for decision table ${table.id}`);
+      }
+
+      const payload = (await response.json()) as MDecisionTableVersionSnapshot | MDecisionTableModel;
+      const historyEntry = state.versionHistory.find((item) => item.version === version);
+      const snapshot = MNormalizeVersionSnapshot(payload, table.id, version, historyEntry);
+      set({
+        versionSnapshots: {
+          ...get().versionSnapshots,
+          [version]: snapshot
+        }
+      });
+      return snapshot;
     }
   }));
 }
@@ -542,4 +598,43 @@ function MNormalizeTable(table: MDecisionTableModel): MDecisionTableModel {
   clone.outputColumns = clone.outputColumns.map((column) => ({ ...column, kind: "output" }));
   clone.rows = [...clone.rows].sort((left, right) => left.order - right.order);
   return clone;
+}
+
+function MNormalizeVersionInfo(item: MDecisionTableVersionInfo): MDecisionTableVersionInfo {
+  return {
+    tableId: item.tableId,
+    version: item.version,
+    changeType: item.changeType ?? "Unknown",
+    actor: item.actor ?? null,
+    reason: item.reason ?? null,
+    timestamp: item.timestamp ?? ""
+  };
+}
+
+function MNormalizeVersionSnapshot(
+  payload: MDecisionTableVersionSnapshot | MDecisionTableModel,
+  tableId: string,
+  version: number,
+  fallback?: MDecisionTableVersionInfo
+): MDecisionTableVersionSnapshot {
+  if (MIsVersionSnapshot(payload)) {
+    return {
+      ...payload,
+      table: MNormalizeTable(payload.table)
+    };
+  }
+
+  return {
+    tableId,
+    version,
+    changeType: fallback?.changeType ?? "Unknown",
+    actor: fallback?.actor ?? null,
+    reason: fallback?.reason ?? null,
+    timestamp: fallback?.timestamp ?? "",
+    table: MNormalizeTable(payload)
+  };
+}
+
+function MIsVersionSnapshot(payload: MDecisionTableVersionSnapshot | MDecisionTableModel): payload is MDecisionTableVersionSnapshot {
+  return "table" in payload;
 }
