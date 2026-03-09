@@ -1,6 +1,6 @@
 import { LitElement, html, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { MDecisionTableModel, MDecisionTableVersionInfo } from "../../models.js";
+import type { MDecisionTableDiff, MDecisionTableModel, MDecisionTableVersionInfo } from "../../models.js";
 import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import { MCreateDecisionTableStore, type MDecisionTableStore } from "../../store/decision-table-store.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
@@ -8,6 +8,7 @@ import tailwindStyles from "../../styles/tailwind.css?inline";
 const M_DEFAULT_API_BASE = "/api/v1/decision-tables";
 const M_DEFAULT_HISTORY_ENDPOINT = `${M_DEFAULT_API_BASE}/{id}/versions`;
 const M_DEFAULT_HISTORY_VERSION_ENDPOINT = `${M_DEFAULT_API_BASE}/{id}/versions/{v}`;
+const M_DEFAULT_DIFF_ENDPOINT = `${M_DEFAULT_API_BASE}/{id}/versions/{v1}/diff/{v2}`;
 const M_FEATURE_KEY = "decision-table";
 
 @customElement("mu-decision-table")
@@ -31,6 +32,9 @@ export class MuDecisionTable extends LitElement {
 
   @property({ type: String, attribute: "history-version-endpoint" })
   historyVersionEndpoint = M_DEFAULT_HISTORY_VERSION_ENDPOINT;
+
+  @property({ type: String, attribute: "diff-endpoint" })
+  diffEndpoint = M_DEFAULT_DIFF_ENDPOINT;
 
   @property({ type: String, attribute: "reorder-endpoint" })
   reorderEndpoint = "/api/v1/decision-tables/{id}/rows/reorder";
@@ -73,6 +77,9 @@ export class MuDecisionTable extends LitElement {
 
   @state()
   private mDiffError = "";
+
+  @state()
+  private mServerDiff: MDecisionTableDiff | null = null;
 
   @state()
   private mDragStartRowIndex = -1;
@@ -223,6 +230,7 @@ export class MuDecisionTable extends LitElement {
       this.mVersionHistory = [];
       this.mLeftTable = null;
       this.mRightTable = null;
+      this.mServerDiff = null;
       this.mDiffError = "";
       return;
     }
@@ -268,6 +276,15 @@ export class MuDecisionTable extends LitElement {
     return `${history.replace(/\/$/, "")}/{v}`;
   }
 
+  private MResolveDiffEndpoint(): string {
+    const explicit = (this.diffEndpoint ?? "").trim();
+    if (explicit) {
+      return explicit;
+    }
+
+    return `${this.apiBase.replace(/\/$/, "")}/{id}/versions/{v1}/diff/{v2}`;
+  }
+
   private async MLoadSelectedVersions(): Promise<void> {
     const versionEndpoint = this.MResolveVersionEndpoint();
     const leftVersion = this.mLeftVersion;
@@ -276,6 +293,7 @@ export class MuDecisionTable extends LitElement {
     if (leftVersion <= 0 && rightVersion <= 0) {
       this.mLeftTable = null;
       this.mRightTable = null;
+      this.mServerDiff = null;
       this.mDiffError = "";
       return;
     }
@@ -300,6 +318,7 @@ export class MuDecisionTable extends LitElement {
 
       this.mLeftTable = left?.table ?? null;
       this.mRightTable = right?.table ?? null;
+      await this.MLoadServerDiff(leftVersion, rightVersion);
     } catch (error) {
       if (requestId !== this.mVersionRequestId) {
         return;
@@ -307,12 +326,33 @@ export class MuDecisionTable extends LitElement {
 
       this.mLeftTable = null;
       this.mRightTable = null;
+      this.mServerDiff = null;
       this.mDiffError = error instanceof Error ? error.message : "Failed to load version snapshots.";
     } finally {
       if (requestId === this.mVersionRequestId) {
         this.mDiffLoading = false;
       }
     }
+  }
+
+  private async MLoadServerDiff(leftVersion: number, rightVersion: number): Promise<void> {
+    this.mServerDiff = null;
+    const tableId = this.mStore.getState().table?.id?.trim() ?? "";
+    if (!tableId || leftVersion <= 0 || rightVersion <= 0) {
+      return;
+    }
+
+    const endpoint = this.MResolveDiffEndpoint()
+      .replace("{id}", encodeURIComponent(tableId))
+      .replace("{v1}", encodeURIComponent(String(leftVersion)))
+      .replace("{v2}", encodeURIComponent(String(rightVersion)));
+
+    const response = await fetch(endpoint);
+    if (!response.ok) {
+      return;
+    }
+
+    this.mServerDiff = (await response.json()) as MDecisionTableDiff;
   }
 
   private MHandleLeftVersionChange(event: Event): void {
@@ -470,6 +510,12 @@ export class MuDecisionTable extends LitElement {
                   .leftTable=${this.mLeftTable}
                   .rightTable=${this.mRightTable}
                 ></mu-dt-version-diff>
+                ${this.mServerDiff
+                  ? html`<p class="text-xs text-zinc-500">
+                      Server diff: ${this.mServerDiff.columnChanges.length} column changes,
+                      ${this.mServerDiff.rowDiffs.length} row changes.
+                    </p>`
+                  : html``}
               </section>
             `}
       </section>
