@@ -32,7 +32,7 @@
   },
   "devDependencies": {
     "@muonroi/ui-engine-rule-components": "workspace:*",
-    "@types/react": "^19.2.2"
+    "@types/react": "^18.3.12"
   }
 }
 

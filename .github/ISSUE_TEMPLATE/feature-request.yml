@@ -1,0 +1,21 @@
+name: Feature Request
+description: Propose a new UI engine capability or authoring improvement
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed Change
+    validations:
+      required: true
+  - type: textarea
+    id: docs
+    attributes:
+      label: Docs Or Sample Impact
