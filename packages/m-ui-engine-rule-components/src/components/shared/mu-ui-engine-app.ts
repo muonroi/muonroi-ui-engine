@@ -54,6 +54,9 @@ export class MuUiEngineApp extends LitElement {
   @property({ type: String, attribute: "decision-table-history-version-endpoint" })
   decisionTableHistoryVersionEndpoint = "/api/v1/decision-tables/{id}/versions/{v}";
 
+  @property({ type: String, attribute: "decision-table-diff-endpoint" })
+  decisionTableDiffEndpoint = "/api/v1/decision-tables/{id}/versions/{v1}/diff/{v2}";
+
   @property({ type: String, attribute: "decision-table-reorder-endpoint" })
   decisionTableReorderEndpoint = "/api/v1/decision-tables/{id}/rows/reorder";
 
@@ -242,6 +245,7 @@ export class MuUiEngineApp extends LitElement {
             feel-endpoint=${this.feelAutocompleteEndpoint}
             history-endpoint=${this.decisionTableHistoryEndpoint}
             history-version-endpoint=${this.decisionTableHistoryVersionEndpoint}
+            diff-endpoint=${this.decisionTableDiffEndpoint}
             reorder-endpoint=${this.decisionTableReorderEndpoint}
             table-id=${component.props?.tableId ?? ""}
           ></mu-decision-table>
