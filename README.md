@@ -1,23 +1,47 @@
-# Muonroi.Ui.Engine
+# muonroi-ui-engine
 
-Hybrid UI engine runtime for Muonroi platform.
+Muonroi UI Engine is the TypeScript and web-component side of the ecosystem: core runtime adapters, framework wrappers, and the commercial rule-authoring surfaces used by the control plane.
 
-## Scope
+[![CI](https://github.com/muonroi/muonroi-ui-engine/actions/workflows/ci.yml/badge.svg)](https://github.com/muonroi/muonroi-ui-engine/actions/workflows/ci.yml)
+[![License Model](https://img.shields.io/badge/license-open--core-green.svg)](https://docs.muonroi.com/docs/resources/COMMERCIAL-EDITIONS)
+[![Commercial Packages](https://img.shields.io/badge/commercial-rule%20components-blue.svg)](https://docs.muonroi.com/docs/resources/COMMERCIAL-EDITIONS)
 
-- Backend (MuonroiBuildingBlock) owns UI contracts and policy/permission/license decisions.
-- This repo owns frontend runtime engine and framework adapters.
-- UI developers focus on layout/theme/UX while core behavior stays metadata-driven.
+## Install
+
+```bash
+npm install
+npm run build
+```
+
+## Quick Example
+
+Bootstrap the custom elements and render the flow designer in React:
+
+```tsx
+import { MLoadRuleEngineCustomElements, MuRuleFlowDesignerReact } from "@muonroi/ui-engine-react";
+
+await MLoadRuleEngineCustomElements({ activationProof });
+
+<MuRuleFlowDesignerReact
+  graph={{ nodes: [], edges: [], metadata: { version: 1, workflowName: "wf.orders" } }}
+  apiBaseUrl="/api/v1"
+  height={720}
+/>;
+```
+
+That gives you the commercial flow canvas used by the control-plane dashboard while preserving the web-component boundary for non-React hosts.
 
 ## Packages
 
-- `@muonroi/ui-engine-core`: contracts, runtime store, API client, render planner.
-- `@muonroi/ui-engine-angular`: Angular-oriented mapping helpers.
-- `@muonroi/ui-engine-react`: React-oriented mapping helpers.
-- `@muonroi/ui-engine-primeng`: PrimeNG adapter and mapping helpers.
-- `@muonroi/ui-engine-rule-components`: commercial rule-authoring and decision-table components.
-- `@muonroi/ui-engine-signalr`: commercial real-time schema sync helpers.
-- `@muonroi/ui-engine-sync`: commercial sync CLI.
-- `Muonroi.Ui.Engine.Mvc`: ASP.NET MVC runtime client package.
+| Package | Purpose | Tier |
+| --- | --- | --- |
+| `@muonroi/ui-engine-core` | runtime contracts, navigation shaping, helpers | OSS |
+| `@muonroi/ui-engine-react` | React wrappers for Muonroi custom elements | OSS |
+| `@muonroi/ui-engine-angular` | Angular wrappers | OSS |
+| `@muonroi/ui-engine-primeng` | PrimeNG integration | OSS |
+| `@muonroi/ui-engine-rule-components` | decision table, FEEL, rule flow, and authoring widgets | Commercial |
+| `@muonroi/ui-engine-signalr` | real-time sync helpers | Commercial |
+| `@muonroi/ui-engine-sync` | sync and offline tooling | Commercial |
 
 ## Local Development
 
@@ -27,14 +51,16 @@ npm run test
 npm run build
 ```
 
-```bash
-./scripts/generate-ui-clients.sh --openapi http://localhost:5000/swagger/v1/swagger.json --framework all
-```
+If you changed shared UI packages that are mirrored into the control-plane repo, run the sync script there after the change lands.
 
-Template integration helper (inside generated templates):
+## Docs
 
-```bash
-./scripts/sync-ui-engine.sh --ui-engine-path ../Muonroi.Ui.Engine --openapi http://localhost:5000/swagger/v1/swagger.json --framework all
-```
+- UI engine architecture: https://docs.muonroi.com/docs/guides/ui-engine/ui-engine-architecture
+- Rule flow designer guide: https://docs.muonroi.com/docs/guides/ui-engine/rule-flow-designer
+- Decision table widget guide: https://docs.muonroi.com/docs/guides/ui-engine/decision-table-widget
 
-For detailed architecture, see `docs/UI-ENGINE-ARCHITECTURE.md`.
+## Community
+
+- Docs: https://docs.muonroi.com
+- Issues: https://github.com/muonroi/muonroi-ui-engine/issues
+- Commercial editions: https://docs.muonroi.com/docs/resources/COMMERCIAL-EDITIONS

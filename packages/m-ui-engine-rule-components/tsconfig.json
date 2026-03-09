@@ -5,11 +5,13 @@
     "outDir": "dist",
     "experimentalDecorators": true,
     "useDefineForClassFields": false,
+    "jsx": "react-jsx",
     "lib": ["ES2022", "DOM"],
     "types": ["vite/client"]
   },
   "include": [
     "src/**/*.ts",
+    "src/**/*.tsx",
     "src/**/*.d.ts"
   ]
 }

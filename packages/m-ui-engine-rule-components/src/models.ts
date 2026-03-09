@@ -89,3 +89,54 @@ export interface MDecisionTableDiff {
   columnChanges: MDecisionTableColumnChange[];
   rowDiffs: MDecisionTableRowDiff[];
 }
+
+export type MRuleFlowNodeType = "trigger" | "condition" | "action" | "decision-table" | "sub-flow" | "end";
+
+export type MRuleFlowEdgeType = "always" | "on-true" | "on-false" | "on-error";
+
+export interface MRuleFlowPosition {
+  x: number;
+  y: number;
+}
+
+export interface MRuleFlowNode {
+  id: string;
+  type: MRuleFlowNodeType;
+  label: string;
+  feelExpression?: string;
+  ruleCode?: string;
+  position: MRuleFlowPosition;
+  data: Record<string, unknown>;
+}
+
+export interface MRuleFlowEdge {
+  id: string;
+  source: string;
+  target: string;
+  label?: string;
+  edgeType: MRuleFlowEdgeType;
+}
+
+export interface MRuleFlowMetadata {
+  version: number;
+  tenantId?: string;
+  ruleSetCode?: string;
+  lastModifiedBy?: string;
+  lastModifiedAt?: string;
+}
+
+export interface MRuleFlowGraph {
+  nodes: MRuleFlowNode[];
+  edges: MRuleFlowEdge[];
+  metadata: MRuleFlowMetadata;
+}
+
+export function MCreateEmptyRuleFlowGraph(): MRuleFlowGraph {
+  return {
+    nodes: [],
+    edges: [],
+    metadata: {
+      version: 1
+    }
+  };
+}
