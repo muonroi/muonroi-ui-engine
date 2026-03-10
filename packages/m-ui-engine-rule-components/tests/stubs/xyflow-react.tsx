@@ -1,5 +1,15 @@
 import React from "react";
 
+type ReactFlowTestState = {
+  fitViewCalls: number;
+  lastProps: ReactFlowProps | null;
+};
+
+const M_REACT_FLOW_TEST_STATE: ReactFlowTestState = {
+  fitViewCalls: 0,
+  lastProps: null
+};
+
 export type XYPosition = { x: number; y: number };
 
 export type Node<Data = Record<string, unknown>> = {
@@ -25,15 +35,17 @@ export type Connection = {
 
 export type NodeChange = {
   id: string;
-  type: "remove" | "select" | "position";
+  type: "add" | "remove" | "replace" | "select" | "position" | "dimensions" | "reset";
   selected?: boolean;
   position?: XYPosition;
+  item?: Node;
 };
 
 export type EdgeChange = {
   id: string;
-  type: "remove" | "select";
+  type: "add" | "remove" | "replace" | "select";
   selected?: boolean;
+  item?: Edge;
 };
 
 export enum Position {
@@ -67,9 +79,14 @@ type ReactFlowProps = {
   nodes: Node[];
   edges?: Edge[];
   nodeTypes?: Record<string, React.ComponentType<any>>;
+  style?: React.CSSProperties;
   onNodeClick?: (_event: React.MouseEvent, node: Node) => void;
   onEdgeClick?: (_event: React.MouseEvent, edge: Edge) => void;
   onPaneClick?: () => void;
+  onMoveStart?: () => void;
+  onNodesChange?: (_changes: NodeChange[]) => void;
+  onEdgesChange?: (_changes: EdgeChange[]) => void;
+  onConnect?: (_connection: Connection) => void;
   children?: React.ReactNode;
 };
 
@@ -77,13 +94,32 @@ export function ReactFlow({
   nodes,
   edges = [],
   nodeTypes = {},
+  style,
   onNodeClick,
   onEdgeClick,
   onPaneClick,
+  onMoveStart,
+  onNodesChange,
+  onEdgesChange,
+  onConnect,
   children
 }: ReactFlowProps): React.JSX.Element {
+  M_REACT_FLOW_TEST_STATE.lastProps = {
+    nodes,
+    edges,
+    nodeTypes,
+    style,
+    onNodeClick,
+    onEdgeClick,
+    onPaneClick,
+    onMoveStart,
+    onNodesChange,
+    onEdgesChange,
+    onConnect,
+    children
+  };
   return (
-    <div data-testid="xyflow-root" onClick={() => onPaneClick?.()}>
+    <div data-testid="xyflow-root" style={style} onClick={() => onPaneClick?.()}>
       {nodes.map((node) => {
         const NodeComponent = node.type ? nodeTypes[node.type] : undefined;
         return (
@@ -118,6 +154,31 @@ export function ReactFlow({
 }
 
 export default ReactFlow;
+
+export function useNodesInitialized(): boolean {
+  return true;
+}
+
+export function useReactFlow(): { fitView: (_options?: Record<string, unknown>) => Promise<void> } {
+  return {
+    fitView: async () => {
+      M_REACT_FLOW_TEST_STATE.fitViewCalls += 1;
+    }
+  };
+}
+
+export function useUpdateNodeInternals(): (_nodeId: string) => void {
+  return () => {};
+}
+
+export function MResetReactFlowTestState(): void {
+  M_REACT_FLOW_TEST_STATE.fitViewCalls = 0;
+  M_REACT_FLOW_TEST_STATE.lastProps = null;
+}
+
+export function MGetReactFlowTestState(): ReactFlowTestState {
+  return M_REACT_FLOW_TEST_STATE;
+}
 
 export function addEdge(connection: Connection, edges: Edge[]): Edge[] {
   if (!connection.source || !connection.target) {

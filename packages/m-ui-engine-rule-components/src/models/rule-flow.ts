@@ -1,11 +1,86 @@
-export type MRuleFlowNodeType = "trigger" | "condition" | "action" | "decision-table" | "sub-flow" | "end";
+export type MRuleFlowNodeType = "trigger" | "condition" | "action" | "decision-table" | "sub-flow" | "liquid" | "end";
 
 export type MRuleFlowEdgeType = "always" | "on-true" | "on-false" | "on-error";
+
+export type MRuleFlowExpressionLanguage = "feel" | "liquid" | "plain-text";
+
+export type MRuleFlowContractSourceType = "rule" | "flow" | "decision-table" | "api" | "inline";
 
 export interface MRuleFlowGraph {
   nodes: MRuleFlowNode[];
   edges: MRuleFlowEdge[];
   metadata: MRuleFlowMetadata;
+}
+
+export interface MRuleFlowPosition {
+  x: number;
+  y: number;
+}
+
+export interface MRuleFlowContractField {
+  path: string;
+  label: string;
+  dataType: string;
+  required?: boolean;
+  description?: string;
+  example?: string;
+  children?: MRuleFlowContractField[];
+}
+
+export interface MRuleFlowContractSchema {
+  contractName: string;
+  title?: string;
+  description?: string;
+  rootType?: string;
+  fields: MRuleFlowContractField[];
+}
+
+export interface MRuleFlowContractReference {
+  sourceType: MRuleFlowContractSourceType;
+  sourceCode: string;
+  label?: string;
+}
+
+export interface MRuleFlowExpression {
+  language: MRuleFlowExpressionLanguage;
+  body: string;
+}
+
+export interface MRuleFlowConditionConfig {
+  successLabel?: string;
+  failureLabel?: string;
+  failureMessage?: string;
+}
+
+export interface MRuleFlowMappingRow {
+  id: string;
+  sourcePath: string;
+  targetPath: string;
+  transform?: string;
+  language?: MRuleFlowExpressionLanguage;
+}
+
+export interface MRuleFlowSubFlowConfig {
+  targetFlowCode?: string;
+  inputMappings: MRuleFlowMappingRow[];
+  outputMappings: MRuleFlowMappingRow[];
+}
+
+export interface MRuleFlowLiquidConfig {
+  template?: string;
+  outputFormat?: "json" | "text" | "object";
+}
+
+export interface MRuleFlowNodeData {
+  description?: string;
+  expression?: MRuleFlowExpression;
+  contractRef?: MRuleFlowContractReference;
+  requestContract?: MRuleFlowContractSchema;
+  responseContract?: MRuleFlowContractSchema;
+  conditionConfig?: MRuleFlowConditionConfig;
+  subFlowConfig?: MRuleFlowSubFlowConfig;
+  liquidConfig?: MRuleFlowLiquidConfig;
+  [key: string]: unknown;
 }
 
 export interface MRuleFlowNode {
@@ -14,8 +89,8 @@ export interface MRuleFlowNode {
   label: string;
   feelExpression?: string;
   ruleCode?: string;
-  position: { x: number; y: number };
-  data: Record<string, unknown>;
+  position: MRuleFlowPosition;
+  data: MRuleFlowNodeData;
 }
 
 export interface MRuleFlowEdge {
@@ -33,4 +108,14 @@ export interface MRuleFlowMetadata {
   workflowName?: string;
   lastModifiedBy?: string;
   lastModifiedAt?: string;
+}
+
+export function MCreateEmptyRuleFlowGraph(): MRuleFlowGraph {
+  return {
+    nodes: [],
+    edges: [],
+    metadata: {
+      version: 1
+    }
+  };
 }

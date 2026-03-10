@@ -1,4 +1,4 @@
-import { LitElement, html, unsafeCSS } from "lit";
+import { LitElement, type PropertyValues, html, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import type { MDecisionTableDiff, MDecisionTableModel, MDecisionTableVersionInfo } from "../../models.js";
 import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
@@ -90,6 +90,7 @@ export class MuDecisionTable extends LitElement {
   private readonly mStore: MDecisionTableStore = MCreateDecisionTableStore();
   private mUnsubscribe?: () => void;
   private mVersionRequestId = 0;
+  private mLastInitializeKey = "";
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -100,13 +101,47 @@ export class MuDecisionTable extends LitElement {
       this.mVersionHistory = state.versionHistory;
     });
 
-    void this.MInitializeAsync();
+    this.MQueueInitialize();
   }
 
   disconnectedCallback(): void {
     this.mUnsubscribe?.();
     this.mUnsubscribe = undefined;
     super.disconnectedCallback();
+  }
+
+  protected updated(changedProperties: PropertyValues<this>): void {
+    super.updated(changedProperties);
+    if (
+      changedProperties.has("apiBase") ||
+      changedProperties.has("tableId") ||
+      changedProperties.has("historyEndpoint") ||
+      changedProperties.has("historyVersionEndpoint") ||
+      changedProperties.has("diffEndpoint")
+    ) {
+      this.MQueueInitialize();
+    }
+  }
+
+  private MQueueInitialize(): void {
+    if (!this.isConnected) {
+      return;
+    }
+
+    const initializeKey = [
+      this.apiBase,
+      this.tableId,
+      this.historyEndpoint,
+      this.historyVersionEndpoint,
+      this.diffEndpoint
+    ].join("|");
+
+    if (initializeKey === this.mLastInitializeKey) {
+      return;
+    }
+
+    this.mLastInitializeKey = initializeKey;
+    void this.MInitializeAsync().catch(() => undefined);
   }
 
   private async MInitializeAsync(): Promise<void> {

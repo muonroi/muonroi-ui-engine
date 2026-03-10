@@ -34,7 +34,8 @@ export class MFeelService {
     this.mEvaluateEndpoint = options.evaluateEndpoint ?? "/api/v1/feel/evaluate";
     this.mAutocompleteEndpoint = options.autocompleteEndpoint ?? "/api/v1/feel/autocomplete";
     this.mExamplesEndpoint = options.examplesEndpoint ?? "/api/v1/feel/examples";
-    this.mFetch = options.fetchImpl ?? fetch;
+    const fetchImpl = (options.fetchImpl ?? globalThis.fetch).bind(globalThis);
+    this.mFetch = (input: RequestInfo | URL, init?: RequestInit) => fetchImpl(input, init);
   }
 
   public async MEvaluate(request: MFeelEvaluateRequest): Promise<MFeelEvaluateResponse> {
