@@ -4,6 +4,7 @@ import {
   MEnsureRuleFlowGraph,
   MSerializeRuleFlowGraph
 } from "../src/components/rule-flow/MuRuleFlowEditor.js";
+import { MRuleFlowGraphConverter } from "../src/utils/m-rule-flow-graph-converter.js";
 
 describe("rule flow registry", () => {
   it("registers the rule flow custom element", () => {
@@ -67,5 +68,17 @@ describe("rule flow normalization", () => {
     );
 
     expect(json).toContain("\"ruleSetCode\": \"wf.json\"");
+  });
+
+  it("converts a ruleset export into a flow graph with rule nodes", () => {
+    const graph = MRuleFlowGraphConverter.fromRuleSet({
+      workflowName: "FCD-CreateV2-Rules",
+      rules: ["FCD_V2_TAX_VALID", "FCD_V2_LINER_VALID"]
+    });
+
+    expect(graph.metadata.workflowName).toBe("FCD-CreateV2-Rules");
+    expect(graph.nodes.some((node) => node.ruleCode === "FCD_V2_TAX_VALID")).toBe(true);
+    expect(graph.nodes.some((node) => node.ruleCode === "FCD_V2_LINER_VALID")).toBe(true);
+    expect(graph.edges).toHaveLength(3);
   });
 });

@@ -52,7 +52,7 @@ export class MRuleFlowGraphConverter {
 
     for (let index = 0; index < rules.length; index += 1) {
       const ruleCode = rules[index];
-      const node = MCreateNode("condition", { x: 220 + index * 220, y: 180 }, { label: ruleCode, ruleCode });
+      const node = MCreateNode("condition", { x: 220 + index * 220, y: 180 }, { label: ruleCode, ruleCode, nodeId: ruleCode });
       nodes.push(node);
       edges.push({
         id: `edge-${previousNodeId}-${node.id}`,
@@ -171,7 +171,16 @@ function MNormalizeGraph(graph: MRuleFlowGraph): MRuleFlowGraph {
         x: Number.isFinite(node.position?.x) ? node.position.x : index * 220,
         y: Number.isFinite(node.position?.y) ? node.position.y : 180
       },
-      data: node.data ?? {}
+      data: {
+        ...(node.data ?? {}),
+        contractRef:
+          node.type !== "trigger" && node.type !== "end" && node.ruleCode
+            ? {
+                sourceType: node.type === "decision-table" ? "decision-table" : node.type === "sub-flow" ? "flow" : "rule",
+                sourceCode: node.ruleCode
+              }
+            : (node.data?.contractRef ?? undefined)
+      }
     })),
     edges: graph.edges.map((edge, index) => ({
       ...edge,
@@ -188,16 +197,23 @@ function MNormalizeGraph(graph: MRuleFlowGraph): MRuleFlowGraph {
 function MCreateNode(
   type: MRuleFlowNodeType,
   position: { x: number; y: number },
-  options: { label: string; ruleCode?: string }
+  options: { label: string; ruleCode?: string; nodeId?: string }
 ): MRuleFlowNode {
   const suffix = type === "trigger" || type === "end" ? "1" : `${Math.abs(position.x)}`;
   return {
-    id: `${type}-${suffix}`,
+    id: options.nodeId?.trim() || `${type}-${suffix}`,
     type,
     label: options.label,
     ruleCode: options.ruleCode,
     position,
-    data: {}
+    data: options.ruleCode
+      ? {
+          contractRef: {
+            sourceType: "rule",
+            sourceCode: options.ruleCode
+          }
+        }
+      : {}
   };
 }
 

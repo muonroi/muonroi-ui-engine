@@ -31,7 +31,8 @@ export class MRuleEngineApi {
 
   constructor(options: MRuleEngineApiOptions) {
     this.mBaseUrl = options.baseUrl.replace(/\/$/, "");
-    this.mFetch = options.fetchImpl ?? fetch;
+    const fetchImpl = (options.fetchImpl ?? globalThis.fetch).bind(globalThis);
+    this.mFetch = (input: RequestInfo | URL, init?: RequestInit) => fetchImpl(input, init);
     this.mGetAccessToken = options.getAccessToken;
   }
 

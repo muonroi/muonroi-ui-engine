@@ -1,4 +1,4 @@
-import "@xyflow/react/dist/style.css";
+import "../../styles/xyflow.css";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   addEdge,
@@ -15,16 +15,50 @@ import {
   type NodeChange,
   Position,
   ReactFlow,
-  ReactFlowProvider
+  ReactFlowProvider,
+  useNodesInitialized,
+  useReactFlow,
+  useUpdateNodeInternals
 } from "@xyflow/react";
 import type {
-  MRuleFlowEdge,
+  MRuleFlowContractReference,
+  MRuleFlowContractSchema,
+  MRuleFlowExpressionLanguage,
   MRuleFlowGraph,
-  MRuleFlowMetadata,
   MRuleFlowNode,
   MRuleFlowNodeType
 } from "../../models.js";
 import { MCreateEmptyRuleFlowGraph } from "../../models.js";
+import { MRuleFlowContractService } from "../../services/rule-flow-contract-service.js";
+import {
+  MActionButtonStyle,
+  MRuleFlowInspector,
+  type MContractLoadState
+} from "./rule-flow-inspector.js";
+import {
+  M_BASE_NODE_STYLE,
+  MCreateContractCacheKey,
+  MCreateDefaultExpression,
+  MCreateRuleFlowGraphSignature,
+  MDefaultInspectorTabForNode,
+  MEnsureExpression,
+  MEnsureLiquidConfig,
+  MEnsureRuleFlowGraph,
+  MEnsureSubFlowConfig,
+  MGraphToCanvasEdges,
+  MGraphToCanvasNodes,
+  MInferContractReference,
+  MIsNodeType,
+  M_NODE_ACCENTS,
+  M_NODE_DEFAULT_LABELS,
+  M_NODE_TITLES,
+  MNormalizeEdgeType,
+  MNormalizeNodeData,
+  MNormalizeNodeType,
+  MSerializeRuleFlowGraph,
+  type MCanvasNodeData,
+  type MInspectorTab
+} from "./rule-flow-runtime.js";
 
 export interface MuRuleFlowEditorProps {
   graph: MRuleFlowGraph;
@@ -33,93 +67,51 @@ export interface MuRuleFlowEditorProps {
   theme?: "light" | "dark";
   height?: number | string;
   apiBaseUrl?: string;
+  tenantId?: string;
+  workflowCode?: string;
   onPublish?: (graph: MRuleFlowGraph) => Promise<void> | void;
   licenseStatus?: "licensed" | "trial" | "unlicensed";
 }
 
-type MCanvasNodeData = {
-  label: string;
-  ruleCode?: string;
-  feelExpression?: string;
-  nodeType: MRuleFlowNodeType;
-};
-
-const M_NODE_TITLES: Record<MRuleFlowNodeType, string> = {
-  trigger: "Trigger",
-  condition: "Condition",
-  action: "Action",
-  "decision-table": "Decision Table",
-  "sub-flow": "Sub Flow",
-  end: "End"
-};
-
-const M_NODE_ACCENTS: Record<MRuleFlowNodeType, string> = {
-  trigger: "#16a34a",
-  condition: "#7c3aed",
-  action: "#2563eb",
-  "decision-table": "#ea580c",
-  "sub-flow": "#0891b2",
-  end: "#dc2626"
-};
-
-const M_NODE_DEFAULT_LABELS: Record<MRuleFlowNodeType, string> = {
-  trigger: "New Trigger",
-  condition: "New Condition",
-  action: "New Action",
-  "decision-table": "Decision Table",
-  "sub-flow": "Sub Flow",
-  end: "End"
-};
-
-const M_BASE_NODE_STYLE: React.CSSProperties = {
-  minWidth: 168,
-  borderRadius: 16,
-  border: "1px solid rgba(15, 23, 42, 0.12)",
-  background: "#ffffff",
-  boxShadow: "0 14px 30px rgba(15, 23, 42, 0.10)",
-  padding: "12px 14px"
-};
-
 type MCommitOptions = {
   pushHistory?: boolean;
   notify?: boolean;
+  syncViewport?: boolean;
 };
+
+const M_DRAG_NODE_TYPE_KEY = "application/muonroi-rule-flow-node-type";
+const M_FIT_VIEW_OPTIONS = { duration: 0, padding: 0.22, minZoom: 0.18, maxZoom: 1.1 };
+const M_COMPACT_LAYOUT_BREAKPOINT = 1480;
 
 function MRuleFlowNodeCard({ data, selected }: { data: MCanvasNodeData; selected?: boolean }): React.JSX.Element {
   const accent = M_NODE_ACCENTS[data.nodeType];
-  const borderStyle = selected ? `2px solid ${accent}` : `1px solid rgba(15, 23, 42, 0.12)`;
+  const expression = MEnsureExpression(data);
+  const requestCount = data.requestContract?.fields.length ?? 0;
+  const responseCount = data.responseContract?.fields.length ?? 0;
 
   return (
     <div
       style={{
         ...M_BASE_NODE_STYLE,
-        border: borderStyle,
+        borderTop: selected ? `2px solid ${accent}` : "1px solid rgba(15, 23, 42, 0.12)",
+        borderRight: selected ? `2px solid ${accent}` : "1px solid rgba(15, 23, 42, 0.12)",
+        borderBottom: selected ? `2px solid ${accent}` : "1px solid rgba(15, 23, 42, 0.12)",
         borderLeft: `8px solid ${accent}`,
-        borderRadius: data.nodeType === "end" ? 999 : data.nodeType === "condition" ? 24 : 16
+        borderRadius: data.nodeType === "end" ? 999 : data.nodeType === "condition" ? 24 : 18
       }}
     >
       <Handle type="target" position={Position.Left} />
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span style={{ color: accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
-          {M_NODE_TITLES[data.nodeType]}
-        </span>
+        <span style={{ color: accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>{M_NODE_TITLES[data.nodeType]}</span>
         <strong style={{ fontSize: 14 }}>{data.label}</strong>
         {data.ruleCode ? <span style={{ fontSize: 12, color: "#475569" }}>Rule: {data.ruleCode}</span> : null}
-        {data.feelExpression ? (
-          <span
-            style={{
-              display: "inline-block",
-              maxWidth: 200,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-              fontSize: 12,
-              color: "#334155"
-            }}
-          >
-            FEEL: {data.feelExpression}
+        {data.contractRef?.sourceCode ? <span style={{ fontSize: 11, color: "#64748b" }}>Contract: {data.contractRef.sourceType}/{data.contractRef.sourceCode}</span> : null}
+        {expression.body ? (
+          <span style={{ display: "inline-block", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, color: "#334155" }}>
+            {expression.language.toUpperCase()}: {expression.body}
           </span>
         ) : null}
+        {(requestCount > 0 || responseCount > 0) ? <span style={{ fontSize: 11, color: "#64748b" }}>Inline contracts {requestCount}/{responseCount}</span> : null}
       </div>
       <Handle type="source" position={Position.Right} />
     </div>
@@ -132,8 +124,87 @@ const M_NODE_TYPES = {
   action: MRuleFlowNodeCard,
   "decision-table": MRuleFlowNodeCard,
   "sub-flow": MRuleFlowNodeCard,
+  liquid: MRuleFlowNodeCard,
   end: MRuleFlowNodeCard
 };
+
+function MFlowRuntimeSync({
+  nodeIds,
+  syncToken,
+  hostElement
+}: {
+  nodeIds: string[];
+  syncToken: number;
+  hostElement: HTMLElement | null;
+}): null {
+  const updateNodeInternals = useUpdateNodeInternals();
+  const reactFlow = useReactFlow();
+  const nodesInitialized = useNodesInitialized({ includeHiddenNodes: true });
+  const syncedSignatureRef = useRef("");
+  const resizeFrameRef = useRef<number | null>(null);
+
+  function syncViewport(): void {
+    if (!nodesInitialized || nodeIds.length === 0) {
+      return;
+    }
+
+    nodeIds.forEach((nodeId) => updateNodeInternals(nodeId));
+    void reactFlow.fitView(M_FIT_VIEW_OPTIONS);
+  }
+
+  function scheduleSync(delay = 0): number {
+    return window.setTimeout(() => {
+      if (resizeFrameRef.current !== null) {
+        cancelAnimationFrame(resizeFrameRef.current);
+      }
+      resizeFrameRef.current = requestAnimationFrame(() => {
+        resizeFrameRef.current = null;
+        syncViewport();
+      });
+    }, delay);
+  }
+
+  useEffect(() => {
+    const nextSignature = String(syncToken);
+    if (!nodesInitialized || nodeIds.length === 0 || syncedSignatureRef.current === nextSignature) {
+      return;
+    }
+
+    syncedSignatureRef.current = nextSignature;
+    const immediate = scheduleSync();
+    const delayed = scheduleSync(150);
+    const settled = scheduleSync(350);
+    return () => {
+      window.clearTimeout(immediate);
+      window.clearTimeout(delayed);
+      window.clearTimeout(settled);
+      if (resizeFrameRef.current !== null) {
+        cancelAnimationFrame(resizeFrameRef.current);
+        resizeFrameRef.current = null;
+      }
+    };
+  }, [nodeIds, nodesInitialized, reactFlow, syncToken, updateNodeInternals]);
+
+  useEffect(() => {
+    if (!hostElement) {
+      return;
+    }
+
+    const observer = new ResizeObserver(() => {
+      syncViewport();
+    });
+    observer.observe(hostElement);
+    const onWindowResize = () => syncViewport();
+    window.addEventListener("resize", onWindowResize);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", onWindowResize);
+    };
+  }, [hostElement, nodesInitialized, reactFlow, updateNodeInternals, nodeIds]);
+
+  return null;
+}
 
 export function MuRuleFlowEditor({
   graph,
@@ -142,32 +213,57 @@ export function MuRuleFlowEditor({
   theme = "light",
   height = 640,
   apiBaseUrl,
+  tenantId,
+  workflowCode,
   onPublish,
   licenseStatus = "licensed"
 }: MuRuleFlowEditorProps): React.JSX.Element {
   const initialGraph = useMemo(() => MEnsureRuleFlowGraph(graph), [graph]);
   const [nodes, setNodes] = useState<Node<MCanvasNodeData>[]>(() => MGraphToCanvasNodes(initialGraph));
   const [edges, setEdges] = useState<Edge[]>(() => MGraphToCanvasEdges(initialGraph));
-  const [selectedNodeId, setSelectedNodeId] = useState<string>("");
-  const [selectedEdgeId, setSelectedEdgeId] = useState<string>("");
-  const metadataRef = useRef<MRuleFlowMetadata>(initialGraph.metadata);
+  const [selectedNodeId, setSelectedNodeId] = useState("");
+  const [selectedEdgeId, setSelectedEdgeId] = useState("");
+  const [inspectorTab, setInspectorTab] = useState<MInspectorTab>("general");
+  const [contractLoadState, setContractLoadState] = useState<MContractLoadState>({ status: "idle" });
+  const metadataRef = useRef(initialGraph.metadata);
   const historyRef = useRef<MRuleFlowGraph[]>([initialGraph]);
   const historyIndexRef = useRef(0);
-  const lastGraphSignatureRef = useRef(MSerializeRuleFlowGraph(initialGraph));
+  const lastGraphSignatureRef = useRef(MCreateRuleFlowGraphSignature(initialGraph));
+  const [viewportSyncToken, setViewportSyncToken] = useState(0);
+  const nodesRef = useRef(nodes);
+  const edgesRef = useRef(edges);
+  const contractCacheRef = useRef(new Map<string, { title?: string; requestContract?: MRuleFlowContractSchema; responseContract?: MRuleFlowContractSchema }>());
+  const contractService = useMemo(
+    () => (apiBaseUrl ? new MRuleFlowContractService({ baseUrl: apiBaseUrl, tenantId }) : null),
+    [apiBaseUrl, tenantId]
+  );
+  const shellRef = useRef<HTMLElement | null>(null);
+  const canvasPanelRef = useRef<HTMLDivElement | null>(null);
+  const allowAutoFitRef = useRef(true);
+  const [shellWidth, setShellWidth] = useState(0);
+
+  useEffect(() => {
+    nodesRef.current = nodes;
+  }, [nodes]);
+  useEffect(() => {
+    edgesRef.current = edges;
+  }, [edges]);
 
   useEffect(() => {
     const nextGraph = MEnsureRuleFlowGraph(graph);
-    const nextSignature = MSerializeRuleFlowGraph(nextGraph);
+    const nextSignature = MCreateRuleFlowGraphSignature(nextGraph);
     if (nextSignature === lastGraphSignatureRef.current) {
       return;
     }
-
     metadataRef.current = nextGraph.metadata;
     historyRef.current = [nextGraph];
     historyIndexRef.current = 0;
     lastGraphSignatureRef.current = nextSignature;
+    allowAutoFitRef.current = true;
+    setViewportSyncToken((current) => current + 1);
     setSelectedNodeId("");
     setSelectedEdgeId("");
+    setInspectorTab("general");
     setNodes(MGraphToCanvasNodes(nextGraph));
     setEdges(MGraphToCanvasEdges(nextGraph));
   }, [graph]);
@@ -176,33 +272,122 @@ export function MuRuleFlowEditor({
     if (readOnly) {
       return;
     }
-
     const handler = (event: KeyboardEvent) => {
       if (event.key !== "Delete") {
         return;
       }
-
       if (selectedNodeId) {
-        MDeleteSelectedNode();
+        deleteSelectedNode();
         return;
       }
-
       if (selectedEdgeId) {
-        MDeleteSelectedEdge();
+        deleteSelectedEdge();
       }
     };
-
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [readOnly, selectedNodeId, selectedEdgeId, nodes, edges]);
+  }, [readOnly, selectedNodeId, selectedEdgeId]);
 
-  const selectedNode = useMemo(() => {
-    if (!selectedNodeId) {
-      return null;
+  useEffect(() => {
+    const shellElement = shellRef.current;
+    if (!shellElement) {
+      return;
     }
 
-    return nodes.find((node) => node.id === selectedNodeId) ?? null;
-  }, [nodes, selectedNodeId]);
+    const syncWidth = () => {
+      const availableWidth = shellElement.parentElement?.getBoundingClientRect().width ?? shellElement.getBoundingClientRect().width;
+      setShellWidth(availableWidth);
+    };
+
+    syncWidth();
+    const observer = new ResizeObserver(() => syncWidth());
+    observer.observe(shellElement);
+    return () => observer.disconnect();
+  }, []);
+
+  const selectedNode = useMemo(() => (selectedNodeId ? nodes.find((node) => node.id === selectedNodeId) ?? null : null), [nodes, selectedNodeId]);
+  const selectedExpression = selectedNode ? MEnsureExpression(selectedNode.data) : { language: "feel" as const, body: "" };
+  const selectedNodeCacheKey = selectedNode && workflowCode ? `node:${workflowCode}:${selectedNode.id}` : "";
+  const selectedContractCacheKey = selectedNode?.data.contractRef ? MCreateContractCacheKey(selectedNode.data.contractRef) : "";
+  const selectedRequestContract =
+    selectedNode?.data.requestContract ??
+    (selectedNodeCacheKey ? contractCacheRef.current.get(selectedNodeCacheKey)?.requestContract : undefined) ??
+    (selectedContractCacheKey ? contractCacheRef.current.get(selectedContractCacheKey)?.requestContract : undefined);
+  const selectedResponseContract =
+    selectedNode?.data.responseContract ??
+    (selectedNodeCacheKey ? contractCacheRef.current.get(selectedNodeCacheKey)?.responseContract : undefined) ??
+    (selectedContractCacheKey ? contractCacheRef.current.get(selectedContractCacheKey)?.responseContract : undefined);
+
+  useEffect(() => {
+    if (!selectedNode) {
+      setContractLoadState({ status: "idle" });
+      return;
+    }
+    if (selectedNode.data.requestContract || selectedNode.data.responseContract) {
+      setContractLoadState({ status: "ready", title: selectedNode.data.contractRef?.label });
+      return;
+    }
+    if (!selectedNode.data.contractRef?.sourceCode) {
+      setContractLoadState({ status: "idle" });
+      return;
+    }
+    const nodeCacheKey = workflowCode ? `node:${workflowCode}:${selectedNode.id}` : "";
+    if (nodeCacheKey) {
+      const cachedNodeContract = contractCacheRef.current.get(nodeCacheKey);
+      if (cachedNodeContract) {
+        setContractLoadState({ status: "ready", title: cachedNodeContract.title });
+        return;
+      }
+    }
+
+    const cacheKey = MCreateContractCacheKey(selectedNode.data.contractRef);
+    const cached = contractCacheRef.current.get(cacheKey);
+    if (cached) {
+      setContractLoadState({ status: "ready", title: cached.title });
+      return;
+    }
+    if (!contractService) {
+      setContractLoadState({ status: "error", message: "No contract API configured for this editor." });
+      return;
+    }
+
+    let cancelled = false;
+    setContractLoadState({ status: "loading" });
+    void (async () => {
+      try {
+        if (nodeCacheKey) {
+          const nodeResponse = await contractService.MGetNodeAuthoringContract(workflowCode!, selectedNode.id);
+          if (cancelled) {
+            return;
+          }
+          contractCacheRef.current.set(nodeCacheKey, {
+            title: nodeResponse.ruleCode,
+            requestContract: nodeResponse.requestScope,
+            responseContract: nodeResponse.responseDelta
+          });
+          setContractLoadState({ status: "ready", title: nodeResponse.ruleCode });
+          return;
+        }
+
+        const response =
+          selectedNode.data.contractRef?.sourceType === "flow"
+            ? await contractService.MGetFlowContract(selectedNode.data.contractRef.sourceCode)
+            : await contractService.MGetByReference(selectedNode.data.contractRef!);
+        if (cancelled) {
+          return;
+        }
+        contractCacheRef.current.set(cacheKey, { title: response.title, requestContract: response.requestContract, responseContract: response.responseContract });
+        setContractLoadState({ status: "ready", title: response.title });
+      } catch (error) {
+        if (!cancelled) {
+          setContractLoadState({ status: "error", message: error instanceof Error ? error.message : "Unable to load contract metadata." });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [contractService, selectedNode, workflowCode]);
 
   if (licenseStatus === "unlicensed") {
     return (
@@ -213,483 +398,337 @@ export function MuRuleFlowEditor({
     );
   }
 
-  function MCommitGraph(nextGraph: MRuleFlowGraph, options?: MCommitOptions): void {
+  function commitGraph(nextGraph: MRuleFlowGraph, options?: MCommitOptions): void {
     const normalized = MEnsureRuleFlowGraph(nextGraph);
+    const nextSignature = MCreateRuleFlowGraphSignature(normalized);
     metadataRef.current = normalized.metadata;
-    lastGraphSignatureRef.current = MSerializeRuleFlowGraph(normalized);
+    lastGraphSignatureRef.current = nextSignature;
     setNodes(MGraphToCanvasNodes(normalized));
     setEdges(MGraphToCanvasEdges(normalized));
-
+    if (options?.syncViewport) {
+      allowAutoFitRef.current = true;
+      setViewportSyncToken((current) => current + 1);
+    }
     if (options?.pushHistory !== false) {
       const nextHistory = historyRef.current.slice(0, historyIndexRef.current + 1);
       nextHistory.push(normalized);
       historyRef.current = nextHistory.slice(-50);
       historyIndexRef.current = historyRef.current.length - 1;
     }
-
     if (options?.notify !== false) {
       onGraphChange?.(normalized);
     }
   }
 
-  function MBuildGraph(nextNodes: Node<MCanvasNodeData>[], nextEdges: Edge[]): MRuleFlowGraph {
+  function buildGraph(nextNodes: Node<MCanvasNodeData>[], nextEdges: Edge[]): MRuleFlowGraph {
     return {
-      nodes: nextNodes.map(MCanvasNodeToGraphNode),
-      edges: nextEdges.map(MCanvasEdgeToGraphEdge),
-      metadata: {
-        ...metadataRef.current,
-        version: Math.max(1, metadataRef.current.version ?? 1),
-        lastModifiedAt: new Date().toISOString()
-      }
+      nodes: nextNodes.map(canvasNodeToGraphNode),
+      edges: nextEdges.map(canvasEdgeToGraphEdge),
+      metadata: { ...metadataRef.current, version: Math.max(1, metadataRef.current.version ?? 1), lastModifiedAt: new Date().toISOString() }
     };
   }
 
-  function MApplyNodeChanges(changes: NodeChange[]): void {
-    if (readOnly) {
-      return;
-    }
-
-    const nextNodes = applyNodeChanges(changes, nodes) as Node<MCanvasNodeData>[];
-    const nextGraph = MBuildGraph(nextNodes, edges);
-    const selectedIds = nextNodes.filter((node) => node.selected).map((node) => node.id);
-    setSelectedNodeId(selectedIds[0] ?? selectedNodeId);
-    MCommitGraph(nextGraph);
-  }
-
-  function MApplyEdgeChanges(changes: EdgeChange[]): void {
-    if (readOnly) {
-      return;
-    }
-
-    const nextEdges = applyEdgeChanges(changes, edges) as Edge[];
-    const selectedIds = nextEdges.filter((edge) => Boolean(edge.data?.selected)).map((edge) => edge.id);
-    setSelectedEdgeId(selectedIds[0] ?? selectedEdgeId);
-    MCommitGraph(MBuildGraph(nodes, nextEdges));
-  }
-
-  function MHandleConnect(connection: Connection): void {
-    if (readOnly) {
-      return;
-    }
-
-    const nextEdges = addEdge(connection, edges) as Edge[];
-    const normalized = nextEdges.map((edge) =>
-      edge.source === connection.source && edge.target === connection.target
-        ? {
-            ...edge,
-            label: edge.label ?? "always",
-            data: {
-              ...(edge.data ?? {}),
-              edgeType: "always"
-            }
-          }
-        : edge
-    );
-
-    MCommitGraph(MBuildGraph(nodes, normalized));
-  }
-
-  function MAddNode(nodeType: MRuleFlowNodeType): void {
-    if (readOnly) {
-      return;
-    }
-
-    const nextNode: Node<MCanvasNodeData> = {
-      id: `node-${nodeType}-${Math.random().toString(36).slice(2, 10)}`,
-      type: nodeType,
-      position: {
-        x: 60 + nodes.length * 36,
-        y: 80 + (nodes.length % 4) * 90
-      },
-      data: {
-        label: M_NODE_DEFAULT_LABELS[nodeType],
-        nodeType
-      }
-    };
-
-    const nextNodes = [...nodes, nextNode];
-    const nextEdges = [...edges];
-    if (selectedNodeId) {
-      nextEdges.push({
-        id: `${selectedNodeId}-${nextNode.id}`,
-        source: selectedNodeId,
-        target: nextNode.id,
-        label: "always",
-        data: {
-          edgeType: "always"
-        }
-      });
-    }
-
-    setSelectedNodeId(nextNode.id);
-    setSelectedEdgeId("");
-    MCommitGraph(MBuildGraph(nextNodes, nextEdges));
-  }
-
-  function MDeleteSelectedNode(): void {
-    if (readOnly || !selectedNodeId) {
-      return;
-    }
-
-    const nextNodes = nodes.filter((node) => node.id !== selectedNodeId);
-    const nextEdges = edges.filter((edge) => edge.source !== selectedNodeId && edge.target !== selectedNodeId);
-    setSelectedNodeId("");
-    MCommitGraph(MBuildGraph(nextNodes, nextEdges));
-  }
-
-  function MDeleteSelectedEdge(): void {
-    if (readOnly || !selectedEdgeId) {
-      return;
-    }
-
-    const nextEdges = edges.filter((edge) => edge.id !== selectedEdgeId);
-    setSelectedEdgeId("");
-    MCommitGraph(MBuildGraph(nodes, nextEdges));
-  }
-
-  function MUndo(): void {
-    if (historyIndexRef.current <= 0) {
-      return;
-    }
-
-    historyIndexRef.current -= 1;
-    const snapshot = historyRef.current[historyIndexRef.current];
-    MCommitGraph(snapshot, { pushHistory: false });
-  }
-
-  function MRedo(): void {
-    if (historyIndexRef.current >= historyRef.current.length - 1) {
-      return;
-    }
-
-    historyIndexRef.current += 1;
-    const snapshot = historyRef.current[historyIndexRef.current];
-    MCommitGraph(snapshot, { pushHistory: false });
-  }
-
-  function MUpdateSelectedNode(updater: (node: Node<MCanvasNodeData>) => Node<MCanvasNodeData>): void {
+  function updateSelectedNode(updater: (node: Node<MCanvasNodeData>) => Node<MCanvasNodeData>): void {
     if (readOnly || !selectedNode) {
       return;
     }
-
-    const nextNodes = nodes.map((node) => (node.id === selectedNode.id ? updater(node) : node));
-    MCommitGraph(MBuildGraph(nextNodes, edges));
+    commitGraph(buildGraph(nodesRef.current.map((node) => (node.id === selectedNode.id ? updater(node) : node)), edgesRef.current));
   }
 
-  async function MPublish(): Promise<void> {
-    if (!onPublish) {
+  function deleteSelectedNode(): void {
+    if (readOnly || !selectedNodeId) {
       return;
     }
-
-    await onPublish(MBuildGraph(nodes, edges));
+    setSelectedNodeId("");
+    setInspectorTab("general");
+    commitGraph(buildGraph(nodesRef.current.filter((node) => node.id !== selectedNodeId), edgesRef.current.filter((edge) => edge.source !== selectedNodeId && edge.target !== selectedNodeId)));
   }
 
-  function MExport(): void {
-    const payload = MSerializeRuleFlowGraph(MBuildGraph(nodes, edges));
-    const blob = new Blob([payload], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `${metadataRef.current.ruleSetCode ?? "rule-flow"}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+  function deleteSelectedEdge(): void {
+    if (readOnly || !selectedEdgeId) {
+      return;
+    }
+    setSelectedEdgeId("");
+    commitGraph(buildGraph(nodesRef.current, edgesRef.current.filter((edge) => edge.id !== selectedEdgeId)));
+  }
+
+  function addNode(nodeType: MRuleFlowNodeType, position?: { x: number; y: number }): void {
+    if (readOnly) {
+      return;
+    }
+    const nextNode: Node<MCanvasNodeData> = {
+      id: `node-${nodeType}-${Math.random().toString(36).slice(2, 10)}`,
+      type: nodeType,
+      position: position ?? { x: 60 + nodesRef.current.length * 36, y: 80 + (nodesRef.current.length % 4) * 90 },
+      data: {
+        label: M_NODE_DEFAULT_LABELS[nodeType],
+        nodeType,
+        expression: MCreateDefaultExpression(nodeType),
+        conditionConfig: nodeType === "condition" ? { successLabel: "Valid", failureLabel: "Rejected" } : undefined,
+        subFlowConfig: nodeType === "sub-flow" ? { targetFlowCode: "", inputMappings: [], outputMappings: [] } : undefined,
+        liquidConfig: nodeType === "liquid" ? { outputFormat: "json" } : undefined
+      }
+    };
+    const nextEdges = [...edgesRef.current];
+    if (selectedNodeId) {
+      nextEdges.push({ id: `${selectedNodeId}-${nextNode.id}`, source: selectedNodeId, target: nextNode.id, label: "always", data: { edgeType: "always" } });
+    }
+    setSelectedNodeId(nextNode.id);
+    setSelectedEdgeId("");
+    setInspectorTab(MDefaultInspectorTabForNode(nodeType));
+    commitGraph(buildGraph([...nodesRef.current, nextNode], nextEdges));
+  }
+
+  function addMapping(kind: "input" | "output"): void {
+    updateSelectedNode((node) => {
+      const config = MEnsureSubFlowConfig(node.data.subFlowConfig);
+      const row = { id: `map-${Math.random().toString(36).slice(2, 9)}`, sourcePath: "", targetPath: "", language: selectedExpression.language };
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          subFlowConfig: kind === "input" ? { ...config, inputMappings: [...config.inputMappings, row] } : { ...config, outputMappings: [...config.outputMappings, row] }
+        }
+      };
+    });
   }
 
   const computedHeight = typeof height === "number" ? `${height}px` : height;
+  const isCompactLayout = shellWidth > 0 && shellWidth < M_COMPACT_LAYOUT_BREAKPOINT;
+  const resolvedCanvasHeight = isCompactLayout ? "min(52vh, 520px)" : computedHeight;
   const themeStyles = theme === "dark" ? MDarkThemeStyle : MLightThemeStyle;
 
   return (
     <ReactFlowProvider>
-      <section style={{ ...MEditorShellStyle, ...themeStyles }}>
+      <section ref={shellRef} style={{ ...MEditorShellStyle, ...MEditorShellLayoutStyle(isCompactLayout), ...themeStyles }}>
         <aside style={MSidebarStyle}>
           <div style={MSectionTitleStyle}>
             <strong>Palette</strong>
             <span>Add nodes to compose a publishable rule flow.</span>
           </div>
-          {(["trigger", "condition", "action", "decision-table", "sub-flow", "end"] as MRuleFlowNodeType[]).map((nodeType) => (
-            <button
-              key={nodeType}
-              type="button"
-              style={MPaletteButtonStyle(nodeType)}
-              onClick={() => MAddNode(nodeType)}
-              disabled={readOnly}
-            >
+          {(["trigger", "condition", "action", "decision-table", "sub-flow", "liquid", "end"] as MRuleFlowNodeType[]).map((nodeType) => (
+            <button key={nodeType} type="button" style={MPaletteButtonStyle(nodeType)} data-testid={`palette-${nodeType}`} draggable={!readOnly} onClick={() => addNode(nodeType)} onDragStart={(event) => handlePaletteDragStart(event, nodeType)} disabled={readOnly}>
               {M_NODE_TITLES[nodeType]}
             </button>
           ))}
-
           <div style={MSectionTitleStyle}>
             <strong>Actions</strong>
             <span>Undo, publish and export without leaving the flow canvas.</span>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 8 }}>
-            <button type="button" style={MActionButtonStyle(false)} onClick={MUndo} disabled={historyIndexRef.current === 0}>
-              Undo
-            </button>
-            <button
-              type="button"
-              style={MActionButtonStyle(false)}
-              onClick={MRedo}
-              disabled={historyIndexRef.current >= historyRef.current.length - 1}
-            >
-              Redo
-            </button>
-            <button type="button" style={MActionButtonStyle(true)} onClick={() => void MPublish()} disabled={readOnly || !onPublish}>
-              Publish
-            </button>
-            <button type="button" style={MActionButtonStyle(false)} onClick={MExport}>
-              Export
-            </button>
+            <button type="button" style={MActionButtonStyle(false)} onClick={() => historyIndexRef.current > 0 && (historyIndexRef.current -= 1, commitGraph(historyRef.current[historyIndexRef.current], { pushHistory: false }))} disabled={historyIndexRef.current === 0}>Undo</button>
+            <button type="button" style={MActionButtonStyle(false)} onClick={() => historyIndexRef.current < historyRef.current.length - 1 && (historyIndexRef.current += 1, commitGraph(historyRef.current[historyIndexRef.current], { pushHistory: false }))} disabled={historyIndexRef.current >= historyRef.current.length - 1}>Redo</button>
+            <button type="button" style={MActionButtonStyle(true)} onClick={() => onPublish?.(buildGraph(nodesRef.current, edgesRef.current))} disabled={readOnly || !onPublish}>Publish</button>
+            <button type="button" style={MActionButtonStyle(false)} onClick={() => exportGraph(buildGraph(nodesRef.current, edgesRef.current), metadataRef.current.ruleSetCode)}>Export</button>
           </div>
 
-          <div style={MInspectorShellStyle}>
-            <div style={MSectionTitleStyle}>
-              <strong>Inspector</strong>
-              <span>{selectedNode ? `Editing ${selectedNode.data.nodeType}` : "Select a node to edit it."}</span>
-            </div>
-
-            {selectedNode ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <label style={MLabelStyle}>
-                  Label
-                  <input
-                    style={MInputStyle}
-                    value={selectedNode.data.label}
-                    disabled={readOnly}
-                    onChange={(event) =>
-                      MUpdateSelectedNode((node) => ({
-                        ...node,
-                        data: {
-                          ...node.data,
-                          label: event.target.value
-                        }
-                      }))
-                    }
-                  />
-                </label>
-                <label style={MLabelStyle}>
-                  Rule Code
-                  <input
-                    style={MInputStyle}
-                    value={selectedNode.data.ruleCode ?? ""}
-                    disabled={readOnly}
-                    onChange={(event) =>
-                      MUpdateSelectedNode((node) => ({
-                        ...node,
-                        data: {
-                          ...node.data,
-                          ruleCode: event.target.value
-                        }
-                      }))
-                    }
-                  />
-                </label>
-                <label style={MLabelStyle}>
-                  FEEL Expression
-                  <textarea
-                    style={MTextareaStyle}
-                    value={selectedNode.data.feelExpression ?? ""}
-                    disabled={readOnly}
-                    onChange={(event) =>
-                      MUpdateSelectedNode((node) => ({
-                        ...node,
-                        data: {
-                          ...node.data,
-                          feelExpression: event.target.value
-                        }
-                      }))
-                    }
-                  />
-                </label>
-                {apiBaseUrl ? <span style={{ color: "#64748b", fontSize: 12 }}>API base: {apiBaseUrl}</span> : null}
-                {!readOnly ? (
-                  <button type="button" style={MDeleteButtonStyle} onClick={MDeleteSelectedNode}>
-                    Delete Node
-                  </button>
-                ) : null}
-              </div>
-            ) : (
-              <div style={{ color: "#64748b", fontSize: 13, lineHeight: 1.5 }}>
-                Use the palette to add a trigger, condition or action. Click a node to change its label, rule code and FEEL expression.
-              </div>
-            )}
-          </div>
+          <MRuleFlowInspector
+            selectedNode={selectedNode ? { id: selectedNode.id, data: selectedNode.data } : null}
+            selectedExpression={selectedExpression}
+            selectedRequestContract={selectedRequestContract}
+            selectedResponseContract={selectedResponseContract}
+            contractLoadState={contractLoadState}
+            readOnly={readOnly}
+            apiBaseUrl={apiBaseUrl}
+            inspectorTab={inspectorTab}
+            setInspectorTab={setInspectorTab}
+            onUpdateLabel={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, label: value } }))}
+            onUpdateRuleCode={(value) =>
+              updateSelectedNode((node) => ({ ...node, data: { ...node.data, ruleCode: value, contractRef: MInferContractReference(node.data.nodeType, value, node.data.contractRef) } }))
+            }
+            onUpdateDescription={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, description: value } }))}
+            onUpdateContractRef={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, contractRef: value, requestContract: undefined, responseContract: undefined } }))}
+            onUpdateConditionConfig={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, conditionConfig: value } }))}
+            onUpdateTargetFlowCode={(value) =>
+              updateSelectedNode((node) => ({
+                ...node,
+                data: {
+                  ...node.data,
+                  contractRef: value.trim()
+                    ? {
+                        sourceType: "flow",
+                        sourceCode: value.trim(),
+                        label: value.trim()
+                      }
+                    : node.data.contractRef,
+                  subFlowConfig: { ...MEnsureSubFlowConfig(node.data.subFlowConfig), targetFlowCode: value }
+                }
+              }))
+            }
+            onUpdateLiquidOutput={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, liquidConfig: { ...MEnsureLiquidConfig(node.data.liquidConfig), outputFormat: value } } }))}
+            onUpdateExpressionLanguage={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), language: value } } }))}
+            onUpdateExpressionBody={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), body: value } } }))}
+            onInsertExpressionToken={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), body: `${MEnsureExpression(node.data).body}${MEnsureExpression(node.data).body.trim() ? " " : ""}${value}` } } }))}
+            onChangeMappings={(kind, rows) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, subFlowConfig: kind === "input" ? { ...MEnsureSubFlowConfig(node.data.subFlowConfig), inputMappings: rows } : { ...MEnsureSubFlowConfig(node.data.subFlowConfig), outputMappings: rows } } }))}
+            onAddMapping={addMapping}
+            onDeleteNode={deleteSelectedNode}
+          />
         </aside>
 
-        <div style={MCanvasPanelStyle}>
+        <div
+          ref={canvasPanelRef}
+          style={{ ...MCanvasPanelStyle, ...MCanvasPanelLayoutStyle(isCompactLayout), height: resolvedCanvasHeight }}
+          data-testid="rule-flow-canvas"
+          data-node-count={nodes.length}
+          data-edge-count={edges.length}
+          onDragOver={handleCanvasDragOver}
+          onDrop={handleCanvasDrop}
+        >
           <ReactFlow
+            style={{ width: "100%", height: "100%" }}
             nodes={nodes}
             edges={edges}
             nodeTypes={M_NODE_TYPES}
-            onNodesChange={MApplyNodeChanges}
-            onEdgesChange={MApplyEdgeChanges}
-            onConnect={MHandleConnect}
-            onNodeClick={(_event, node) => {
-              setSelectedNodeId(node.id);
-              setSelectedEdgeId("");
+            onMoveStart={() => {
+              allowAutoFitRef.current = false;
             }}
-            onEdgeClick={(_event, edge) => {
-              setSelectedEdgeId(edge.id);
-              setSelectedNodeId("");
+            onNodeDragStart={() => {
+              allowAutoFitRef.current = false;
             }}
-            onPaneClick={() => {
-              setSelectedNodeId("");
-              setSelectedEdgeId("");
-            }}
-            fitView
+            onNodesChange={(changes) => handleNodesChange(changes)}
+            onEdgesChange={(changes) => handleEdgesChange(changes)}
+            onConnect={(connection) => !readOnly && commitGraph(buildGraph(nodesRef.current, addEdge({ ...connection, label: "always", data: { edgeType: "always" } }, edgesRef.current) as Edge[]))}
+            onNodeClick={(_event, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(""); setInspectorTab(MDefaultInspectorTabForNode(node.data.nodeType)); }}
+            onEdgeClick={(_event, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(""); setInspectorTab("general"); }}
+            onPaneClick={() => { setSelectedNodeId(""); setSelectedEdgeId(""); setInspectorTab("general"); }}
             nodesConnectable={!readOnly}
             nodesDraggable={!readOnly}
             elementsSelectable
           >
+            <MFlowRuntimeSync nodeIds={nodes.map((node) => node.id)} syncToken={viewportSyncToken} hostElement={allowAutoFitRef.current ? canvasPanelRef.current : null} />
             <MiniMap />
             <Controls />
             <Background />
           </ReactFlow>
-          <div style={{ height: computedHeight }} />
         </div>
       </section>
     </ReactFlowProvider>
   );
-}
 
-export function MEnsureRuleFlowGraph(graph: unknown): MRuleFlowGraph {
-  if (!graph || typeof graph !== "object") {
-    return MCreateEmptyRuleFlowGraph();
+  function handleNodesChange(changes: NodeChange[]): void {
+    if (readOnly) {
+      return;
+    }
+    const nextNodes = applyNodeChanges(changes, nodesRef.current) as Node<MCanvasNodeData>[];
+    const selectedIds = nextNodes.filter((node) => node.selected).map((node) => node.id);
+    setSelectedNodeId(selectedIds[0] ?? selectedNodeId);
+
+    const hasStructuralChange = changes.some((change) => change.type === "add" || change.type === "remove" || change.type === "replace");
+    const positionChanges = changes.filter((change) => change.type === "position");
+    const hasPositionDragInProgress = positionChanges.some((change) => (change as NodeChange & { dragging?: boolean }).dragging);
+    const hasPositionCommit = positionChanges.length > 0 && !hasPositionDragInProgress;
+
+    if (!hasStructuralChange && !hasPositionCommit) {
+      setNodes(nextNodes);
+      return;
+    }
+    if (hasPositionCommit) {
+      allowAutoFitRef.current = false;
+    }
+    commitGraph(buildGraph(nextNodes, edgesRef.current));
   }
 
-  const candidate = graph as Partial<MRuleFlowGraph>;
-  return {
-    nodes: Array.isArray(candidate.nodes)
-      ? candidate.nodes.map((node, index) => ({
-          id: typeof node.id === "string" && node.id ? node.id : `node-${index + 1}`,
-          type: MNormalizeNodeType(node.type),
-          label: typeof node.label === "string" && node.label ? node.label : M_NODE_DEFAULT_LABELS[MNormalizeNodeType(node.type)],
-          feelExpression: typeof node.feelExpression === "string" ? node.feelExpression : undefined,
-          ruleCode: typeof node.ruleCode === "string" ? node.ruleCode : undefined,
-          position: {
-            x: Number.isFinite(node.position?.x) ? node.position.x : 40 + index * 48,
-            y: Number.isFinite(node.position?.y) ? node.position.y : 60 + (index % 4) * 88
-          },
-          data: node.data && typeof node.data === "object" ? { ...node.data } : {}
-        }))
-      : [],
-    edges: Array.isArray(candidate.edges)
-      ? candidate.edges
-          .filter((edge): edge is MRuleFlowEdge => Boolean(edge) && typeof edge.source === "string" && typeof edge.target === "string")
-          .map((edge, index) => ({
-            id: typeof edge.id === "string" && edge.id ? edge.id : `edge-${index + 1}`,
-            source: edge.source,
-            target: edge.target,
-            label: typeof edge.label === "string" ? edge.label : undefined,
-            edgeType: MNormalizeEdgeType(edge.edgeType)
-          }))
-      : [],
-    metadata: {
-      version: Math.max(1, candidate.metadata?.version ?? 1),
-      tenantId: candidate.metadata?.tenantId,
-      ruleSetCode: candidate.metadata?.ruleSetCode,
-      lastModifiedAt: candidate.metadata?.lastModifiedAt,
-      lastModifiedBy: candidate.metadata?.lastModifiedBy
+  function handleEdgesChange(changes: EdgeChange[]): void {
+    if (readOnly) {
+      return;
     }
-  };
-}
-
-export function MSerializeRuleFlowGraph(graph: MRuleFlowGraph): string {
-  return JSON.stringify(MEnsureRuleFlowGraph(graph), null, 2);
-}
-
-function MGraphToCanvasNodes(graph: MRuleFlowGraph): Node<MCanvasNodeData>[] {
-  return graph.nodes.map((node) => ({
-    id: node.id,
-    type: node.type,
-    position: node.position,
-    data: {
-      label: node.label,
-      ruleCode: node.ruleCode,
-      feelExpression: node.feelExpression,
-      nodeType: node.type
+    const nextEdges = applyEdgeChanges(changes, edgesRef.current) as Edge[];
+    const selectedIds = nextEdges.filter((edge) => edge.selected).map((edge) => edge.id);
+    setSelectedEdgeId(selectedIds[0] ?? selectedEdgeId);
+    const hasSemanticChange = changes.some((change) => change.type === "add" || change.type === "remove" || change.type === "replace");
+    if (!hasSemanticChange) {
+      setEdges(nextEdges);
+      return;
     }
-  }));
-}
+    commitGraph(buildGraph(nodesRef.current, nextEdges));
+  }
 
-function MGraphToCanvasEdges(graph: MRuleFlowGraph): Edge[] {
-  return graph.edges.map((edge) => ({
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    label: edge.label ?? edge.edgeType,
-    data: {
-      edgeType: edge.edgeType
+  function handlePaletteDragStart(event: React.DragEvent<HTMLButtonElement>, nodeType: MRuleFlowNodeType): void {
+    if (readOnly) {
+      return;
     }
-  }));
+    event.dataTransfer.setData(M_DRAG_NODE_TYPE_KEY, nodeType);
+    event.dataTransfer.setData("text/plain", nodeType);
+    event.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleCanvasDragOver(event: React.DragEvent<HTMLDivElement>): void {
+    if (readOnly || !event.dataTransfer.types.includes(M_DRAG_NODE_TYPE_KEY)) {
+      return;
+    }
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "move";
+  }
+
+  function handleCanvasDrop(event: React.DragEvent<HTMLDivElement>): void {
+    if (readOnly) {
+      return;
+    }
+    const draggedType = event.dataTransfer.getData(M_DRAG_NODE_TYPE_KEY);
+    if (!MIsNodeType(draggedType)) {
+      return;
+    }
+    event.preventDefault();
+    const rect = event.currentTarget.getBoundingClientRect();
+    addNode(draggedType, { x: Math.max(32, event.clientX - rect.left - 84), y: Math.max(32, event.clientY - rect.top - 24) });
+  }
 }
 
-function MCanvasNodeToGraphNode(node: Node<MCanvasNodeData>): MRuleFlowNode {
+function canvasNodeToGraphNode(node: Node<MCanvasNodeData>): MRuleFlowNode {
+  const expression = MEnsureExpression(node.data);
   return {
     id: node.id,
     type: MNormalizeNodeType(node.type),
     label: node.data.label,
     ruleCode: node.data.ruleCode,
-    feelExpression: node.data.feelExpression,
-    position: {
-      x: node.position.x,
-      y: node.position.y
-    },
-    data: {}
+    feelExpression: expression.language === "feel" ? expression.body : undefined,
+    position: { x: node.position.x, y: node.position.y },
+    data: MNormalizeNodeData(node.data)
   };
 }
 
-function MCanvasEdgeToGraphEdge(edge: Edge): MRuleFlowEdge {
-  return {
-    id: edge.id,
-    source: edge.source,
-    target: edge.target,
-    label: typeof edge.label === "string" ? edge.label : undefined,
-    edgeType: MNormalizeEdgeType(edge.data?.edgeType)
-  };
+function canvasEdgeToGraphEdge(edge: Edge) {
+  return { id: edge.id, source: edge.source, target: edge.target, label: typeof edge.label === "string" ? edge.label : undefined, edgeType: MNormalizeEdgeType(edge.data?.edgeType) };
 }
 
-function MNormalizeNodeType(value: unknown): MRuleFlowNodeType {
-  return value === "trigger" ||
-    value === "condition" ||
-    value === "action" ||
-    value === "decision-table" ||
-    value === "sub-flow" ||
-    value === "end"
-    ? value
-    : "action";
-}
-
-function MNormalizeEdgeType(value: unknown): MRuleFlowEdge["edgeType"] {
-  return value === "always" || value === "on-true" || value === "on-false" || value === "on-error" ? value : "always";
+function exportGraph(graph: MRuleFlowGraph, ruleSetCode?: string): void {
+  const payload = MSerializeRuleFlowGraph(graph);
+  const blob = new Blob([payload], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = `${ruleSetCode ?? "rule-flow"}.json`;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 const MEditorShellStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "320px minmax(0, 1fr)",
-  gap: 16,
-  minHeight: 640
+  gap: 12,
+  minHeight: 0,
+  height: "100%",
+  width: "100%",
+  minWidth: 0,
+  overflow: "auto"
 };
-
 const MSidebarStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: 14,
   padding: 18,
   borderRadius: 22,
-  border: "1px solid rgba(148, 163, 184, 0.25)"
+  border: "1px solid rgba(148, 163, 184, 0.25)",
+  minHeight: 0,
+  overflow: "auto"
 };
-
 const MCanvasPanelStyle: React.CSSProperties = {
   position: "relative",
-  minHeight: 640,
+  minWidth: 0,
   borderRadius: 24,
   overflow: "hidden",
   border: "1px solid rgba(148, 163, 184, 0.25)",
-  background:
-    "radial-gradient(circle at top left, rgba(37,99,235,0.12), transparent 38%), linear-gradient(180deg, rgba(248,250,252,0.96), rgba(241,245,249,0.92))"
+  background: "radial-gradient(circle at top left, rgba(37,99,235,0.12), transparent 38%), linear-gradient(180deg, rgba(248,250,252,0.96), rgba(241,245,249,0.92))"
 };
-
 const MSectionTitleStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -697,56 +736,8 @@ const MSectionTitleStyle: React.CSSProperties = {
   fontSize: 13,
   color: "#64748b"
 };
-
-const MInspectorShellStyle: React.CSSProperties = {
-  marginTop: "auto",
-  display: "flex",
-  flexDirection: "column",
-  gap: 12,
-  padding: 16,
-  borderRadius: 18,
-  background: "rgba(248, 250, 252, 0.9)",
-  border: "1px solid rgba(148, 163, 184, 0.18)"
-};
-
-const MLabelStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: 6,
-  fontSize: 13,
-  color: "#334155"
-};
-
-const MInputStyle: React.CSSProperties = {
-  borderRadius: 12,
-  border: "1px solid rgba(148, 163, 184, 0.35)",
-  padding: "10px 12px",
-  fontSize: 13
-};
-
-const MTextareaStyle: React.CSSProperties = {
-  ...MInputStyle,
-  minHeight: 96,
-  resize: "vertical"
-};
-
-const MDeleteButtonStyle: React.CSSProperties = {
-  borderRadius: 12,
-  border: "1px solid rgba(220, 38, 38, 0.24)",
-  background: "rgba(254, 242, 242, 0.95)",
-  color: "#b91c1c",
-  padding: "10px 12px",
-  fontWeight: 600
-};
-
-const MLightThemeStyle: React.CSSProperties = {
-  color: "#0f172a"
-};
-
-const MDarkThemeStyle: React.CSSProperties = {
-  color: "#e2e8f0"
-};
-
+const MLightThemeStyle: React.CSSProperties = { color: "#0f172a" };
+const MDarkThemeStyle: React.CSSProperties = { color: "#e2e8f0" };
 const MLicenseFallbackStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -770,13 +761,18 @@ function MPaletteButtonStyle(nodeType: MRuleFlowNodeType): React.CSSProperties {
   };
 }
 
-function MActionButtonStyle(primary: boolean): React.CSSProperties {
+function MEditorShellLayoutStyle(isCompactLayout: boolean): React.CSSProperties {
   return {
-    borderRadius: 12,
-    border: primary ? "1px solid rgba(37, 99, 235, 0.28)" : "1px solid rgba(148, 163, 184, 0.35)",
-    background: primary ? "rgba(37, 99, 235, 0.14)" : "rgba(255, 255, 255, 0.9)",
-    color: "#0f172a",
-    padding: "10px 12px",
-    fontWeight: 600
+    gridTemplateColumns: isCompactLayout ? "minmax(0, 1fr)" : "minmax(420px, 520px) minmax(0, 1fr)",
+    alignContent: isCompactLayout ? "start" : "stretch"
   };
 }
+
+function MCanvasPanelLayoutStyle(isCompactLayout: boolean): React.CSSProperties {
+  return {
+    minHeight: isCompactLayout ? 420 : 640,
+    order: isCompactLayout ? -1 : 0
+  };
+}
+
+export { MCreateRuleFlowGraphSignature, MEnsureRuleFlowGraph, MSerializeRuleFlowGraph } from "./rule-flow-runtime.js";

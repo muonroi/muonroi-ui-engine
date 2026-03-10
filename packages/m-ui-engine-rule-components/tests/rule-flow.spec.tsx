@@ -3,7 +3,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { MLicenseVerifier } from "@muonroi/ui-engine-core";
 import { MuRuleFlowEditor, MEnsureRuleFlowGraph } from "../src/components/rule-flow/MuRuleFlowEditor";
 import type { MRuleFlowGraph } from "../src/models";
+import { MGetReactFlowTestState, MResetReactFlowTestState } from "./stubs/xyflow-react";
 import "../src/components/rule-flow/mu-rule-flow-designer";
+import { MConfigureRuleComponentRuntime, MResetRuleComponentRuntimeForTests } from "../src/runtime/request-context";
 import type { LitElement } from "lit";
 
 const M_GRAPH: MRuleFlowGraph = {
@@ -57,6 +59,8 @@ describe("rule flow editor", () => {
   afterEach(() => {
     vi.restoreAllMocks();
     MLicenseVerifier.MResetForTests();
+    MResetRuleComponentRuntimeForTests();
+    MResetReactFlowTestState();
     document.body.innerHTML = "";
   });
 
@@ -142,5 +146,61 @@ describe("rule flow editor", () => {
     await waitFor(() => {
       expect(handler).toHaveBeenCalled();
     });
+  });
+
+  it("loads workflow export with tenant-aware headers", async () => {
+    vi.spyOn(MLicenseVerifier, "hasAnyFeature").mockReturnValue(true);
+    MConfigureRuleComponentRuntime({ tenantId: "tenant-a" });
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          ruleSetJson: JSON.stringify({
+            workflowName: "FCD-CreateV2-Rules",
+            rules: ["FCD_V2_TAX_VALID"]
+          })
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json"
+          }
+        }
+      )
+    );
+
+    const element = document.createElement("mu-rule-flow-designer") as LitElement & {
+      apiBaseUrl: string;
+      workflowCode: string;
+    };
+    element.apiBaseUrl = "http://localhost:5000/api/v1/control-plane";
+    element.workflowCode = "FCD-CreateV2-Rules";
+    document.body.appendChild(element);
+    await element.updateComplete;
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:5000/api/v1/control-plane/rulesets/FCD-CreateV2-Rules/export");
+    expect(new Headers(init?.headers).get("x-tenant-id")).toBe("tenant-a");
+  });
+
+  it("does not trigger viewport refit when a dragged node commits its new position", async () => {
+    render(<MuRuleFlowEditor graph={M_GRAPH} />);
+    MResetReactFlowTestState();
+    const state = MGetReactFlowTestState();
+    state.lastProps?.onMoveStart?.();
+    state.lastProps?.onNodesChange?.([
+      {
+        id: "rule-1",
+        type: "position",
+        position: { x: 320, y: 180 },
+        dragging: false
+      } as never
+    ]);
+
+    await new Promise((resolve) => window.setTimeout(resolve, 450));
+    expect(MGetReactFlowTestState().fitViewCalls).toBe(0);
   });
 });
