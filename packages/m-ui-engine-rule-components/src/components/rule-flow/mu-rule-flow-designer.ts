@@ -14,6 +14,21 @@ import { MRuleFlowGraphConverter } from "../../utils/m-rule-flow-graph-converter
 
 const M_FEATURE_KEY = "rule-flow-designer";
 type MRuleStudioPublishDetail = { graph: MRuleFlowGraph; ruleSet: Record<string, unknown> };
+type MRuleStudioPublishResultDetail = MRuleStudioPublishDetail & {
+  savedVersion: number;
+  activeVersion?: number | null;
+  approvalWorkflowEnabled: boolean;
+  activated: boolean;
+  status?: string;
+  message: string;
+};
+type MSaveRuleSetResponse = {
+  savedVersion?: number;
+  activeVersion?: number | null;
+  activated?: boolean;
+  status?: string;
+  approvalWorkflowEnabled?: boolean;
+};
 
 @customElement("mu-rule-flow-designer")
 export class MuRuleFlowDesigner extends LitElement {
@@ -33,6 +48,9 @@ export class MuRuleFlowDesigner extends LitElement {
 
   @property({ type: String, attribute: "api-base-url" })
   apiBaseUrl = "";
+
+  @property({ type: String, attribute: "catalog-api-base" })
+  catalogApiBase = "";
 
   @property({ type: Number })
   height = 640;
@@ -56,6 +74,7 @@ export class MuRuleFlowDesigner extends LitElement {
     this.MUpgradeProperty("readOnly");
     this.MUpgradeProperty("theme");
     this.MUpgradeProperty("apiBaseUrl");
+    this.MUpgradeProperty("catalogApiBase");
     this.MUpgradeProperty("height");
     this.MUpgradeProperty("workflowCode");
     this.MUpgradeProperty("tenantId");
@@ -77,7 +96,7 @@ export class MuRuleFlowDesigner extends LitElement {
       return;
     }
 
-    if (!this.mInternalGraphUpdate && (changed.has("graph") || changed.has("graphJson") || changed.has("readOnly") || changed.has("theme") || changed.has("apiBaseUrl") || changed.has("height") || changed.has("tenantId"))) {
+    if (!this.mInternalGraphUpdate && (changed.has("graph") || changed.has("graphJson") || changed.has("readOnly") || changed.has("theme") || changed.has("apiBaseUrl") || changed.has("catalogApiBase") || changed.has("height") || changed.has("tenantId"))) {
       this.MRenderEditor();
     }
 
@@ -172,6 +191,7 @@ export class MuRuleFlowDesigner extends LitElement {
         readOnly: this.readOnly,
         theme: this.theme,
         apiBaseUrl: this.apiBaseUrl || undefined,
+        catalogApiBase: this.catalogApiBase || undefined,
         tenantId: this.tenantId || undefined,
         workflowCode: this.workflowCode || undefined,
         height: this.height,
@@ -194,21 +214,142 @@ export class MuRuleFlowDesigner extends LitElement {
           );
         },
         onPublish: async (nextGraph: MRuleFlowGraph) => {
-          const ruleSet = MRuleFlowGraphConverter.toRuleSet(nextGraph, this.mLoadedRuleSet ?? undefined);
-          this.mLoadedRuleSet = ruleSet;
-          this.dispatchEvent(
-            new CustomEvent<MRuleStudioPublishDetail>("publish", {
-              detail: {
-                graph: nextGraph,
-                ruleSet
-              },
-              bubbles: true,
-              composed: true
-            })
-          );
+          await this.MPublishGraphAsync(nextGraph);
         }
       })
     );
+  }
+
+  private async MPublishGraphAsync(nextGraph: MRuleFlowGraph): Promise<void> {
+    const ruleSet = MRuleFlowGraphConverter.toRuleSet(nextGraph, this.mLoadedRuleSet ?? undefined);
+    this.mLoadedRuleSet = ruleSet;
+    const detail: MRuleStudioPublishDetail = { graph: nextGraph, ruleSet };
+
+    this.dispatchEvent(
+      new CustomEvent<MRuleStudioPublishDetail>("publish-start", {
+        detail,
+        bubbles: true,
+        composed: true
+      })
+    );
+
+    if (!this.apiBaseUrl.trim() || !this.workflowCode.trim()) {
+      this.dispatchEvent(
+        new CustomEvent<MRuleStudioPublishDetail>("publish", {
+          detail,
+          bubbles: true,
+          composed: true
+        })
+      );
+      return;
+    }
+
+    try {
+      const result = await this.MPersistRuleSetAsync(detail);
+      this.dispatchEvent(
+        new CustomEvent<MRuleStudioPublishResultDetail>("publish-complete", {
+          detail: result,
+          bubbles: true,
+          composed: true
+        })
+      );
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Rule Studio publish failed.";
+      this.dispatchEvent(
+        new CustomEvent<{ message: string; graph: MRuleFlowGraph; ruleSet: Record<string, unknown> }>("publish-error", {
+          detail: {
+            message,
+            graph: nextGraph,
+            ruleSet
+          },
+          bubbles: true,
+          composed: true
+        })
+      );
+      throw error;
+    }
+  }
+
+  private async MPersistRuleSetAsync(detail: MRuleStudioPublishDetail): Promise<MRuleStudioPublishResultDetail> {
+    const workflowCode = this.workflowCode.trim();
+    const baseUrl = this.apiBaseUrl.replace(/\/$/, "");
+    const actor = "ui-studio";
+    const savePayload = await this.MRequestJson<MSaveRuleSetResponse>(`${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}`, {
+      method: "POST",
+      body: JSON.stringify({
+        ruleSet: detail.ruleSet,
+        activateAfterSave: false,
+        actor
+      })
+    });
+
+    const savedVersion = Number(savePayload.savedVersion ?? 0);
+    if (!Number.isFinite(savedVersion) || savedVersion <= 0) {
+      throw new Error("Rule Studio publish did not return a saved version.");
+    }
+
+    const approvalWorkflowEnabled = Boolean(savePayload.approvalWorkflowEnabled);
+    let activated = Boolean(savePayload.activated);
+    let activeVersion = typeof savePayload.activeVersion === "number" ? savePayload.activeVersion : null;
+    let status = typeof savePayload.status === "string" ? savePayload.status : undefined;
+    let message = `Saved version ${savedVersion}.`;
+
+    if (approvalWorkflowEnabled) {
+      const submitResponse = await this.MRequestJson<{ status?: string }>(
+        `${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/${savedVersion}/submit`,
+        {
+          method: "POST",
+          body: JSON.stringify({ actor })
+        }
+      );
+      status = typeof submitResponse.status === "string" ? submitResponse.status : status;
+      message = `Saved version ${savedVersion} and submitted for approval.`;
+    } else if (!activated || activeVersion !== savedVersion) {
+      const activateResponse = await this.MRequestJson<{ activeVersion?: number | null }>(
+        `${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/${savedVersion}/activate`,
+        {
+          method: "POST",
+          body: JSON.stringify({ actor })
+        }
+      );
+      activated = true;
+      activeVersion = typeof activateResponse.activeVersion === "number" ? activateResponse.activeVersion : savedVersion;
+      status = "Active";
+      message = `Saved version ${savedVersion} and activated it.`;
+    } else {
+      message = `Saved version ${savedVersion} and activated it.`;
+    }
+
+    return {
+      ...detail,
+      savedVersion,
+      activeVersion,
+      approvalWorkflowEnabled,
+      activated,
+      status,
+      message
+    };
+  }
+
+  private async MRequestJson<T>(url: string, init: RequestInit): Promise<T> {
+    const headers = MBuildRuleComponentHeaders(init.headers, { tenantId: this.tenantId });
+    if (!headers.has("Content-Type") && init.body) {
+      headers.set("Content-Type", "application/json");
+    }
+    if (!headers.has("Accept")) {
+      headers.set("Accept", "application/json");
+    }
+
+    const response = await fetch(url, {
+      ...init,
+      headers
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(text || `Rule Studio request failed: ${response.status} ${response.statusText}`);
+    }
+
+    return (await response.json()) as T;
   }
 
   private async MLoadWorkflowGraphAsync(): Promise<void> {

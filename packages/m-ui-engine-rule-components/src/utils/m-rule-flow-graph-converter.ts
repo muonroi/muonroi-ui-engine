@@ -173,6 +173,17 @@ function MNormalizeGraph(graph: MRuleFlowGraph): MRuleFlowGraph {
       },
       data: {
         ...(node.data ?? {}),
+        outputFields:
+          node.type === "condition"
+            ? (node.data?.contractOverride?.responseFields ?? [])
+                .filter((field) => !field.isResultPayload && typeof field.valueExpression === "string" && field.valueExpression.trim().length > 0)
+                .map((field) => ({
+                  path: field.path,
+                  valueExpression: field.valueExpression,
+                  dataType: field.dataType,
+                  runtimeWritten: true
+                }))
+            : (node.data as any)?.outputFields,
         contractRef:
           node.type !== "trigger" && node.type !== "end" && node.ruleCode
             ? {

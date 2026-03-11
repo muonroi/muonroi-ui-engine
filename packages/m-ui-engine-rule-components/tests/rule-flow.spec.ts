@@ -5,8 +5,20 @@ import {
   MImportRuleFlowGraph,
   MSerializeRuleFlowGraph
 } from "../src/components/rule-flow/MuRuleFlowEditor.js";
-import { MOrderRuleFlowGraph, MValidateGraphForPublish } from "../src/components/rule-flow/rule-flow-authoring.js";
+import { MApplyRuleFlowAuthoringLayers, MOrderRuleFlowGraph, MValidateGraphForPublish } from "../src/components/rule-flow/rule-flow-authoring.js";
 import { MRuleFlowGraphConverter } from "../src/utils/m-rule-flow-graph-converter.js";
+
+type MConvertedConditionNode = {
+  id: string;
+  data?: {
+    outputFields?: Array<{
+      path: string;
+      valueExpression: string;
+      dataType?: string;
+      runtimeWritten?: boolean;
+    }>;
+  };
+};
 
 describe("rule flow registry", () => {
   it("registers the rule flow custom element", () => {
@@ -208,5 +220,132 @@ describe("rule flow normalization", () => {
 
     expect(invalidCondition.isValid).toBe(false);
     expect(invalidCondition.issues.some((issue) => issue.code === "MRF005")).toBe(true);
+  });
+
+  it("serializes condition output facts with value expressions into graph JSON", () => {
+    const ruleSet = MRuleFlowGraphConverter.toRuleSet({
+      metadata: { version: 1, workflowName: "wf.condition-output", ruleSetCode: "wf.condition-output" },
+      nodes: [
+        { id: "start", type: "trigger", label: "Start", position: { x: 0, y: 0 }, data: {} },
+        {
+          id: "cond",
+          type: "condition",
+          label: "Condition",
+          ruleCode: "COND_RULE",
+          position: { x: 120, y: 0 },
+          data: {
+            expression: { language: "feel", body: "result.isPass = true" },
+            contractOverride: {
+              responseFields: [
+                {
+                  path: "hello",
+                  label: "hello",
+                  dataType: "string",
+                  valueExpression: "\"world\"",
+                  runtimeWritten: true
+                }
+              ]
+            }
+          }
+        },
+        { id: "end", type: "end", label: "End", position: { x: 240, y: 0 }, data: {} }
+      ],
+      edges: [
+        { id: "e1", source: "start", target: "cond", edgeType: "always" },
+        { id: "e2", source: "cond", target: "end", edgeType: "on-true" }
+      ]
+    });
+
+    const flowGraph = ruleSet.flowGraph as { nodes?: MConvertedConditionNode[] };
+    const conditionNode = (flowGraph.nodes ?? []).find((node) => node.id === "cond");
+    expect(conditionNode?.data?.outputFields).toEqual([
+      {
+        path: "hello",
+        valueExpression: "\"world\"",
+        dataType: "string",
+        runtimeWritten: true
+      }
+    ]);
+  });
+
+  it("normalizes outputFields back into the condition output contract", () => {
+    const graph = MEnsureRuleFlowGraph({
+      metadata: { version: 1, workflowName: "wf.condition-output" },
+      nodes: [
+        { id: "start", type: "trigger", label: "Start", position: { x: 0, y: 0 }, data: {} },
+        {
+          id: "cond",
+          type: "condition",
+          label: "Condition",
+          position: { x: 120, y: 0 },
+          data: {
+            outputFields: [
+              {
+                path: "hello",
+                valueExpression: "\"world\"",
+                dataType: "string",
+                runtimeWritten: true
+              }
+            ]
+          }
+        },
+        { id: "end", type: "end", label: "End", position: { x: 240, y: 0 }, data: {} }
+      ],
+      edges: [
+        { id: "e1", source: "start", target: "cond", edgeType: "always" },
+        { id: "e2", source: "cond", target: "end", edgeType: "on-true" }
+      ]
+    });
+
+    const conditionNode = graph.nodes.find((node) => node.id === "cond");
+    expect(conditionNode?.data.contractOverride?.responseFields).toEqual([
+      expect.objectContaining({
+        path: "hello",
+        valueExpression: "\"world\"",
+        dataType: "string",
+        runtimeWritten: true
+      })
+    ]);
+  });
+
+  it("falls back to rule contracts when flow-level authoring contracts are unavailable", () => {
+    const layered = MApplyRuleFlowAuthoringLayers(
+      MEnsureRuleFlowGraph({
+        metadata: { version: 1, ruleSetCode: "wf.rule-fallback" },
+        nodes: [
+          { id: "start", type: "trigger", label: "Start", position: { x: 0, y: 0 }, data: {} },
+          { id: "rule-a", type: "condition", label: "Rule A", ruleCode: "RULE_A", position: { x: 120, y: 0 }, data: {} },
+          { id: "end", type: "end", label: "End", position: { x: 240, y: 0 }, data: {} }
+        ],
+        edges: [
+          { id: "e1", source: "start", target: "rule-a", edgeType: "always" },
+          { id: "e2", source: "rule-a", target: "end", edgeType: "on-true" }
+        ]
+      }),
+      {
+        nodeContractsById: new Map([
+          ["rule-a", {
+            nodeId: "rule-a",
+            flowCode: "wf.rule-fallback",
+            nodeType: "condition",
+            ruleCode: "RULE_A",
+            requestScope: {
+              contractName: "rule-a-input",
+              fields: [{ path: "header.taxCode", label: "header.taxCode", dataType: "string", required: true }]
+            },
+            responseDelta: {
+              contractName: "rule-a-output",
+              fields: [{ path: "validated.taxCode", label: "validated.taxCode", dataType: "string", runtimeWritten: true }]
+            }
+          }]
+        ])
+      }
+    );
+
+    const trigger = layered.nodes.find((node) => node.id === "start");
+    const rule = layered.nodes.find((node) => node.id === "rule-a");
+    expect(trigger?.data.contractLayer?.upstreamScope?.fields[0]?.path).toBe("header.taxCode");
+    expect(rule?.data.contractLayer?.upstreamScope?.fields.some((field) => field.path === "header.taxCode")).toBe(true);
+    expect(rule?.data.contractLayer?.outputContract?.fields.some((field) => field.path === "validated.taxCode")).toBe(true);
   });
 });

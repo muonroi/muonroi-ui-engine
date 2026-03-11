@@ -1,9 +1,11 @@
 ﻿import type { MDecisionTableModel, MDecisionTableVersionInfo, MDecisionTableVersionSnapshot } from "../models.js";
+import { MBuildRuleComponentHeaders } from "../runtime/request-context.js";
 
 export interface MRuleEngineApiOptions {
   baseUrl: string;
   fetchImpl?: typeof fetch;
   getAccessToken?: () => string | null;
+  tenantId?: string;
 }
 
 export interface MNRulesDefinition {
@@ -28,12 +30,14 @@ export class MRuleEngineApi {
   private readonly mBaseUrl: string;
   private readonly mFetch: typeof fetch;
   private readonly mGetAccessToken?: () => string | null;
+  private readonly mTenantId: string;
 
   constructor(options: MRuleEngineApiOptions) {
-    this.mBaseUrl = options.baseUrl.replace(/\/$/, "");
+    this.mBaseUrl = MNormalizeRuleEngineApiBaseUrl(options.baseUrl);
     const fetchImpl = (options.fetchImpl ?? globalThis.fetch).bind(globalThis);
     this.mFetch = (input: RequestInfo | URL, init?: RequestInit) => fetchImpl(input, init);
     this.mGetAccessToken = options.getAccessToken;
+    this.mTenantId = options.tenantId?.trim() ?? "";
   }
 
   public async MListDecisionTables(): Promise<MDecisionTableModel[]> {
@@ -123,14 +127,15 @@ export class MRuleEngineApi {
   }
 
   private MBuildInit(init: RequestInit): RequestInit {
-    const headers = new Headers(init.headers ?? {});
-    if (!headers.has("Content-Type") && init.body) {
-      headers.set("Content-Type", "application/json");
-    }
+    const headers = MBuildRuleComponentHeaders(init.headers, { tenantId: this.mTenantId });
 
     const token = this.mGetAccessToken?.();
     if (token) {
       headers.set("Authorization", `Bearer ${token}`);
+    }
+
+    if (!headers.has("Content-Type") && init.body) {
+      headers.set("Content-Type", "application/json");
     }
 
     return {
@@ -138,4 +143,11 @@ export class MRuleEngineApi {
       headers
     };
   }
+}
+
+function MNormalizeRuleEngineApiBaseUrl(baseUrl: string): string {
+  const normalized = baseUrl.replace(/\/$/, "");
+  return normalized.endsWith("/api/v1/control-plane")
+    ? normalized.slice(0, -"/control-plane".length)
+    : normalized;
 }

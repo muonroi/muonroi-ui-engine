@@ -200,7 +200,7 @@ function MBuildNodeContractLayers(
   const visiting = new Set<string>();
 
   const resolveNodeType = (node: MRuleFlowNode): MRuleFlowNodeType => node.type;
-  const currentFlowInput = MCloneFields(context.currentFlowContract?.requestContract?.fields ?? []);
+  const currentFlowInput = MResolveCurrentFlowInput(graph, context);
 
   const buildVisibleScopeFromSource = (sourceId: string, edgeType: string): MRuleFlowContractField[] => {
     const sourceNode = nodesById.get(sourceId);
@@ -285,7 +285,11 @@ function MBuildNodeContractLayers(
         sourceNodeId: node.id,
         sourceNodeLabel: node.label,
         sourceNodeType: node.type,
-        sourceKind: node.type === "sub-flow" ? "sub-flow-output" : "node-output"
+        sourceKind: node.type === "sub-flow" ? "sub-flow-output" : "node-output",
+        runtimeWritten:
+          node.type === "condition"
+            ? Boolean(field.runtimeWritten ?? field.valueExpression?.trim())
+            : (field.runtimeWritten ?? true)
       })
     );
 
@@ -308,7 +312,8 @@ function MBuildNodeContractLayers(
         sourceNodeLabel: node.label,
         sourceNodeType: node.type,
         sourceKind: "result-payload",
-        isResultPayload: true
+        isResultPayload: true,
+        runtimeWritten: true
       }),
       MAnnotateField({
         path: "result.message",
@@ -319,7 +324,8 @@ function MBuildNodeContractLayers(
         sourceNodeLabel: node.label,
         sourceNodeType: node.type,
         sourceKind: "result-payload",
-        isResultPayload: true
+        isResultPayload: true,
+        runtimeWritten: true
       }),
       MAnnotateField({
         path: "result.errorCode",
@@ -330,7 +336,8 @@ function MBuildNodeContractLayers(
         sourceNodeLabel: node.label,
         sourceNodeType: node.type,
         sourceKind: "result-payload",
-        isResultPayload: true
+        isResultPayload: true,
+        runtimeWritten: true
       })
     ];
 
@@ -482,6 +489,20 @@ function MBuildNodeContractLayers(
       }
     }
 
+    if (node.type === "condition") {
+      for (const field of MFlattenContractFields(outputContract.fields).filter((candidate) => !candidate.isResultPayload)) {
+        if (!field.valueExpression?.trim()) {
+          issues.push({
+            code: "MRF009",
+            severity: "warning",
+            message: `Condition output '${field.path}' is metadata-only until a Value Expression is configured.`,
+            nodeId: node.id,
+            fieldPath: field.path
+          });
+        }
+      }
+    }
+
     if (node.type === "end" && outputContract.fields.length > 0) {
       issues.push({
         code: "MRF006",
@@ -550,6 +571,38 @@ function MBuildNodeContractLayers(
   }
 
   return layerCache;
+}
+
+function MResolveCurrentFlowInput(
+  graph: MRuleFlowGraph,
+  context: MRuleFlowAuthoringContext
+): MRuleFlowContractField[] {
+  const flowFields = MCloneFields(context.currentFlowContract?.requestContract?.fields ?? []);
+  if (flowFields.length > 0) {
+    return flowFields;
+  }
+
+  const firstExecutableNode = [...graph.nodes]
+    .filter((node) => node.type !== "trigger" && node.type !== "end")
+    .sort((left, right) => {
+      const leftOrder = left.data.order ?? context.nodeContractsById?.get(left.id)?.order ?? Number.MAX_SAFE_INTEGER;
+      const rightOrder = right.data.order ?? context.nodeContractsById?.get(right.id)?.order ?? Number.MAX_SAFE_INTEGER;
+      if (leftOrder !== rightOrder) {
+        return leftOrder - rightOrder;
+      }
+      return left.label.localeCompare(right.label);
+    })[0];
+
+  if (!firstExecutableNode) {
+    return [];
+  }
+
+  const nodeContract = context.nodeContractsById?.get(firstExecutableNode.id);
+  const requestFields =
+    nodeContract?.requestScope?.fields ??
+    firstExecutableNode.data.requestContract?.fields ??
+    [];
+  return MCloneFields(requestFields);
 }
 
 function MBuildMappingRows(

@@ -21,6 +21,8 @@ export interface MRuleFlowContractField {
   path: string;
   label: string;
   dataType: string;
+  valueExpression?: string;
+  runtimeWritten?: boolean;
   required?: boolean;
   description?: string;
   example?: string;
@@ -39,6 +41,23 @@ export interface MRuleFlowContractSchema {
   description?: string;
   rootType?: string;
   fields: MRuleFlowContractField[];
+}
+
+export interface MRuleCatalogItem {
+  code: string;
+  displayName: string;
+  category?: string;
+  icon?: string;
+  tags: string[];
+  description?: string;
+  sourceKey?: string;
+  inputSchema?: MRuleFlowContractSchema;
+  outputSchema?: MRuleFlowContractSchema;
+}
+
+export interface MRuleCatalogGroup {
+  category: string;
+  items: MRuleCatalogItem[];
 }
 
 export interface MRuleFlowContractReference {
