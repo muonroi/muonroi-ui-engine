@@ -1,12 +1,13 @@
 import React from "react";
 import type {
+  MContractValidationIssue,
+  MEffectiveInputMapping,
   MRuleFlowConditionConfig,
   MRuleFlowContractField,
   MRuleFlowContractReference,
   MRuleFlowContractSchema,
   MRuleFlowExpressionLanguage,
   MRuleFlowLiquidConfig,
-  MRuleFlowMappingRow,
   MRuleFlowNodeType,
   MRuleFlowSubFlowConfig
 } from "../../models.js";
@@ -40,43 +41,48 @@ export interface MRuleFlowInspectorProps {
       conditionConfig?: MRuleFlowConditionConfig;
       subFlowConfig?: MRuleFlowSubFlowConfig;
       liquidConfig?: MRuleFlowLiquidConfig;
+      dependsOn?: string[];
+      order?: number;
+      contractLayer?: {
+        upstreamScope?: MRuleFlowContractSchema;
+        effectiveInput?: {
+          fields: MRuleFlowContractField[];
+          mappings: MEffectiveInputMapping[];
+        };
+        outputContract?: MRuleFlowContractSchema;
+        validationIssues?: MContractValidationIssue[];
+      };
     };
   } | null;
   selectedExpression: { language: MRuleFlowExpressionLanguage; body: string };
-  selectedRequestContract?: MRuleFlowContractSchema;
-  selectedResponseContract?: MRuleFlowContractSchema;
   contractLoadState: MContractLoadState;
   readOnly: boolean;
   apiBaseUrl?: string;
   inspectorTab: MInspectorTab;
+  flowOptions: Array<{ code: string; label: string }>;
+  decisionTableOptions: Array<{ code: string; label: string }>;
   setInspectorTab: (tab: MInspectorTab) => void;
+  onSelectNodeByRuleCode: (ruleCode: string) => void;
   onUpdateLabel: (value: string) => void;
   onUpdateRuleCode: (value: string) => void;
   onUpdateDescription: (value: string) => void;
   onUpdateContractRef: (value: MRuleFlowContractReference) => void;
+  onUpdateDecisionTableCode: (value: string) => void;
   onUpdateConditionConfig: (value: MRuleFlowConditionConfig) => void;
   onUpdateTargetFlowCode: (value: string) => void;
   onUpdateLiquidOutput: (value: NonNullable<MRuleFlowLiquidConfig["outputFormat"]>) => void;
   onUpdateExpressionLanguage: (value: MRuleFlowExpressionLanguage) => void;
   onUpdateExpressionBody: (value: string) => void;
   onInsertExpressionToken: (value: string) => void;
-  onChangeMappings: (kind: "input" | "output", rows: MRuleFlowMappingRow[]) => void;
-  onAddMapping: (kind: "input" | "output") => void;
+  onChangeInputContract: (fields: MRuleFlowContractField[]) => void;
+  onChangeEffectiveMappings: (rows: MEffectiveInputMapping[]) => void;
+  onChangeOutputContract: (fields: MRuleFlowContractField[]) => void;
   onDeleteNode: () => void;
 }
 
 export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.Element {
-  const {
-    selectedNode,
-    selectedExpression,
-    selectedRequestContract,
-    selectedResponseContract,
-    contractLoadState,
-    readOnly,
-    apiBaseUrl,
-    inspectorTab,
-    setInspectorTab
-  } = props;
+  const { selectedNode, contractLoadState, readOnly, inspectorTab, setInspectorTab } = props;
+  const layer = selectedNode?.data.contractLayer;
 
   return (
     <div style={MInspectorShellStyle}>
@@ -86,7 +92,7 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
       </div>
 
       {selectedNode ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>
           <div style={MInspectorTabsStyle}>
             {MAvailableInspectorTabs(selectedNode.data.nodeType).map((tab) => (
               <button key={tab} type="button" style={MInspectorTabButtonStyle(tab === inspectorTab)} onClick={() => setInspectorTab(tab)}>
@@ -96,44 +102,54 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
           </div>
 
           {inspectorTab === "general" ? <MGeneralTab {...props} /> : null}
+          {inspectorTab === "input-scope" ? (
+            <MScopeTable
+              title="Input Scope"
+              subtitle={layer?.upstreamScope?.title ?? "Everything available before this node executes."}
+              contract={layer?.upstreamScope}
+              loadState={contractLoadState}
+              readOnly={readOnly}
+              onInsert={props.onInsertExpressionToken}
+              groupBySource
+            />
+          ) : null}
+          {inspectorTab === "effective-input" ? (
+            <MEffectiveInputTab
+              nodeType={selectedNode.data.nodeType}
+              readOnly={readOnly}
+              upstreamFields={MFlattenContractFields(layer?.upstreamScope?.fields ?? [])}
+              targetFields={layer?.effectiveInput?.fields ?? []}
+              rows={layer?.effectiveInput?.mappings ?? []}
+              onInsert={props.onInsertExpressionToken}
+              onChangeTargetFields={props.onChangeInputContract}
+              onChange={props.onChangeEffectiveMappings}
+            />
+          ) : null}
+          {inspectorTab === "output-contract" ? (
+            <MOutputContractTab
+              nodeType={selectedNode.data.nodeType}
+              contract={layer?.outputContract}
+              upstreamScope={layer?.upstreamScope}
+              issues={layer?.validationIssues ?? []}
+              readOnly={readOnly}
+              onInsert={props.onInsertExpressionToken}
+              onChange={props.onChangeOutputContract}
+            />
+          ) : null}
           {inspectorTab === "expression" ? (
             <MExpressionTab
-              expression={selectedExpression}
+              nodeType={selectedNode.data.nodeType}
+              expression={props.selectedExpression}
+              upstreamScope={layer?.upstreamScope}
+              liquidOutput={selectedNode.data.liquidConfig?.outputFormat}
               readOnly={readOnly}
-              apiBaseUrl={apiBaseUrl}
+              apiBaseUrl={props.apiBaseUrl}
               onChangeLanguage={props.onUpdateExpressionLanguage}
               onChangeBody={props.onUpdateExpressionBody}
             />
           ) : null}
-          {inspectorTab === "request" ? (
-            <MContractTable title="Request Scope" contract={selectedRequestContract} loadState={contractLoadState} readOnly={readOnly} onInsert={props.onInsertExpressionToken} />
-          ) : null}
-          {inspectorTab === "response" ? (
-            <MContractTable title="Response Delta" contract={selectedResponseContract} loadState={contractLoadState} readOnly={readOnly} onInsert={props.onInsertExpressionToken} />
-          ) : null}
-          {inspectorTab === "mappings" && selectedNode.data.nodeType === "sub-flow" ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              <MMappingTable
-                title="Sub-flow Input Mapping"
-                rows={MEnsureSubFlowConfig(selectedNode.data.subFlowConfig).inputMappings}
-                readOnly={readOnly}
-                sourceFields={MFlattenContractFields(selectedRequestContract?.fields ?? [])}
-                targetFields={MFlattenContractFields(selectedRequestContract?.fields ?? [])}
-                onAdd={() => props.onAddMapping("input")}
-                onChange={(rows) => props.onChangeMappings("input", rows)}
-              />
-              <MMappingTable
-                title="Sub-flow Output Mapping"
-                rows={MEnsureSubFlowConfig(selectedNode.data.subFlowConfig).outputMappings}
-                readOnly={readOnly}
-                sourceFields={MFlattenContractFields(selectedResponseContract?.fields ?? [])}
-                targetFields={MFlattenContractFields(selectedResponseContract?.fields ?? [])}
-                onAdd={() => props.onAddMapping("output")}
-                onChange={(rows) => props.onChangeMappings("output", rows)}
-              />
-            </div>
-          ) : null}
 
+          {layer?.validationIssues?.length ? <MIssueList issues={layer.validationIssues} /> : null}
           {contractLoadState.status === "error" ? <div style={MErrorBannerStyle}>{contractLoadState.message}</div> : null}
 
           {!readOnly ? (
@@ -144,7 +160,7 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
         </div>
       ) : (
         <div style={{ color: "#64748b", fontSize: 13, lineHeight: 1.5 }}>
-          Use the palette to add a node, then inspect request/response contracts before writing FEEL or Liquid logic.
+          Use the palette to add a node, then inspect available input scope, effective mappings, and output contract before publishing.
         </div>
       )}
     </div>
@@ -152,10 +168,12 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
 }
 
 function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
-  const { selectedNode, readOnly } = props;
+  const { selectedNode, readOnly, flowOptions, decisionTableOptions } = props;
   if (!selectedNode) {
     return <></>;
   }
+
+  const dependsOn = selectedNode.data.dependsOn ?? [];
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -209,18 +227,45 @@ function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
           />
         </label>
       </div>
+      <div style={MMetadataCardStyle}>
+        <div><strong>Order:</strong> {selectedNode.data.order ?? "n/a"}</div>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <strong>Depends On:</strong>
+          {dependsOn.length === 0 ? <span>none</span> : dependsOn.map((item) => (
+            <button key={item} type="button" style={MDependencyChipButtonStyle} onClick={() => props.onSelectNodeByRuleCode(item)}>
+              {item}
+            </button>
+          ))}
+        </div>
+      </div>
       {selectedNode.data.nodeType === "condition" ? (
         <MConditionConfigEditor readOnly={readOnly} value={selectedNode.data.conditionConfig} onChange={props.onUpdateConditionConfig} />
+      ) : null}
+      {selectedNode.data.nodeType === "decision-table" ? (
+        <label style={MLabelStyle}>
+          Decision Table
+          <select
+            style={MInputStyle}
+            value={selectedNode.data.contractRef?.sourceCode ?? ""}
+            disabled={readOnly}
+            onChange={(event) => props.onUpdateDecisionTableCode(event.target.value)}
+          >
+            <option value="">Select decision table</option>
+            {decisionTableOptions.map((table) => (
+              <option key={table.code} value={table.code}>{table.label}</option>
+            ))}
+          </select>
+        </label>
       ) : null}
       {selectedNode.data.nodeType === "sub-flow" ? (
         <label style={MLabelStyle}>
           Target Flow Code
-          <input
-            style={MInputStyle}
-            value={MEnsureSubFlowConfig(selectedNode.data.subFlowConfig).targetFlowCode ?? ""}
-            disabled={readOnly}
-            onChange={(event) => props.onUpdateTargetFlowCode(event.target.value)}
-          />
+          <select style={MInputStyle} value={MEnsureSubFlowConfig(selectedNode.data.subFlowConfig).targetFlowCode ?? ""} disabled={readOnly} onChange={(event) => props.onUpdateTargetFlowCode(event.target.value)}>
+            <option value="">Select target flow</option>
+            {flowOptions.map((flow) => (
+              <option key={flow.code} value={flow.code}>{flow.label}</option>
+            ))}
+          </select>
         </label>
       ) : null}
       {selectedNode.data.nodeType === "liquid" ? (
@@ -238,18 +283,28 @@ function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
 }
 
 function MExpressionTab({
+  nodeType,
   expression,
+  upstreamScope,
+  liquidOutput,
   readOnly,
   apiBaseUrl,
   onChangeLanguage,
   onChangeBody
 }: {
+  nodeType: MRuleFlowNodeType;
   expression: { language: MRuleFlowExpressionLanguage; body: string };
+  upstreamScope?: MRuleFlowContractSchema;
+  liquidOutput?: NonNullable<MRuleFlowLiquidConfig["outputFormat"]>;
   readOnly: boolean;
   apiBaseUrl?: string;
   onChangeLanguage: (value: MRuleFlowExpressionLanguage) => void;
   onChangeBody: (value: string) => void;
 }): React.JSX.Element {
+  const preview = (nodeType === "liquid" || expression.language === "liquid")
+    ? MRenderLiquidPreview(expression.body, upstreamScope?.fields ?? [], liquidOutput ?? "json")
+    : "";
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <label style={MLabelStyle}>
@@ -266,9 +321,15 @@ function MExpressionTab({
       </label>
       <div style={MExpressionHintStyle}>
         <strong>Authoring hints</strong>
-        <span>Click any request/response field row to insert its path into the current expression.</span>
+        <span>Click any field in Input Scope or Output Contract to insert its path into the current FEEL/Liquid expression.</span>
         {apiBaseUrl ? <span>Contract API: {apiBaseUrl}</span> : null}
       </div>
+      {(nodeType === "liquid" || expression.language === "liquid") ? (
+        <div style={MExpressionHintStyle}>
+          <strong>Liquid Preview</strong>
+          <pre style={MPreviewStyle}>{preview || "Preview is empty."}</pre>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -306,95 +367,125 @@ function MConditionConfigEditor({
   );
 }
 
-function MContractTable({
+function MScopeTable({
   title,
+  subtitle,
   contract,
   loadState,
   readOnly,
-  onInsert
+  onInsert,
+  groupBySource
 }: {
   title: string;
+  subtitle: string;
   contract?: MRuleFlowContractSchema;
   loadState: MContractLoadState;
   readOnly: boolean;
   onInsert: (path: string) => void;
+  groupBySource?: boolean;
 }): React.JSX.Element {
   const fields = MFlattenContractFields(contract?.fields ?? []);
-  const subtitle = loadState.status === "loading" ? "Loading contract..." : contract?.title ?? contract?.contractName ?? "No contract metadata";
+  const groups = new Map<string, MRuleFlowContractField[]>();
+  for (const field of fields) {
+    const key = groupBySource ? field.sourceNodeLabel ?? (field.sourceKind === "flow-input" ? "Flow Input" : "Current Scope") : "All Fields";
+    const bucket = groups.get(key) ?? [];
+    bucket.push(field);
+    groups.set(key, bucket);
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={MSectionTitleStyle}>
         <strong>{title}</strong>
-        <span>{subtitle}</span>
+        <span>{loadState.status === "loading" ? "Loading contract..." : subtitle}</span>
       </div>
-      {contract?.description ? <div style={MExpressionHintStyle}>{contract.description}</div> : null}
       {fields.length === 0 ? (
-        <div style={{ color: "#64748b", fontSize: 13 }}>{loadState.status === "loading" ? "Fetching contract metadata..." : "No request/response schema available for this node."}</div>
+        <div style={{ color: "#64748b", fontSize: 13 }}>{loadState.status === "loading" ? "Fetching contract metadata..." : "No scope metadata available for this node."}</div>
       ) : (
-        <div style={MTableShellStyle}>
-          <table style={MTableStyle}>
-            <thead>
-              <tr>
-                <th style={MTableHeaderStyle}>Path</th>
-                <th style={MTableHeaderStyle}>Type</th>
-                <th style={MTableHeaderStyle}>Description</th>
-                <th style={MTableHeaderStyle}>Use</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fields.map((field) => (
-                <tr key={field.path}>
-                  <td style={MTableCellStyle}>
-                    <button type="button" style={MInlinePathButtonStyle} onClick={() => onInsert(field.path)} disabled={readOnly}>
-                      {field.path}
-                    </button>
-                  </td>
-                  <td style={MTableCellStyle}>{field.dataType}</td>
-                  <td style={MTableCellStyle}>{field.description ?? field.label}</td>
-                  <td style={MTableCellStyle}>{field.required ? "required" : "optional"}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        [...groups.entries()].map(([groupName, groupFields]) => (
+          <div key={groupName} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {groupBySource ? <div style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>{groupName}</div> : null}
+            <MFieldTable fields={groupFields} readOnly={readOnly} onInsert={onInsert} />
+          </div>
+        ))
       )}
     </div>
   );
 }
 
-function MMappingTable({
-  title,
-  rows,
+function MEffectiveInputTab({
+  nodeType,
   readOnly,
-  sourceFields,
+  upstreamFields,
   targetFields,
-  onAdd,
+  rows,
+  onInsert,
+  onChangeTargetFields,
   onChange
 }: {
-  title: string;
-  rows: MRuleFlowMappingRow[];
+  nodeType: MRuleFlowNodeType;
   readOnly: boolean;
-  sourceFields: MRuleFlowContractField[];
+  upstreamFields: MRuleFlowContractField[];
   targetFields: MRuleFlowContractField[];
-  onAdd: () => void;
-  onChange: (rows: MRuleFlowMappingRow[]) => void;
+  rows: MEffectiveInputMapping[];
+  onInsert: (path: string) => void;
+  onChangeTargetFields: (fields: MRuleFlowContractField[]) => void;
+  onChange: (rows: MEffectiveInputMapping[]) => void;
 }): React.JSX.Element {
-  function updateRow(id: string, updater: (row: MRuleFlowMappingRow) => MRuleFlowMappingRow): void {
+  const manualEdit = nodeType === "action" || nodeType === "sub-flow";
+  const contractEditable = nodeType === "action";
+
+  function updateRow(id: string, updater: (row: MEffectiveInputMapping) => MEffectiveInputMapping): void {
     onChange(rows.map((row) => (row.id === id ? updater(row) : row)));
+  }
+
+  function addTargetField(): void {
+    const nextPath = `input.${targetFields.length + 1}`;
+    onChangeTargetFields([
+      ...targetFields,
+      {
+        path: nextPath,
+        label: nextPath,
+        dataType: "string",
+        required: false
+      }
+    ]);
+  }
+
+  function updateTargetField(path: string, updater: (field: MRuleFlowContractField) => MRuleFlowContractField): void {
+    const currentField = targetFields.find((field) => field.path === path);
+    if (!currentField) {
+      return;
+    }
+    const nextField = updater(currentField);
+    onChangeTargetFields(targetFields.map((field) => (field.path === path ? nextField : field)));
+    onChange(rows.map((row) => (
+      (row.targetField ?? row.targetPath) === path
+        ? {
+            ...row,
+            targetField: nextField.path,
+            targetPath: nextField.path,
+            targetDataType: nextField.dataType,
+            required: nextField.required
+          }
+        : row
+    )));
+  }
+
+  function removeTargetField(path: string): void {
+    onChangeTargetFields(targetFields.filter((field) => field.path !== path));
+    onChange(rows.filter((row) => (row.targetField ?? row.targetPath) !== path));
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
         <div style={MSectionTitleStyle}>
-          <strong>{title}</strong>
-          <span>Map fields instead of guessing target paths.</span>
+          <strong>Effective Input</strong>
+          <span>{manualEdit ? "Map upstream fields into this node's input slots." : "References inferred from current FEEL/Liquid and available inputs."}</span>
         </div>
-        {!readOnly ? (
-          <button type="button" style={MActionButtonStyle(false)} onClick={onAdd}>
-            Add Mapping
-          </button>
+        {!readOnly && contractEditable ? (
+          <button type="button" style={MActionButtonStyle(false)} onClick={addTargetField}>Add Input Slot</button>
         ) : null}
       </div>
       <div style={MTableShellStyle}>
@@ -403,59 +494,243 @@ function MMappingTable({
             <tr>
               <th style={MTableHeaderStyle}>Source</th>
               <th style={MTableHeaderStyle}>Target</th>
+              <th style={MTableHeaderStyle}>Type</th>
+              <th style={MTableHeaderStyle}>Status</th>
               <th style={MTableHeaderStyle}>Transform</th>
-              <th style={MTableHeaderStyle}>Language</th>
-              <th style={MTableHeaderStyle}>Delete</th>
+              {contractEditable ? <th style={MTableHeaderStyle}>Actions</th> : null}
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 ? (
               <tr>
-                <td style={MTableCellStyle} colSpan={5}>
-                  No mappings defined yet.
-                </td>
+                <td style={MTableCellStyle} colSpan={contractEditable ? 6 : 5}>No effective input mapping available yet.</td>
               </tr>
-            ) : null}
-            {rows.map((row) => (
+            ) : rows.map((row) => (
               <tr key={row.id}>
                 <td style={MTableCellStyle}>
-                  <input list={`${title}-source`} style={MInputStyle} value={row.sourcePath} disabled={readOnly} onChange={(event) => updateRow(row.id, (current) => ({ ...current, sourcePath: event.target.value }))} />
+                  {manualEdit ? (
+                    <input list="upstream-scope-fields" style={MInputStyle} value={row.sourcePath} disabled={readOnly} onChange={(event) => updateRow(row.id, (current) => ({ ...current, sourcePath: event.target.value }))} />
+                  ) : (
+                    <button type="button" style={MInlinePathButtonStyle} onClick={() => onInsert(row.sourcePath)} disabled={readOnly || !row.sourcePath}>{row.sourcePath || "unmapped"}</button>
+                  )}
                 </td>
                 <td style={MTableCellStyle}>
-                  <input list={`${title}-target`} style={MInputStyle} value={row.targetPath} disabled={readOnly} onChange={(event) => updateRow(row.id, (current) => ({ ...current, targetPath: event.target.value }))} />
+                  {contractEditable ? (
+                    <input
+                      style={MInputStyle}
+                      value={row.targetField ?? row.targetPath}
+                      disabled={readOnly}
+                      onChange={(event) =>
+                        updateTargetField(row.targetField ?? row.targetPath, (current) => ({
+                          ...current,
+                          path: event.target.value,
+                          label: event.target.value
+                        }))
+                      }
+                    />
+                  ) : row.targetField ?? row.targetPath}
                 </td>
                 <td style={MTableCellStyle}>
-                  <input style={MInputStyle} value={row.transform ?? ""} disabled={readOnly} onChange={(event) => updateRow(row.id, (current) => ({ ...current, transform: event.target.value }))} />
+                  {contractEditable ? (
+                    <input
+                      style={MInputStyle}
+                      value={row.targetDataType ?? "string"}
+                      disabled={readOnly}
+                      onChange={(event) =>
+                        updateTargetField(row.targetField ?? row.targetPath, (current) => ({
+                          ...current,
+                          dataType: event.target.value
+                        }))
+                      }
+                    />
+                  ) : <>{row.sourceDataType ?? "unknown"} → {row.targetDataType ?? "unknown"}</>}
                 </td>
+                <td style={MTableCellStyle}>{row.status ?? "mapped"}{row.required ? " / required" : ""}</td>
                 <td style={MTableCellStyle}>
-                  <select style={MInputStyle} value={row.language ?? "feel"} disabled={readOnly} onChange={(event) => updateRow(row.id, (current) => ({ ...current, language: event.target.value as MRuleFlowExpressionLanguage }))}>
-                    <option value="feel">feel</option>
-                    <option value="liquid">liquid</option>
-                    <option value="plain-text">plain-text</option>
-                  </select>
+                  {manualEdit ? (
+                    <input style={MInputStyle} value={row.transform ?? row.transformSuggestion ?? ""} disabled={readOnly} onChange={(event) => updateRow(row.id, (current) => ({ ...current, transform: event.target.value }))} />
+                  ) : (
+                    row.transformSuggestion ?? row.transform ?? "—"
+                  )}
                 </td>
-                <td style={MTableCellStyle}>
-                  {!readOnly ? (
-                    <button type="button" style={MDeleteInlineButtonStyle} onClick={() => onChange(rows.filter((candidate) => candidate.id !== row.id))}>
+                {contractEditable ? (
+                  <td style={MTableCellStyle}>
+                    <button type="button" style={MInlinePathButtonStyle} disabled={readOnly} onClick={() => removeTargetField(row.targetField ?? row.targetPath)}>
                       Remove
                     </button>
-                  ) : null}
-                </td>
+                  </td>
+                ) : null}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <datalist id={`${title}-source`}>
-        {sourceFields.map((field) => (
-          <option key={field.path} value={field.path} />
-        ))}
+      <datalist id="upstream-scope-fields">
+        {upstreamFields.map((field) => <option key={field.path} value={field.path} />)}
       </datalist>
-      <datalist id={`${title}-target`}>
-        {targetFields.map((field) => (
-          <option key={field.path} value={field.path} />
-        ))}
-      </datalist>
+      {targetFields.length ? (
+        <div style={MExpressionHintStyle}>
+          <strong>Required input slots</strong>
+          <span>{targetFields.filter((field) => field.required).map((field) => field.path).join(", ") || "No required fields declared."}</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function MOutputContractTab({
+  nodeType,
+  contract,
+  upstreamScope,
+  issues,
+  readOnly,
+  onInsert,
+  onChange
+}: {
+  nodeType: MRuleFlowNodeType;
+  contract?: MRuleFlowContractSchema;
+  upstreamScope?: MRuleFlowContractSchema;
+  issues: MContractValidationIssue[];
+  readOnly: boolean;
+  onInsert: (path: string) => void;
+  onChange: (fields: MRuleFlowContractField[]) => void;
+}): React.JSX.Element {
+  if (nodeType === "end") {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={MSectionTitleStyle}>
+          <strong>Final Scope</strong>
+          <span>Everything guaranteed to be available when the flow reaches this end node.</span>
+        </div>
+        <MFieldTable fields={MFlattenContractFields(upstreamScope?.fields ?? [])} readOnly={readOnly} onInsert={onInsert} />
+      </div>
+    );
+  }
+
+  const editable = nodeType === "condition" || nodeType === "action";
+  const fields = MFlattenContractFields(contract?.fields ?? []);
+
+  function updateField(path: string, updater: (field: MRuleFlowContractField) => MRuleFlowContractField): void {
+    onChange(fields.map((field) => field.path === path ? updater(field) : field));
+  }
+
+  function addField(): void {
+    const nextPath = `custom.${fields.length + 1}`;
+    onChange([
+      ...fields,
+      {
+        path: nextPath,
+        label: nextPath,
+        dataType: "string",
+        required: false
+      }
+    ]);
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+        <div style={MSectionTitleStyle}>
+          <strong>Output Contract</strong>
+          <span>{editable ? "Edit the fields this node guarantees for downstream nodes." : "Auto-composed contract for downstream validation."}</span>
+        </div>
+        {!readOnly && editable ? (
+          <button type="button" style={MActionButtonStyle(false)} onClick={addField}>Add Field</button>
+        ) : null}
+      </div>
+      {fields.length === 0 ? (
+        <div style={{ color: "#64748b", fontSize: 13 }}>This node currently produces no downstream fields.</div>
+      ) : (
+        <div style={MTableShellStyle}>
+          <table style={MTableStyle}>
+            <thead>
+              <tr>
+                <th style={MTableHeaderStyle}>Path</th>
+                <th style={MTableHeaderStyle}>Type</th>
+                <th style={MTableHeaderStyle}>Use</th>
+                <th style={MTableHeaderStyle}>Expose</th>
+              </tr>
+            </thead>
+            <tbody>
+              {fields.map((field) => (
+                <tr key={field.path}>
+                  <td style={MTableCellStyle}>
+                    {editable && !field.isResultPayload ? (
+                      <input style={MInputStyle} value={field.path} disabled={readOnly} onChange={(event) => updateField(field.path, (current) => ({ ...current, path: event.target.value, label: event.target.value }))} />
+                    ) : (
+                      <button type="button" style={MInlinePathButtonStyle} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
+                    )}
+                  </td>
+                  <td style={MTableCellStyle}>
+                    {editable && !field.isResultPayload ? (
+                      <input style={MInputStyle} value={field.dataType} disabled={readOnly} onChange={(event) => updateField(field.path, (current) => ({ ...current, dataType: event.target.value }))} />
+                    ) : field.dataType}
+                  </td>
+                  <td style={MTableCellStyle}>
+                    {field.isResultPayload ? "result payload" : field.required ? "required" : "optional"}
+                  </td>
+                  <td style={MTableCellStyle}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <input type="checkbox" checked={field.exposeToParent !== false} disabled={readOnly || field.isResultPayload} onChange={(event) => updateField(field.path, (current) => ({ ...current, exposeToParent: event.target.checked }))} />
+                      parent
+                    </label>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {issues.length ? <MIssueList issues={issues.filter((issue) => issue.severity !== "info")} /> : null}
+    </div>
+  );
+}
+
+function MFieldTable({
+  fields,
+  readOnly,
+  onInsert
+}: {
+  fields: MRuleFlowContractField[];
+  readOnly: boolean;
+  onInsert: (path: string) => void;
+}): React.JSX.Element {
+  return (
+    <div style={MTableShellStyle}>
+      <table style={MTableStyle}>
+        <thead>
+          <tr>
+            <th style={MTableHeaderStyle}>Path</th>
+            <th style={MTableHeaderStyle}>Type</th>
+            <th style={MTableHeaderStyle}>Description</th>
+            <th style={MTableHeaderStyle}>Use</th>
+          </tr>
+        </thead>
+        <tbody>
+          {fields.map((field) => (
+            <tr key={`${field.sourceNodeId ?? "scope"}:${field.path}`}>
+              <td style={MTableCellStyle}>
+                <button type="button" style={MInlinePathButtonStyle} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
+              </td>
+              <td style={MTableCellStyle}>{field.dataType}</td>
+              <td style={MTableCellStyle}>{field.description ?? field.label}</td>
+              <td style={MTableCellStyle}>{field.required ? "required" : "optional"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function MIssueList({ issues }: { issues: MContractValidationIssue[] }): React.JSX.Element {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      {issues.map((issue) => (
+        <div key={`${issue.code}:${issue.message}:${issue.fieldPath ?? ""}`} style={issue.severity === "error" ? MErrorBannerStyle : MWarningBannerStyle}>
+          <strong>{issue.code}</strong> {issue.message}
+        </div>
+      ))}
     </div>
   );
 }
@@ -469,11 +744,11 @@ export const MSectionTitleStyle: React.CSSProperties = {
 };
 
 export const MInspectorShellStyle: React.CSSProperties = {
-  marginTop: "auto",
   display: "flex",
   flexDirection: "column",
   gap: 12,
-  padding: 16,
+  padding: 18,
+  width: "100%",
   minWidth: 0,
   borderRadius: 18,
   background: "rgba(248, 250, 252, 0.9)",
@@ -483,7 +758,9 @@ export const MInspectorShellStyle: React.CSSProperties = {
 export const MInspectorTabsStyle: React.CSSProperties = {
   display: "flex",
   flexWrap: "wrap",
-  gap: 8
+  gap: 6,
+  paddingBottom: 8,
+  borderBottom: "1px solid rgba(148, 163, 184, 0.2)"
 };
 
 export const MLabelStyle: React.CSSProperties = {
@@ -497,14 +774,14 @@ export const MLabelStyle: React.CSSProperties = {
 export const MInputStyle: React.CSSProperties = {
   borderRadius: 12,
   border: "1px solid rgba(148, 163, 184, 0.35)",
-  padding: "10px 12px",
-  fontSize: 13,
+  padding: "11px 13px",
+  fontSize: 14,
   width: "100%"
 };
 
 export const MTextareaStyle: React.CSSProperties = {
   ...MInputStyle,
-  minHeight: 96,
+  minHeight: 116,
   resize: "vertical"
 };
 
@@ -512,7 +789,7 @@ export const MTableShellStyle: React.CSSProperties = {
   borderRadius: 16,
   border: "1px solid rgba(148, 163, 184, 0.18)",
   overflow: "auto",
-  maxHeight: 320,
+  maxHeight: 420,
   minWidth: 0,
   background: "#ffffff"
 };
@@ -564,16 +841,7 @@ export const MDeleteButtonStyle: React.CSSProperties = {
   border: "1px solid rgba(220, 38, 38, 0.24)",
   background: "rgba(254, 242, 242, 0.95)",
   color: "#b91c1c",
-  padding: "10px 12px",
-  fontWeight: 600
-};
-
-export const MDeleteInlineButtonStyle: React.CSSProperties = {
-  borderRadius: 10,
-  border: "1px solid rgba(220, 38, 38, 0.24)",
-  background: "rgba(254, 242, 242, 0.95)",
-  color: "#b91c1c",
-  padding: "8px 10px",
+  padding: "12px 14px",
   fontWeight: 600
 };
 
@@ -598,6 +866,61 @@ export const MErrorBannerStyle: React.CSSProperties = {
   fontSize: 12
 };
 
+export const MWarningBannerStyle: React.CSSProperties = {
+  borderRadius: 12,
+  border: "1px solid rgba(245, 158, 11, 0.18)",
+  background: "rgba(255, 251, 235, 0.9)",
+  color: "#92400e",
+  padding: "10px 12px",
+  fontSize: 12
+};
+
+export const MMetadataCardStyle: React.CSSProperties = {
+  borderRadius: 14,
+  border: "1px solid rgba(148, 163, 184, 0.18)",
+  background: "rgba(255,255,255,0.9)",
+  padding: 12,
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+  fontSize: 12,
+  color: "#334155"
+};
+
+export const MDependencyChipStyle: React.CSSProperties = {
+  borderRadius: 999,
+  padding: "4px 8px",
+  background: "rgba(15, 23, 42, 0.08)",
+  color: "#0f172a",
+  fontSize: 11,
+  fontWeight: 600
+};
+
+export const MDependencyChipButtonStyle: React.CSSProperties = {
+  ...MDependencyChipStyle,
+  border: "none",
+  cursor: "pointer"
+};
+
+const MPreviewStyle: React.CSSProperties = {
+  margin: 0,
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+  fontSize: 12
+};
+
+function MRenderLiquidPreview(template: string, fields: MRuleFlowContractField[], outputFormat: NonNullable<MRuleFlowLiquidConfig["outputFormat"]>): string {
+  const flattened = MFlattenContractFields(fields);
+  const sampleMap = new Map(flattened.map((field) => [field.path, field.example ?? `<${field.path}>`]));
+  const rendered = template.replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*\}\}/g, (_match, path: string) => String(sampleMap.get(path) ?? `<${path}>`));
+  if (outputFormat === "object" || outputFormat === "json") {
+    return rendered;
+  }
+
+  return rendered;
+}
+
 export function MActionButtonStyle(primary: boolean): React.CSSProperties {
   return {
     borderRadius: 12,
@@ -615,8 +938,8 @@ export function MInspectorTabButtonStyle(active: boolean): React.CSSProperties {
     border: active ? `1px solid ${M_NODE_ACCENTS.condition}40` : "1px solid rgba(148, 163, 184, 0.24)",
     background: active ? `${M_NODE_ACCENTS.condition}14` : "#ffffff",
     color: "#0f172a",
-    fontSize: 12,
-    padding: "8px 12px",
+    fontSize: 13,
+    padding: "10px 14px",
     fontWeight: 600
   };
 }

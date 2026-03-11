@@ -39,16 +39,21 @@ const M_INITIAL_STATE: MLicenseState = {
   message: "Activation proof has not been initialized."
 };
 
-export class MLicenseVerifier {
-  private static mState: MLicenseState = { ...M_INITIAL_STATE };
-  private static mCachedKeyPem: string | null = null;
-  private static mCachedCryptoKey: Promise<CryptoKey> | null = null;
+type MLicenseGlobalStore = {
+  state: MLicenseState;
+  cachedKeyPem: string | null;
+  cachedCryptoKey: Promise<CryptoKey> | null;
+};
 
+const M_LICENSE_STORE_KEY = "__muonroi_ui_engine_license_store__";
+
+export class MLicenseVerifier {
   static get current(): MLicenseState {
+    const store = MGetLicenseStore();
     return {
-      ...this.mState,
-      features: [...this.mState.features],
-      expiresAt: this.mState.expiresAt ? new Date(this.mState.expiresAt.getTime()) : undefined
+      ...store.state,
+      features: [...store.state.features],
+      expiresAt: store.state.expiresAt ? new Date(store.state.expiresAt.getTime()) : undefined
     };
   }
 
@@ -79,7 +84,8 @@ export class MLicenseVerifier {
       const tenantId = MReadStringClaim(payload, "tenantId", "tenant_id", "tid");
       const exp = MReadUnixTimestampClaim(payload, "exp");
 
-      this.mState = {
+      const store = MGetLicenseStore();
+      store.state = {
         isValid: true,
         tier,
         tenantId: tenantId || undefined,
@@ -95,17 +101,18 @@ export class MLicenseVerifier {
         this.MSetInvalid("verification_failed", error instanceof Error ? error.message : "License verification failed.");
       }
 
-      throw new Error(this.mState.message ?? "License verification failed.");
+      throw new Error(MGetLicenseStore().state.message ?? "License verification failed.");
     }
   }
 
   static hasFeature(feature: string): boolean {
+    const state = MGetLicenseStore().state;
     const requested = feature.trim().toLowerCase();
-    if (!requested || !this.mState.isValid || this.mState.tier === "Free") {
+    if (!requested || !state.isValid || state.tier === "Free") {
       return false;
     }
 
-    const normalizedFeatures = this.mState.features
+    const normalizedFeatures = state.features
       .map((item) => item.trim().toLowerCase())
       .filter((item) => item.length > 0);
 
@@ -131,23 +138,26 @@ export class MLicenseVerifier {
   }
 
   static reset(): void {
-    this.mState = { ...M_INITIAL_STATE };
+    const store = MGetLicenseStore();
+    store.state = { ...M_INITIAL_STATE };
   }
 
   static MResetForTests(): void {
     this.reset();
-    this.mCachedKeyPem = null;
-    this.mCachedCryptoKey = null;
+    const store = MGetLicenseStore();
+    store.cachedKeyPem = null;
+    store.cachedCryptoKey = null;
   }
 
   private static async MGetOrImportPublicKey(publicKeyPem: string): Promise<CryptoKey> {
-    if (this.mCachedKeyPem === publicKeyPem && this.mCachedCryptoKey) {
-      return this.mCachedCryptoKey;
+    const store = MGetLicenseStore();
+    if (store.cachedKeyPem === publicKeyPem && store.cachedCryptoKey) {
+      return store.cachedCryptoKey;
     }
 
-    this.mCachedKeyPem = publicKeyPem;
-    this.mCachedCryptoKey = this.MImportPublicKey(publicKeyPem);
-    return this.mCachedCryptoKey;
+    store.cachedKeyPem = publicKeyPem;
+    store.cachedCryptoKey = this.MImportPublicKey(publicKeyPem);
+    return store.cachedCryptoKey;
   }
 
   private static async MImportPublicKey(publicKeyPem: string): Promise<CryptoKey> {
@@ -228,7 +238,7 @@ export class MLicenseVerifier {
   }
 
   private static MSetInvalid(reason: MLicenseInvalidReason, message: string): void {
-    this.mState = {
+    MGetLicenseStore().state = {
       isValid: false,
       tier: "Free",
       features: [],
@@ -246,6 +256,22 @@ class MLicenseVerificationError extends Error {
     super(message);
     this.name = "MLicenseVerificationError";
   }
+}
+
+function MGetLicenseStore(): MLicenseGlobalStore {
+  const scope = globalThis as typeof globalThis & {
+    [M_LICENSE_STORE_KEY]?: MLicenseGlobalStore;
+  };
+
+  if (!scope[M_LICENSE_STORE_KEY]) {
+    scope[M_LICENSE_STORE_KEY] = {
+      state: { ...M_INITIAL_STATE },
+      cachedKeyPem: null,
+      cachedCryptoKey: null
+    };
+  }
+
+  return scope[M_LICENSE_STORE_KEY];
 }
 
 function MGetCryptoApi(): Crypto {

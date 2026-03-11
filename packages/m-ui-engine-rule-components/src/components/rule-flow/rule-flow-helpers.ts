@@ -1,7 +1,10 @@
 import type React from "react";
 import type {
+  MContractValidationIssue,
+  MEffectiveInputMapping,
   MRuleFlowConditionConfig,
   MRuleFlowContractField,
+  MRuleFlowContractOverride,
   MRuleFlowContractReference,
   MRuleFlowContractSchema,
   MRuleFlowEdge,
@@ -13,7 +16,9 @@ import type {
   MRuleFlowNode,
   MRuleFlowNodeData,
   MRuleFlowNodeType,
-  MRuleFlowSubFlowConfig
+  MRuleFlowSubFlowConfig,
+  MNodeContractLayer,
+  MNodeEffectiveInput
 } from "../../models.js";
 import { MCreateEmptyRuleFlowGraph } from "../../models.js";
 
@@ -23,7 +28,7 @@ export type MCanvasNodeData = MRuleFlowNodeData & {
   nodeType: MRuleFlowNodeType;
 };
 
-export type MInspectorTab = "general" | "request" | "response" | "expression" | "mappings";
+export type MInspectorTab = "general" | "input-scope" | "effective-input" | "output-contract" | "expression";
 
 export const M_NODE_TITLES: Record<MRuleFlowNodeType, string> = {
   trigger: "Trigger",
@@ -100,6 +105,38 @@ export function MSerializeRuleFlowGraph(graph: MRuleFlowGraph): string {
   return JSON.stringify(MEnsureRuleFlowGraph(graph), null, 2);
 }
 
+export function MImportRuleFlowGraph(payload: string): MRuleFlowGraph {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(payload);
+  } catch (error) {
+    throw new Error(`Invalid rule flow JSON: ${(error as Error).message}`);
+  }
+
+  const graph = MEnsureRuleFlowGraph(parsed);
+  const triggerCount = graph.nodes.filter((node) => node.type === "trigger").length;
+  const endCount = graph.nodes.filter((node) => node.type === "end").length;
+  if (triggerCount !== 1) {
+    throw new Error("Imported flow must contain exactly one trigger node.");
+  }
+  if (endCount < 1) {
+    throw new Error("Imported flow must contain at least one end node.");
+  }
+
+  const nodeIds = new Set(graph.nodes.map((node) => node.id));
+  if (nodeIds.size !== graph.nodes.length) {
+    throw new Error("Imported flow contains duplicate node ids.");
+  }
+
+  for (const edge of graph.edges) {
+    if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
+      throw new Error(`Imported flow edge '${edge.id}' references missing nodes.`);
+    }
+  }
+
+  return graph;
+}
+
 export function MCreateRuleFlowGraphSignature(graph: MRuleFlowGraph): string {
   const normalized = MEnsureRuleFlowGraph(graph);
   return JSON.stringify({
@@ -164,9 +201,34 @@ export function MNormalizeNodeData(data: unknown): MRuleFlowNodeData {
     contractRef: MNormalizeContractReference(candidate.contractRef),
     requestContract: MNormalizeContractSchema(candidate.requestContract),
     responseContract: MNormalizeContractSchema(candidate.responseContract),
+    contractOverride: MNormalizeContractOverride(candidate.contractOverride),
+    inputMappings: Array.isArray(candidate.inputMappings)
+      ? candidate.inputMappings.map(MNormalizeMappingRow).filter(Boolean) as MRuleFlowMappingRow[]
+      : undefined,
+    contractLayer: MNormalizeNodeContractLayer(candidate.contractLayer),
+    dependsOn: Array.isArray(candidate.dependsOn)
+      ? candidate.dependsOn.filter((item): item is string => typeof item === "string" && item.trim().length > 0).map((item) => item.trim())
+      : undefined,
+    order: typeof candidate.order === "number" && Number.isFinite(candidate.order) ? candidate.order : undefined,
     conditionConfig: MNormalizeConditionConfig(candidate.conditionConfig),
     subFlowConfig: MNormalizeSubFlowConfig(candidate.subFlowConfig),
     liquidConfig: MNormalizeLiquidConfig(candidate.liquidConfig)
+  };
+}
+
+export function MNormalizeContractOverride(value: unknown): MRuleFlowContractOverride | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return {
+    requestFields: Array.isArray(candidate.requestFields)
+      ? candidate.requestFields.map(MNormalizeContractField).filter(Boolean) as MRuleFlowContractField[]
+      : undefined,
+    responseFields: Array.isArray(candidate.responseFields)
+      ? candidate.responseFields.map(MNormalizeContractField).filter(Boolean) as MRuleFlowContractField[]
+      : undefined
   };
 }
 
@@ -229,6 +291,19 @@ export function MNormalizeContractField(value: unknown): MRuleFlowContractField 
     required: Boolean(candidate.required),
     description: typeof candidate.description === "string" ? candidate.description : undefined,
     example: typeof candidate.example === "string" ? candidate.example : undefined,
+    exposeToParent: candidate.exposeToParent === false ? false : undefined,
+    isResultPayload: candidate.isResultPayload === true ? true : undefined,
+    sourceNodeId: typeof candidate.sourceNodeId === "string" ? candidate.sourceNodeId : undefined,
+    sourceNodeLabel: typeof candidate.sourceNodeLabel === "string" ? candidate.sourceNodeLabel : undefined,
+    sourceNodeType: typeof candidate.sourceNodeType === "string" && MIsNodeType(candidate.sourceNodeType) ? candidate.sourceNodeType : undefined,
+    sourceKind:
+      candidate.sourceKind === "flow-input" ||
+      candidate.sourceKind === "node-output" ||
+      candidate.sourceKind === "result-payload" ||
+      candidate.sourceKind === "sub-flow-output" ||
+      candidate.sourceKind === "inline"
+        ? candidate.sourceKind
+        : undefined,
     children: Array.isArray(candidate.children)
       ? candidate.children.map(MNormalizeContractField).filter(Boolean) as MRuleFlowContractField[]
       : undefined
@@ -281,6 +356,7 @@ export function MNormalizeSubFlowConfig(value: unknown): MRuleFlowSubFlowConfig 
   const candidate = value as Record<string, unknown>;
   return {
     targetFlowCode: typeof candidate.targetFlowCode === "string" ? candidate.targetFlowCode : undefined,
+    childTriggerSchema: MNormalizeContractSchema(candidate.childTriggerSchema),
     inputMappings: Array.isArray(candidate.inputMappings)
       ? candidate.inputMappings.map(MNormalizeMappingRow).filter(Boolean) as MRuleFlowMappingRow[]
       : [],
@@ -320,6 +396,99 @@ export function MNormalizeMappingRow(value: unknown): MRuleFlowMappingRow | null
   };
 }
 
+export function MNormalizeEffectiveInputMapping(value: unknown): MEffectiveInputMapping | null {
+  const normalized = MNormalizeMappingRow(value);
+  if (!normalized || !value || typeof value !== "object") {
+    return normalized as MEffectiveInputMapping | null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return {
+    ...normalized,
+    targetField: typeof candidate.targetField === "string" ? candidate.targetField : undefined,
+    sourceDataType: typeof candidate.sourceDataType === "string" ? candidate.sourceDataType : undefined,
+    targetDataType: typeof candidate.targetDataType === "string" ? candidate.targetDataType : undefined,
+    sourceNodeId: typeof candidate.sourceNodeId === "string" ? candidate.sourceNodeId : undefined,
+    sourceNodeLabel: typeof candidate.sourceNodeLabel === "string" ? candidate.sourceNodeLabel : undefined,
+    required: candidate.required === true ? true : undefined,
+    status:
+      candidate.status === "mapped" || candidate.status === "missing" || candidate.status === "type-mismatch" || candidate.status === "suggested"
+        ? candidate.status
+        : undefined,
+    transformSuggestion: typeof candidate.transformSuggestion === "string" ? candidate.transformSuggestion : undefined
+  };
+}
+
+export function MNormalizeContractValidationIssue(value: unknown): MContractValidationIssue | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const code = typeof candidate.code === "string" && candidate.code.trim() ? candidate.code.trim() : "";
+  const message = typeof candidate.message === "string" && candidate.message.trim() ? candidate.message.trim() : "";
+  if (!code || !message) {
+    return null;
+  }
+
+  return {
+    code,
+    message,
+    severity: candidate.severity === "warning" || candidate.severity === "info" ? candidate.severity : "error",
+    nodeId: typeof candidate.nodeId === "string" ? candidate.nodeId : undefined,
+    fieldPath: typeof candidate.fieldPath === "string" ? candidate.fieldPath : undefined,
+    sourcePath: typeof candidate.sourcePath === "string" ? candidate.sourcePath : undefined,
+    targetPath: typeof candidate.targetPath === "string" ? candidate.targetPath : undefined,
+    relatedNodeId: typeof candidate.relatedNodeId === "string" ? candidate.relatedNodeId : undefined
+  };
+}
+
+export function MNormalizeNodeEffectiveInput(value: unknown): MNodeEffectiveInput | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  const contractName = typeof candidate.contractName === "string" && candidate.contractName.trim() ? candidate.contractName.trim() : "";
+  if (!contractName) {
+    return undefined;
+  }
+
+  return {
+    contractName,
+    title: typeof candidate.title === "string" ? candidate.title : undefined,
+    description: typeof candidate.description === "string" ? candidate.description : undefined,
+    mode:
+      candidate.mode === "auto" ||
+      candidate.mode === "manual" ||
+      candidate.mode === "expression" ||
+      candidate.mode === "decision-table" ||
+      candidate.mode === "sub-flow"
+        ? candidate.mode
+        : undefined,
+    fields: Array.isArray(candidate.fields) ? candidate.fields.map(MNormalizeContractField).filter(Boolean) as MRuleFlowContractField[] : [],
+    mappings: Array.isArray(candidate.mappings)
+      ? candidate.mappings.map(MNormalizeEffectiveInputMapping).filter(Boolean) as MEffectiveInputMapping[]
+      : []
+  };
+}
+
+export function MNormalizeNodeContractLayer(value: unknown): MNodeContractLayer | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return {
+    upstreamScope: MNormalizeContractSchema(candidate.upstreamScope),
+    effectiveInput: MNormalizeNodeEffectiveInput(candidate.effectiveInput),
+    outputContract: MNormalizeContractSchema(candidate.outputContract),
+    validationIssues: Array.isArray(candidate.validationIssues)
+      ? candidate.validationIssues.map(MNormalizeContractValidationIssue).filter(Boolean) as MContractValidationIssue[]
+      : undefined
+  };
+}
+
 export function MEnsureExpression(data: Partial<MCanvasNodeData>): MRuleFlowExpression {
   const legacyFeelExpression = typeof data.feelExpression === "string" ? data.feelExpression : undefined;
   return MNormalizeExpression(data.expression, legacyFeelExpression, data.nodeType ?? "action");
@@ -328,6 +497,7 @@ export function MEnsureExpression(data: Partial<MCanvasNodeData>): MRuleFlowExpr
 export function MEnsureSubFlowConfig(value: MRuleFlowSubFlowConfig | undefined): MRuleFlowSubFlowConfig {
   return value ?? {
     targetFlowCode: "",
+    childTriggerSchema: undefined,
     inputMappings: [],
     outputMappings: []
   };
@@ -372,12 +542,12 @@ export function MInferContractReference(
 }
 
 export function MDefaultInspectorTabForNode(nodeType: MRuleFlowNodeType): MInspectorTab {
-  if (nodeType === "sub-flow") {
-    return "mappings";
+  if (nodeType === "trigger") {
+    return "input-scope";
   }
 
-  if (nodeType === "condition" || nodeType === "liquid") {
-    return "expression";
+  if (nodeType === "condition" || nodeType === "action" || nodeType === "decision-table" || nodeType === "sub-flow" || nodeType === "liquid") {
+    return "effective-input";
   }
 
   return "general";
@@ -397,18 +567,23 @@ export function MDefaultContractSourceType(nodeType: MRuleFlowNodeType): MRuleFl
 }
 
 export function MAvailableInspectorTabs(nodeType: MRuleFlowNodeType): MInspectorTab[] {
-  const tabs: MInspectorTab[] = ["general", "request", "response"];
+  const tabs: MInspectorTab[] = ["general", "input-scope", "effective-input", "output-contract"];
   if (nodeType !== "trigger" && nodeType !== "end") {
     tabs.push("expression");
-  }
-  if (nodeType === "sub-flow") {
-    tabs.push("mappings");
   }
   return tabs;
 }
 
 export function MInspectorTabTitle(tab: MInspectorTab): string {
-  return tab === "general" ? "General" : tab === "request" ? "Request Schema" : tab === "response" ? "Response Schema" : tab === "expression" ? "Expression" : "Mappings";
+  return tab === "general"
+    ? "General"
+    : tab === "input-scope"
+      ? "Input Scope"
+      : tab === "effective-input"
+        ? "Effective Input"
+        : tab === "output-contract"
+          ? "Output Contract"
+          : "Expression";
 }
 
 export function MCreateDefaultExpression(nodeType: MRuleFlowNodeType): MRuleFlowExpression {

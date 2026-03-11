@@ -23,9 +23,18 @@ export interface MRuleFlowContractLookupResponse {
 export interface MRuleFlowNodeContractLookupResponse {
   flowCode: string;
   nodeId: string;
+  nodeType?: string;
   ruleCode?: string;
+  order?: number;
+  dependsOn?: string[];
   requestScope?: MRuleFlowContractSchema;
   responseDelta?: MRuleFlowContractSchema;
+}
+
+export interface MRuleFlowSummary {
+  workflowName: string;
+  versions?: number[];
+  activeVersion?: number | null;
 }
 
 export class MRuleFlowContractService {
@@ -91,5 +100,16 @@ export class MRuleFlowContractService {
     }
 
     return (await response.json()) as MRuleFlowNodeContractLookupResponse;
+  }
+
+  public async MListFlows(): Promise<MRuleFlowSummary[]> {
+    const response = await this.mFetch(`${this.mBaseUrl}/rulesets`, {
+      headers: MBuildRuleComponentHeaders(undefined, { tenantId: this.mTenantId })
+    });
+    if (!response.ok) {
+      throw new Error(`Ruleset list request failed: ${response.status}`);
+    }
+
+    return (await response.json()) as MRuleFlowSummary[];
   }
 }
