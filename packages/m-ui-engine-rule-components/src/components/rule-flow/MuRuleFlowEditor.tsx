@@ -21,19 +21,26 @@ import {
   useUpdateNodeInternals
 } from "@xyflow/react";
 import type {
+  MContractValidationIssue,
   MDecisionTableModel,
+  MRuleCatalogGroup,
+  MRuleCatalogItem,
   MRuleFlowGraph,
   MRuleFlowNode,
-  MRuleFlowNodeType
+  MRuleFlowNodeType,
+  MRuleFlowEdgeType
 } from "../../models.js";
 import { MRuleFlowContractService, type MRuleFlowSummary } from "../../services/rule-flow-contract-service.js";
+import { MRuleCatalogService } from "../../services/rule-catalog-service.js";
 import { MRuleEngineApi } from "../../services/rule-engine-api.js";
 import { useRuleFlowHistory } from "../../hooks/useRuleFlowHistory.js";
 import {
   MActionButtonStyle,
   MRuleFlowInspector,
+  MWarningBannerStyle,
   type MContractLoadState
 } from "./rule-flow-inspector.js";
+import { CatalogPaletteSection } from "./CatalogPaletteSection.js";
 import {
   M_BASE_NODE_STYLE,
   MCreateDefaultExpression,
@@ -67,6 +74,7 @@ export interface MuRuleFlowEditorProps {
   theme?: "light" | "dark";
   height?: number | string;
   apiBaseUrl?: string;
+  catalogApiBase?: string;
   tenantId?: string;
   workflowCode?: string;
   onPublish?: (graph: MRuleFlowGraph) => Promise<void> | void;
@@ -80,10 +88,40 @@ type MCommitOptions = {
 };
 
 type MSidebarSection = "palette" | "actions" | "inspector";
+type MPublishConfirmState = {
+  graph: MRuleFlowGraph;
+  warnings: MContractValidationIssue[];
+};
+type MDecisionTableLoadState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ready" }
+  | { status: "error"; message: string };
+type MDependencyOverlayItem = {
+  nodeId: string;
+  label: string;
+  ruleCode: string;
+  order: number;
+  dependsOn: string[];
+  dependents: string[];
+};
 
 const M_DRAG_NODE_TYPE_KEY = "application/muonroi-rule-flow-node-type";
+const M_DRAG_RULE_TEMPLATE_KEY = "application/muonroi-rule-flow-rule-template";
 const M_FIT_VIEW_OPTIONS = { duration: 0, padding: 0.22, minZoom: 0.18, maxZoom: 1.1 };
 const M_COMPACT_LAYOUT_BREAKPOINT = 860;
+const M_EDGE_TYPE_LABELS: Record<MRuleFlowEdgeType, string> = {
+  always: "Always",
+  "on-true": "On Pass",
+  "on-false": "On Fail",
+  "on-error": "On Error"
+};
+const M_EDGE_TYPE_HINTS: Record<MRuleFlowEdgeType, string> = {
+  always: "Always continue to the next node when the source node executed.",
+  "on-true": "Continue only when the source node passed.",
+  "on-false": "Continue only when the source node failed without throwing.",
+  "on-error": "Continue only when the source node threw an exception."
+};
 
 function MRuleFlowNodeCard({ data, selected }: { data: MCanvasNodeData; selected?: boolean }): React.JSX.Element {
   const accent = M_NODE_ACCENTS[data.nodeType];
@@ -215,6 +253,7 @@ export function MuRuleFlowEditor({
   theme = "light",
   height = 640,
   apiBaseUrl,
+  catalogApiBase,
   tenantId,
   workflowCode,
   onPublish,
@@ -230,6 +269,11 @@ export function MuRuleFlowEditor({
   const [contractLoadState, setContractLoadState] = useState<MContractLoadState>({ status: "idle" });
   const [flowOptions, setFlowOptions] = useState<Array<{ code: string; label: string }>>([]);
   const [decisionTableOptions, setDecisionTableOptions] = useState<Array<{ code: string; label: string }>>([]);
+  const [selectedDecisionTable, setSelectedDecisionTable] = useState<MDecisionTableModel | null>(null);
+  const [decisionTableLoadState, setDecisionTableLoadState] = useState<MDecisionTableLoadState>({ status: "idle" });
+  const [catalogGroups, setCatalogGroups] = useState<MRuleCatalogGroup[]>([]);
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [publishConfirmState, setPublishConfirmState] = useState<MPublishConfirmState | null>(null);
   const metadataRef = useRef(history.present.metadata);
   const lastGraphSignatureRef = useRef(MCreateRuleFlowGraphSignature(history.present));
   const [viewportSyncToken, setViewportSyncToken] = useState(0);
@@ -237,11 +281,16 @@ export function MuRuleFlowEditor({
   const edgesRef = useRef(edges);
   const nodeContractCacheRef = useRef(new Map<string, Awaited<ReturnType<MRuleFlowContractService["MGetNodeAuthoringContract"]>>>());
   const flowContractCacheRef = useRef(new Map<string, Awaited<ReturnType<MRuleFlowContractService["MGetFlowContract"]>>>());
+  const decisionTableCacheRef = useRef(new Map<string, MDecisionTableModel>());
   const contractService = useMemo(
     () => (apiBaseUrl ? new MRuleFlowContractService({ baseUrl: apiBaseUrl, tenantId }) : null),
     [apiBaseUrl, tenantId]
   );
-  const ruleEngineApi = useMemo(() => (apiBaseUrl ? new MRuleEngineApi({ baseUrl: apiBaseUrl }) : null), [apiBaseUrl]);
+  const catalogService = useMemo(
+    () => (catalogApiBase ? new MRuleCatalogService({ baseUrl: catalogApiBase, tenantId }) : null),
+    [catalogApiBase, tenantId]
+  );
+  const ruleEngineApi = useMemo(() => (apiBaseUrl ? new MRuleEngineApi({ baseUrl: apiBaseUrl, tenantId }) : null), [apiBaseUrl, tenantId]);
   const shellRef = useRef<HTMLElement | null>(null);
   const canvasPanelRef = useRef<HTMLDivElement | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
@@ -249,7 +298,7 @@ export function MuRuleFlowEditor({
   const isRestoringRef = useRef(false);
   const restoreUnlockRef = useRef<number | null>(null);
   const [shellWidth, setShellWidth] = useState(0);
-  const [openSection, setOpenSection] = useState<MSidebarSection>("inspector");
+  const [openSection, setOpenSection] = useState<MSidebarSection | null>("inspector");
   const pendingCommitRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -344,6 +393,10 @@ export function MuRuleFlowEditor({
     [authoringVersion, currentGraph, workflowCode]
   );
   const selectedNode = useMemo(() => (selectedNodeId ? MGraphToCanvasNodes(derivedGraph).find((node) => node.id === selectedNodeId) ?? null : null), [derivedGraph, selectedNodeId]);
+  const selectedEdge = useMemo(
+    () => (selectedEdgeId ? edges.find((edge) => edge.id === selectedEdgeId) ?? null : null),
+    [edges, selectedEdgeId]
+  );
   const selectedExpression = selectedNode ? MEnsureExpression(selectedNode.data) : { language: "feel" as const, body: "" };
   const currentValidation = useMemo(
     () =>
@@ -364,6 +417,7 @@ export function MuRuleFlowEditor({
     [currentValidation.issues]
   );
   const canPublish = !readOnly && Boolean(onPublish) && validationErrors.length === 0;
+  const dependencyOverlay = useMemo(() => MBuildDependencyOverlay(derivedGraph), [derivedGraph]);
 
   useEffect(() => {
     if (!contractService) {
@@ -396,6 +450,9 @@ export function MuRuleFlowEditor({
       try {
         const tables: MDecisionTableModel[] = await ruleEngineApi.MListDecisionTables();
         if (!cancelled) {
+          for (const table of tables) {
+            decisionTableCacheRef.current.set(table.id, table);
+          }
           setDecisionTableOptions(tables.map((table) => ({ code: table.id, label: table.name })));
         }
       } catch {
@@ -408,59 +465,140 @@ export function MuRuleFlowEditor({
   }, [ruleEngineApi]);
 
   useEffect(() => {
+    if (selectedNode?.data.nodeType !== "decision-table") {
+      setSelectedDecisionTable(null);
+      setDecisionTableLoadState({ status: "idle" });
+      return;
+    }
+
+    if (!ruleEngineApi) {
+      setSelectedDecisionTable(null);
+      setDecisionTableLoadState({ status: "error", message: "No decision table API configured for this editor." });
+      return;
+    }
+
+    const code = selectedNode.data.contractRef?.sourceCode?.trim() ?? selectedNode.data.ruleCode?.trim() ?? "";
+    if (!code) {
+      setSelectedDecisionTable(null);
+      setDecisionTableLoadState({ status: "idle" });
+      return;
+    }
+
+    const cached = decisionTableCacheRef.current.get(code);
+    if (cached) {
+      setSelectedDecisionTable(cached);
+      setDecisionTableLoadState({ status: "ready" });
+      applyDecisionTableContracts(selectedNode.id, cached);
+      return;
+    }
+
+    let cancelled = false;
+    setDecisionTableLoadState({ status: "loading" });
+    void (async () => {
+      try {
+        const table = await ruleEngineApi.MGetDecisionTable(code);
+        if (cancelled) {
+          return;
+        }
+        decisionTableCacheRef.current.set(code, table);
+        setSelectedDecisionTable(table);
+        setDecisionTableLoadState({ status: "ready" });
+        applyDecisionTableContracts(selectedNode.id, table);
+      } catch (error) {
+        if (!cancelled) {
+          setSelectedDecisionTable(null);
+          setDecisionTableLoadState({
+            status: "error",
+            message: error instanceof Error ? error.message : "Failed to load decision table metadata."
+          });
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [ruleEngineApi, selectedNode?.id, selectedNode?.data.nodeType, selectedNode?.data.contractRef?.sourceCode, selectedNode?.data.ruleCode]);
+
+  useEffect(() => {
+    if (!catalogService) {
+      setCatalogGroups([]);
+      setCatalogLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      setCatalogLoading(true);
+      try {
+        const groups = await catalogService.MListCatalog();
+        if (!cancelled) {
+          setCatalogGroups(groups);
+          setCatalogLoading(false);
+        }
+      } catch {
+        if (!cancelled) {
+          setCatalogGroups([]);
+          setCatalogLoading(false);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [catalogService]);
+
+  useEffect(() => {
     if (!contractService || !workflowCode) {
       return;
     }
 
     let cancelled = false;
     void (async () => {
-      try {
-        if (!flowContractCacheRef.current.has(workflowCode)) {
-          flowContractCacheRef.current.set(workflowCode, await contractService.MGetFlowContract(workflowCode));
-        }
+      await MTryPrimeFlowContract(contractService, flowContractCacheRef.current, workflowCode);
 
-        for (const node of currentGraph.nodes) {
-          if (node.type === "trigger" || node.type === "end") {
-            continue;
-          }
-          if (!nodeContractCacheRef.current.has(node.id)) {
-            nodeContractCacheRef.current.set(node.id, await contractService.MGetNodeAuthoringContract(workflowCode, node.id));
-          }
+      for (const node of currentGraph.nodes) {
+        if (node.type === "trigger" || node.type === "end") {
+          continue;
         }
+        if (nodeContractCacheRef.current.has(node.id)) {
+          continue;
+        }
+        const resolved = await MResolveNodeAuthoringContract(contractService, workflowCode, node);
+        if (resolved) {
+          nodeContractCacheRef.current.set(node.id, resolved);
+        }
+      }
 
-        for (const node of currentGraph.nodes.filter((candidate) => candidate.type === "sub-flow")) {
-          const targetFlowCode = MEnsureSubFlowConfig(node.data.subFlowConfig).targetFlowCode?.trim();
-          if (!targetFlowCode) {
-            continue;
-          }
-          if (!flowContractCacheRef.current.has(targetFlowCode)) {
-            flowContractCacheRef.current.set(targetFlowCode, await contractService.MGetFlowContract(targetFlowCode));
-          }
-          if (!cancelled) {
-            const childTrigger = await contractService.MGetNodeAuthoringContract(targetFlowCode, "trigger");
-            const currentSchema = MEnsureSubFlowConfig(node.data.subFlowConfig).childTriggerSchema?.contractName;
-            if (childTrigger.requestScope?.contractName && currentSchema !== childTrigger.requestScope.contractName) {
-              updateNodeNow(node.id, (canvasNode) => ({
-                ...canvasNode,
-                data: {
-                  ...canvasNode.data,
-                  subFlowConfig: {
-                    ...MEnsureSubFlowConfig(canvasNode.data.subFlowConfig),
-                    childTriggerSchema: childTrigger.requestScope
-                  }
-                }
-              }), false);
+      for (const node of currentGraph.nodes.filter((candidate) => candidate.type === "sub-flow")) {
+        const targetFlowCode = MEnsureSubFlowConfig(node.data.subFlowConfig).targetFlowCode?.trim();
+        if (!targetFlowCode) {
+          continue;
+        }
+        const targetFlowContract = await MTryPrimeFlowContract(contractService, flowContractCacheRef.current, targetFlowCode);
+        if (cancelled) {
+          return;
+        }
+        const childTrigger = await MTryGetNodeAuthoringContract(contractService, targetFlowCode, "trigger");
+        const fallbackTriggerSchema = childTrigger?.requestScope ?? targetFlowContract?.requestContract;
+        const currentSchema = MEnsureSubFlowConfig(node.data.subFlowConfig).childTriggerSchema?.contractName;
+        if (fallbackTriggerSchema?.contractName && currentSchema !== fallbackTriggerSchema.contractName) {
+          updateNodeNow(node.id, (canvasNode) => ({
+            ...canvasNode,
+            data: {
+              ...canvasNode.data,
+              subFlowConfig: {
+                ...MEnsureSubFlowConfig(canvasNode.data.subFlowConfig),
+                childTriggerSchema: fallbackTriggerSchema
+              }
             }
-          }
+          }), false);
         }
+      }
 
-        if (!cancelled) {
-          setAuthoringVersion((current) => current + 1);
-        }
-      } catch {
-        if (!cancelled) {
-          setAuthoringVersion((current) => current + 1);
-        }
+      if (!cancelled) {
+        setAuthoringVersion((current) => current + 1);
       }
     })();
 
@@ -618,6 +756,63 @@ export function MuRuleFlowEditor({
     commitGraph(buildGraph(nodesRef.current, edgesRef.current.filter((edge) => edge.id !== selectedEdgeId)));
   }
 
+  function updateSelectedEdge(updater: (edge: Edge) => Edge): void {
+    if (readOnly || !selectedEdgeId) {
+      return;
+    }
+    const nextEdges = edgesRef.current.map((edge) => (edge.id === selectedEdgeId ? updater(edge) : edge));
+    commitGraph(buildGraph(nodesRef.current, nextEdges), { syncViewport: false });
+  }
+
+  function selectNodeById(nodeId: string): void {
+    setSelectedNodeId(nodeId);
+    setSelectedEdgeId("");
+    const selected = nodesRef.current.find((node) => node.id === nodeId);
+    if (selected) {
+      setInspectorTab(MDefaultInspectorTabForNode(selected.data.nodeType));
+    }
+    setOpenSection("inspector");
+  }
+
+  function applyDecisionTableContracts(nodeId: string, table: MDecisionTableModel): void {
+    const requestContract = MCreateDecisionTableContractSchema(table, "input");
+    const responseContract = MCreateDecisionTableContractSchema(table, "output");
+    updateNodeNow(nodeId, (node) => ({
+      ...node,
+      data: {
+        ...node.data,
+        description: node.data.description?.trim() ? node.data.description : table.description,
+        requestContract,
+        responseContract,
+        contractRef: {
+          sourceType: "decision-table",
+          sourceCode: table.id,
+          label: table.name
+        }
+      }
+    }), false);
+    setAuthoringVersion((current) => current + 1);
+  }
+
+  function applyAutoLayout(): void {
+    const nextGraph = MCreateAutoLayoutGraph(buildGraph(nodesRef.current, edgesRef.current));
+    allowAutoFitRef.current = true;
+    commitGraph(nextGraph, { syncViewport: true });
+  }
+
+  function commitNewNode(nextNode: Node<MCanvasNodeData>): void {
+    const nextEdges = [...edgesRef.current];
+    if (selectedNodeId) {
+      const nextEdgeId = `${selectedNodeId}-${nextNode.id}`;
+      nextEdges.push({ id: nextEdgeId, source: selectedNodeId, target: nextNode.id, label: "always", data: { edgeType: "always" } });
+      setSelectedEdgeId(nextEdgeId);
+    }
+    setSelectedNodeId(nextNode.id);
+    setSelectedEdgeId("");
+    setInspectorTab(MDefaultInspectorTabForNode(nextNode.data.nodeType));
+    commitGraph(MCreateAutoLayoutGraph(buildGraph([...nodesRef.current, nextNode], nextEdges)), { syncViewport: true });
+  }
+
   function addNode(nodeType: MRuleFlowNodeType, position?: { x: number; y: number }): void {
     if (readOnly) {
       return;
@@ -635,14 +830,34 @@ export function MuRuleFlowEditor({
         liquidConfig: nodeType === "liquid" ? { outputFormat: "json" } : undefined
       }
     };
-    const nextEdges = [...edgesRef.current];
-    if (selectedNodeId) {
-      nextEdges.push({ id: `${selectedNodeId}-${nextNode.id}`, source: selectedNodeId, target: nextNode.id, label: "always", data: { edgeType: "always" } });
+    commitNewNode(nextNode);
+  }
+
+  function addCatalogRule(item: MRuleCatalogItem, position?: { x: number; y: number }): void {
+    if (readOnly) {
+      return;
     }
-    setSelectedNodeId(nextNode.id);
-    setSelectedEdgeId("");
-    setInspectorTab(MDefaultInspectorTabForNode(nodeType));
-    commitGraph(buildGraph([...nodesRef.current, nextNode], nextEdges));
+
+    const nextNode: Node<MCanvasNodeData> = {
+      id: `node-rule-${Math.random().toString(36).slice(2, 10)}`,
+      type: "condition",
+      position: position ?? { x: 60 + nodesRef.current.length * 36, y: 80 + (nodesRef.current.length % 4) * 90 },
+      data: {
+        label: item.displayName,
+        nodeType: "condition",
+        ruleCode: item.code,
+        description: item.description,
+        expression: MCreateDefaultExpression("condition"),
+        contractRef: {
+          sourceType: "rule",
+          sourceCode: item.code,
+          label: item.displayName
+        },
+        requestContract: item.inputSchema,
+        responseContract: item.outputSchema
+      }
+    };
+    commitNewNode(nextNode);
   }
 
   const computedHeight = typeof height === "number" ? `${height}px` : height;
@@ -660,6 +875,15 @@ export function MuRuleFlowEditor({
           {M_NODE_TITLES[nodeType]}
         </button>
       ))}
+      {catalogApiBase ? (
+        <CatalogPaletteSection
+          groups={catalogGroups}
+          loading={catalogLoading}
+          readOnly={readOnly}
+          onAddRule={addCatalogRule}
+          onDragStart={(event, item) => handlePaletteDragStart(event, "condition", item)}
+        />
+      ) : null}
     </div>
   );
   const actionsPanel = (
@@ -677,6 +901,9 @@ export function MuRuleFlowEditor({
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
         <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.undo(); }} disabled={!history.canUndo}>Undo</button>
         <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.redo(); }} disabled={!history.canRedo}>Redo</button>
+        <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 96 }} onClick={applyAutoLayout} disabled={readOnly}>
+          Auto Layout
+        </button>
         <button
           type="button"
           style={{ ...MActionButtonStyle(true), flex: "1 1 auto", minWidth: 80 }}
@@ -692,13 +919,10 @@ export function MuRuleFlowEditor({
               setContractLoadState({ status: "error", message: "Publish blocked because one or more nodes still have contract validation errors." });
               return;
             }
-            if (validation.issues.some((issue) => issue.severity === "warning")) {
-              const confirmed = window.confirm("This flow still has warnings. Publish anyway?");
-              if (!confirmed) {
-                return;
-              }
-            }
-            void onPublish?.(validation.graph);
+            setPublishConfirmState({
+              graph: validation.graph,
+              warnings: validation.issues.filter((issue) => issue.severity === "warning")
+            });
           }}
           disabled={!canPublish}
           title={!onPublish ? "No publish handler configured." : validationErrors.length > 0 ? "Fix validation errors before publishing." : undefined}
@@ -750,124 +974,144 @@ export function MuRuleFlowEditor({
   );
   const inspectorPanel = (
     <div data-testid="rule-flow-sidebar-inspector" style={{ ...MSidebarSectionBodyStyle, ...MSidebarInspectorPanelStyle, ...MSidebarInspectorPanelLayoutStyle(isCompactLayout) }}>
-      <MRuleFlowInspector
-        selectedNode={selectedNode ? { id: selectedNode.id, data: selectedNode.data } : null}
-        selectedExpression={selectedExpression}
-        contractLoadState={contractLoadState}
-        readOnly={readOnly}
-        apiBaseUrl={apiBaseUrl}
-        inspectorTab={inspectorTab}
-        flowOptions={flowOptions}
-        decisionTableOptions={decisionTableOptions}
-        setInspectorTab={setInspectorTab}
-        onSelectNodeByRuleCode={(ruleCode) => {
-          const match = nodesRef.current.find((node) => node.data.ruleCode === ruleCode);
-          if (match) {
-            setSelectedNodeId(match.id);
-            setSelectedEdgeId("");
-            setInspectorTab(MDefaultInspectorTabForNode(match.data.nodeType));
+      {selectedNode ? (
+        <MRuleFlowInspector
+          selectedNode={{ id: selectedNode.id, data: selectedNode.data }}
+          selectedExpression={selectedExpression}
+          contractLoadState={contractLoadState}
+          selectedDecisionTable={selectedDecisionTable}
+          decisionTableLoadState={decisionTableLoadState}
+          readOnly={readOnly}
+          apiBaseUrl={apiBaseUrl}
+          inspectorTab={inspectorTab}
+          flowOptions={flowOptions}
+          decisionTableOptions={decisionTableOptions}
+          setInspectorTab={setInspectorTab}
+          onSelectNodeByRuleCode={(ruleCode) => {
+            const match = nodesRef.current.find((node) => node.data.ruleCode === ruleCode);
+            if (match) {
+              selectNodeById(match.id);
+            }
+          }}
+          onUpdateLabel={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, label: value } }))}
+          onUpdateRuleCode={(value) =>
+            updateSelectedNode((node) => ({ ...node, data: { ...node.data, ruleCode: value, contractRef: MInferContractReference(node.data.nodeType, value, node.data.contractRef) } }))
           }
-        }}
-        onUpdateLabel={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, label: value } }))}
-        onUpdateRuleCode={(value) =>
-          updateSelectedNode((node) => ({ ...node, data: { ...node.data, ruleCode: value, contractRef: MInferContractReference(node.data.nodeType, value, node.data.contractRef) } }))
-        }
-        onUpdateDescription={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, description: value } }))}
-        onUpdateContractRef={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, contractRef: value, requestContract: undefined, responseContract: undefined } }))}
-        onUpdateDecisionTableCode={(value) =>
-          updateSelectedNode((node) => ({
-            ...node,
-            data: {
-              ...node.data,
-              ruleCode: value,
-              contractRef: value.trim()
-                ? {
-                    sourceType: "decision-table",
-                    sourceCode: value.trim(),
-                    label: decisionTableOptions.find((item) => item.code === value.trim())?.label ?? value.trim()
-                  }
-                : node.data.contractRef
-            }
-          }))
-        }
-        onUpdateConditionConfig={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, conditionConfig: value } }))}
-        onUpdateTargetFlowCode={(value) =>
-          updateSelectedNode((node) => ({
-            ...node,
-            data: {
-              ...node.data,
-              contractRef: value.trim()
-                ? {
-                    sourceType: "flow",
-                    sourceCode: value.trim(),
-                    label: value.trim()
-                  }
-                : node.data.contractRef,
-              subFlowConfig: { ...MEnsureSubFlowConfig(node.data.subFlowConfig), targetFlowCode: value }
-            }
-          }))
-        }
-        onUpdateLiquidOutput={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, liquidConfig: { ...MEnsureLiquidConfig(node.data.liquidConfig), outputFormat: value } } }))}
-        onUpdateExpressionLanguage={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), language: value } } }))}
-        onUpdateExpressionBody={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), body: value } } }))}
-        onInsertExpressionToken={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), body: `${MEnsureExpression(node.data).body}${MEnsureExpression(node.data).body.trim() ? " " : ""}${value}` } } }))}
-        onChangeInputContract={(fields) =>
-          updateSelectedNode((node) => ({
-            ...node,
-            data: {
-              ...node.data,
-              contractOverride: {
-                ...node.data.contractOverride,
-                requestFields: fields
+          onUpdateDescription={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, description: value } }))}
+          onUpdateContractRef={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, contractRef: value, requestContract: undefined, responseContract: undefined } }))}
+          onUpdateDecisionTableCode={(value) =>
+            updateSelectedNode((node) => ({
+              ...node,
+              data: {
+                ...node.data,
+                ruleCode: value,
+                requestContract: undefined,
+                responseContract: undefined,
+                contractRef: value.trim()
+                  ? {
+                      sourceType: "decision-table",
+                      sourceCode: value.trim(),
+                      label: decisionTableOptions.find((item) => item.code === value.trim())?.label ?? value.trim()
+                    }
+                  : node.data.contractRef
               }
-            }
-          }))
-        }
-        onChangeEffectiveMappings={(rows) =>
-          updateSelectedNode((node) => ({
-            ...node,
-            data: {
-              ...node.data,
-              inputMappings: node.data.nodeType === "action"
-                ? rows.map((row) => ({
-                    id: row.id,
-                    sourcePath: row.sourcePath,
-                    targetPath: row.targetField ?? row.targetPath,
-                    transform: row.transform,
-                    language: row.language
-                  }))
-                : node.data.inputMappings,
-              subFlowConfig: node.data.nodeType === "sub-flow"
-                ? {
-                    ...MEnsureSubFlowConfig(node.data.subFlowConfig),
-                    inputMappings: rows.map((row) => ({
+            }))
+          }
+          onUpdateConditionConfig={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, conditionConfig: value } }))}
+          onUpdateTargetFlowCode={(value) =>
+            updateSelectedNode((node) => ({
+              ...node,
+              data: {
+                ...node.data,
+                contractRef: value.trim()
+                  ? {
+                      sourceType: "flow",
+                      sourceCode: value.trim(),
+                      label: value.trim()
+                    }
+                  : node.data.contractRef,
+                subFlowConfig: { ...MEnsureSubFlowConfig(node.data.subFlowConfig), targetFlowCode: value }
+              }
+            }))
+          }
+          onUpdateLiquidOutput={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, liquidConfig: { ...MEnsureLiquidConfig(node.data.liquidConfig), outputFormat: value } } }))}
+          onUpdateExpressionLanguage={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), language: value } } }))}
+          onUpdateExpressionBody={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), body: value } } }))}
+          onInsertExpressionToken={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), body: `${MEnsureExpression(node.data).body}${MEnsureExpression(node.data).body.trim() ? " " : ""}${value}` } } }))}
+          onChangeInputContract={(fields) =>
+            updateSelectedNode((node) => ({
+              ...node,
+              data: {
+                ...node.data,
+                contractOverride: {
+                  ...node.data.contractOverride,
+                  requestFields: fields
+                }
+              }
+            }))
+          }
+          onChangeEffectiveMappings={(rows) =>
+            updateSelectedNode((node) => ({
+              ...node,
+              data: {
+                ...node.data,
+                inputMappings: node.data.nodeType === "action"
+                  ? rows.map((row) => ({
                       id: row.id,
                       sourcePath: row.sourcePath,
                       targetPath: row.targetField ?? row.targetPath,
                       transform: row.transform,
                       language: row.language
                     }))
-                  }
-                : node.data.subFlowConfig,
-              contractLayer: node.data.contractLayer
-            }
-          }))
-        }
-        onChangeOutputContract={(fields) =>
-          updateSelectedNode((node) => ({
-            ...node,
-            data: {
-              ...node.data,
-              contractOverride: {
-                ...node.data.contractOverride,
-                responseFields: fields.filter((field) => !field.isResultPayload)
+                  : node.data.inputMappings,
+                subFlowConfig: node.data.nodeType === "sub-flow"
+                  ? {
+                      ...MEnsureSubFlowConfig(node.data.subFlowConfig),
+                      inputMappings: rows.map((row) => ({
+                        id: row.id,
+                        sourcePath: row.sourcePath,
+                        targetPath: row.targetField ?? row.targetPath,
+                        transform: row.transform,
+                        language: row.language
+                      }))
+                    }
+                  : node.data.subFlowConfig,
+                contractLayer: node.data.contractLayer
               }
-            }
-          }), "immediate")
-        }
-        onDeleteNode={deleteSelectedNode}
-        showSectionHeader={false}
-      />
+            }))
+          }
+          onChangeOutputContract={(fields) =>
+            updateSelectedNode((node) => ({
+              ...node,
+              data: {
+                ...node.data,
+                contractOverride: {
+                  ...node.data.contractOverride,
+                  responseFields: fields.filter((field) => !field.isResultPayload)
+                }
+              }
+            }), "immediate")
+          }
+          onDeleteNode={deleteSelectedNode}
+          showSectionHeader={false}
+        />
+      ) : (
+        <MRuleFlowEdgeInspector
+          selectedEdge={selectedEdge}
+          readOnly={readOnly}
+          onUpdateEdgeType={(edgeType) =>
+            updateSelectedEdge((edge) => ({
+              ...edge,
+              label: edgeType,
+              data: {
+                ...(edge.data ?? {}),
+                edgeType
+              }
+            }))
+          }
+          onDeleteEdge={deleteSelectedEdge}
+        />
+      )}
     </div>
   );
 
@@ -919,10 +1163,14 @@ export function MuRuleFlowEditor({
                 setContractLoadState({ status: "error", message: tentativeGraph.issues[0]?.message ?? "Cannot connect nodes because the new order violates dependencies." });
                 return;
               }
-              commitGraph(tentativeGraph.graph);
+              const nextEdgeId = `${connection.source}-${connection.target}-${edgesRef.current.length + 1}`;
+              setSelectedEdgeId(nextEdgeId);
+              setSelectedNodeId("");
+              setOpenSection("inspector");
+              commitGraph(MCreateAutoLayoutGraph(tentativeGraph.graph), { syncViewport: true });
             }}
-            onNodeClick={(_event, node) => { setSelectedNodeId(node.id); setSelectedEdgeId(""); setInspectorTab(MDefaultInspectorTabForNode(node.data.nodeType)); }}
-            onEdgeClick={(_event, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(""); setInspectorTab("general"); }}
+            onNodeClick={(_event, node) => { selectNodeById(node.id); }}
+            onEdgeClick={(_event, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(""); setInspectorTab("general"); setOpenSection("inspector"); }}
             onPaneClick={() => { setSelectedNodeId(""); setSelectedEdgeId(""); setInspectorTab("general"); }}
             nodesConnectable={!readOnly}
             nodesDraggable={!readOnly}
@@ -933,8 +1181,58 @@ export function MuRuleFlowEditor({
             <Controls />
             <Background />
           </ReactFlow>
+          {dependencyOverlay.length > 0 ? (
+            <aside data-testid="rule-flow-dependency-overlay" style={MDependencyOverlayStyle}>
+              <div style={MDependencyOverlayHeaderStyle}>
+                <strong>Dependency Overlay</strong>
+                <span>Execution order, prerequisites, and downstream dependents.</span>
+              </div>
+              <div style={MDependencyOverlayBodyStyle}>
+                {dependencyOverlay.map((item) => (
+                  <button
+                    key={item.nodeId}
+                    type="button"
+                    data-testid={`dependency-overlay-${item.ruleCode}`}
+                    style={MDependencyOverlayItemStyle(item.nodeId === selectedNodeId)}
+                    onClick={() => selectNodeById(item.nodeId)}
+                  >
+                    <span style={{ fontWeight: 700 }}>#{item.order} {item.label}</span>
+                    <span style={{ fontSize: 11, color: "#475569" }}>{item.ruleCode}</span>
+                    <span style={{ fontSize: 11, color: "#64748b" }}>
+                      Depends on: {item.dependsOn.length > 0 ? item.dependsOn.join(", ") : "none"}
+                    </span>
+                    <span style={{ fontSize: 11, color: "#64748b" }}>
+                      Unlocks: {item.dependents.length > 0 ? item.dependents.join(", ") : "none"}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </aside>
+          ) : null}
         </div>
       </section>
+      {publishConfirmState ? (
+        <MPublishConfirmDialog
+          warnings={publishConfirmState.warnings}
+          onCancel={() => setPublishConfirmState(null)}
+          onConfirm={() => {
+            void (async () => {
+              try {
+                setContractLoadState({ status: "loading" });
+                await onPublish?.(publishConfirmState.graph);
+                setPublishConfirmState(null);
+                setContractLoadState({ status: "ready", title: "Published" });
+              } catch (error) {
+                setPublishConfirmState(null);
+                setContractLoadState({
+                  status: "error",
+                  message: (error as Error).message || "Rule Studio publish failed."
+                });
+              }
+            })();
+          }}
+        />
+      ) : null}
     </ReactFlowProvider>
   );
 
@@ -984,12 +1282,15 @@ export function MuRuleFlowEditor({
     commitGraph(buildGraph(nodesRef.current, nextEdges));
   }
 
-  function handlePaletteDragStart(event: React.DragEvent<HTMLButtonElement>, nodeType: MRuleFlowNodeType): void {
+  function handlePaletteDragStart(event: React.DragEvent<HTMLButtonElement>, nodeType: MRuleFlowNodeType, catalogItem?: MRuleCatalogItem): void {
     if (readOnly) {
       return;
     }
     event.dataTransfer.setData(M_DRAG_NODE_TYPE_KEY, nodeType);
     event.dataTransfer.setData("text/plain", nodeType);
+    if (catalogItem) {
+      event.dataTransfer.setData(M_DRAG_RULE_TEMPLATE_KEY, JSON.stringify(catalogItem));
+    }
     event.dataTransfer.effectAllowed = "move";
   }
 
@@ -1006,12 +1307,25 @@ export function MuRuleFlowEditor({
       return;
     }
     const draggedType = event.dataTransfer.getData(M_DRAG_NODE_TYPE_KEY);
+    const draggedTemplate = event.dataTransfer.getData(M_DRAG_RULE_TEMPLATE_KEY);
     if (!MIsNodeType(draggedType)) {
       return;
     }
     event.preventDefault();
     const rect = event.currentTarget.getBoundingClientRect();
-    addNode(draggedType, { x: Math.max(32, event.clientX - rect.left - 84), y: Math.max(32, event.clientY - rect.top - 24) });
+    const position = { x: Math.max(32, event.clientX - rect.left - 84), y: Math.max(32, event.clientY - rect.top - 24) };
+    if (draggedTemplate) {
+      try {
+        const parsed = JSON.parse(draggedTemplate) as MRuleCatalogItem;
+        if (parsed.code) {
+          addCatalogRule(parsed, position);
+          return;
+        }
+      } catch {
+      }
+    }
+
+    addNode(draggedType, position);
   }
 
   function renderSidebarSection(section: MSidebarSection, title: string, description: string, content: React.JSX.Element): React.JSX.Element {
@@ -1026,7 +1340,7 @@ export function MuRuleFlowEditor({
         <button
           type="button"
           style={MSidebarSectionHeaderStyle(isOpen)}
-          onClick={() => setOpenSection((current) => current === section ? section : section)}
+          onClick={() => setOpenSection((current) => current === section ? null : section)}
           aria-expanded={isOpen}
         >
           <span style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0, textAlign: "left" }}>
@@ -1042,6 +1356,70 @@ export function MuRuleFlowEditor({
         ) : null}
       </section>
     );
+  }
+}
+
+async function MTryPrimeFlowContract(
+  contractService: MRuleFlowContractService,
+  cache: Map<string, Awaited<ReturnType<MRuleFlowContractService["MGetFlowContract"]>>>,
+  flowCode: string
+): Promise<Awaited<ReturnType<MRuleFlowContractService["MGetFlowContract"]>> | null> {
+  if (cache.has(flowCode)) {
+    return cache.get(flowCode) ?? null;
+  }
+
+  try {
+    const contract = await contractService.MGetFlowContract(flowCode);
+    cache.set(flowCode, contract);
+    return contract;
+  } catch {
+    return null;
+  }
+}
+
+async function MTryGetNodeAuthoringContract(
+  contractService: MRuleFlowContractService,
+  flowCode: string,
+  nodeId: string
+): Promise<Awaited<ReturnType<MRuleFlowContractService["MGetNodeAuthoringContract"]>> | null> {
+  try {
+    return await contractService.MGetNodeAuthoringContract(flowCode, nodeId);
+  } catch {
+    return null;
+  }
+}
+
+async function MResolveNodeAuthoringContract(
+  contractService: MRuleFlowContractService,
+  workflowCode: string,
+  node: MRuleFlowNode
+): Promise<Awaited<ReturnType<MRuleFlowContractService["MGetNodeAuthoringContract"]>> | null> {
+  const authored = await MTryGetNodeAuthoringContract(contractService, workflowCode, node.id);
+  if (authored) {
+    return authored;
+  }
+
+  const reference = node.ruleCode
+    ? MInferContractReference(node.type, node.ruleCode, node.data.contractRef)
+    : node.data.contractRef;
+  if (!reference?.sourceCode?.trim()) {
+    return null;
+  }
+
+  try {
+    const contract = await contractService.MGetByReference(reference);
+    return {
+      flowCode: workflowCode,
+      nodeId: node.id,
+      nodeType: node.type,
+      ruleCode: node.ruleCode,
+      order: node.data.order,
+      dependsOn: node.data.dependsOn ?? [],
+      requestScope: contract.requestContract,
+      responseDelta: contract.responseContract
+    };
+  } catch {
+    return null;
   }
 }
 
@@ -1062,6 +1440,173 @@ function canvasEdgeToGraphEdge(edge: Edge) {
   return { id: edge.id, source: edge.source, target: edge.target, label: typeof edge.label === "string" ? edge.label : undefined, edgeType: MNormalizeEdgeType(edge.data?.edgeType) };
 }
 
+function MCreateAutoLayoutGraph(graph: MRuleFlowGraph): MRuleFlowGraph {
+  const normalized = MEnsureRuleFlowGraph(graph);
+  if (normalized.nodes.length === 0) {
+    return normalized;
+  }
+
+  const incoming = new Map<string, string[]>();
+  for (const node of normalized.nodes) {
+    incoming.set(node.id, []);
+  }
+
+  for (const edge of normalized.edges) {
+    const bucket = incoming.get(edge.target) ?? [];
+    bucket.push(edge.source);
+    incoming.set(edge.target, bucket);
+  }
+
+  const levelCache = new Map<string, number>();
+  const visiting = new Set<string>();
+  const getLevel = (nodeId: string): number => {
+    const cached = levelCache.get(nodeId);
+    if (cached !== undefined) {
+      return cached;
+    }
+
+    if (visiting.has(nodeId)) {
+      return 0;
+    }
+
+    visiting.add(nodeId);
+    const parents = incoming.get(nodeId) ?? [];
+    const level = parents.length === 0 ? 0 : Math.max(...parents.map((parentId) => getLevel(parentId))) + 1;
+    visiting.delete(nodeId);
+    levelCache.set(nodeId, level);
+    return level;
+  };
+
+  const layers = new Map<number, MRuleFlowNode[]>();
+  for (const node of normalized.nodes) {
+    const level = node.type === "trigger" ? 0 : getLevel(node.id);
+    const bucket = layers.get(level) ?? [];
+    bucket.push(node);
+    layers.set(level, bucket);
+  }
+
+  const nextNodes = normalized.nodes.map((node) => ({ ...node }));
+  for (const [level, bucket] of layers) {
+    bucket
+      .sort((left, right) => {
+        const leftOrder = left.data.order ?? Number.MAX_SAFE_INTEGER;
+        const rightOrder = right.data.order ?? Number.MAX_SAFE_INTEGER;
+        if (leftOrder !== rightOrder) {
+          return leftOrder - rightOrder;
+        }
+        return left.label.localeCompare(right.label);
+      })
+      .forEach((node, index) => {
+        const target = nextNodes.find((candidate) => candidate.id === node.id);
+        if (!target) {
+          return;
+        }
+        target.position = {
+          x: 80 + level * 260,
+          y: 120 + index * 150
+        };
+      });
+  }
+
+  return {
+    ...normalized,
+    nodes: nextNodes
+  };
+}
+
+function MBuildDependencyOverlay(graph: MRuleFlowGraph): MDependencyOverlayItem[] {
+  const executableNodes = graph.nodes.filter((node) => node.type !== "trigger" && node.type !== "end" && (node.ruleCode ?? "").trim().length > 0);
+  const byRuleCode = new Map(executableNodes.map((node) => [node.ruleCode ?? node.id, node]));
+  const dependents = new Map<string, string[]>();
+  for (const node of executableNodes) {
+    for (const dependency of node.data.dependsOn ?? []) {
+      const bucket = dependents.get(dependency) ?? [];
+      bucket.push(node.ruleCode ?? node.id);
+      dependents.set(dependency, bucket);
+    }
+  }
+
+  return executableNodes
+    .map((node) => {
+      const ruleCode = node.ruleCode ?? node.id;
+      const nodeDependents = (dependents.get(ruleCode) ?? []).filter((item) => byRuleCode.has(item)).sort((left, right) => left.localeCompare(right));
+      return {
+        nodeId: node.id,
+        label: node.label,
+        ruleCode,
+        order: node.data.order ?? 0,
+        dependsOn: [...(node.data.dependsOn ?? [])].sort((left, right) => left.localeCompare(right)),
+        dependents: nodeDependents
+      };
+    })
+    .sort((left, right) => {
+      if (left.order !== right.order) {
+        return left.order - right.order;
+      }
+      return left.label.localeCompare(right.label);
+    });
+}
+
+function MCreateDecisionTableContractSchema(table: MDecisionTableModel, kind: "input" | "output") {
+  const columns = kind === "input" ? table.inputColumns : table.outputColumns;
+  return {
+    contractName: `${table.id}_${kind}`,
+    title: kind === "input" ? "Decision Table Inputs" : "Decision Table Outputs",
+    description: table.description,
+    rootType: "object",
+    fields: columns.map((column) => ({
+      path: column.name,
+      label: column.label,
+      dataType: column.dataType,
+      required: kind === "input",
+      runtimeWritten: kind === "output",
+      description: `${kind === "input" ? "Input" : "Output"} column from decision table '${table.name}'.`
+    }))
+  };
+}
+
+function MPublishConfirmDialog({
+  warnings,
+  onCancel,
+  onConfirm
+}: {
+  warnings: MContractValidationIssue[];
+  onCancel: () => void;
+  onConfirm: () => void;
+}): React.JSX.Element {
+  return (
+    <div style={MPublishDialogBackdropStyle}>
+      <div role="dialog" aria-modal="true" aria-labelledby="rule-flow-publish-confirm-title" style={MPublishDialogStyle}>
+        <div style={MSectionTitleStyle}>
+          <strong id="rule-flow-publish-confirm-title">Confirm Publish</strong>
+          <span>
+            {warnings.length > 0
+              ? "This flow can publish, but warnings still exist. Review them before continuing."
+              : "This will hand the current validated graph to the host publish handler."}
+          </span>
+        </div>
+        {warnings.length > 0 ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {warnings.map((warning, index) => (
+              <div key={`${warning.code}-${warning.message}-${index}`} style={MWarningBannerStyle}>
+                <strong>{warning.code}</strong> {warning.message}
+              </div>
+            ))}
+          </div>
+        ) : null}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+          <button type="button" style={MActionButtonStyle(false)} onClick={onCancel}>
+            Cancel
+          </button>
+          <button type="button" style={MActionButtonStyle(true)} onClick={onConfirm}>
+            {warnings.length > 0 ? "Publish With Warnings" : "Confirm Publish"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function exportGraph(graph: MRuleFlowGraph, ruleSetCode?: string): void {
   const payload = MSerializeRuleFlowGraph(graph);
   const blob = new Blob([payload], { type: "application/json" });
@@ -1071,6 +1616,58 @@ function exportGraph(graph: MRuleFlowGraph, ruleSetCode?: string): void {
   anchor.download = `${ruleSetCode ?? "rule-flow"}.json`;
   anchor.click();
   URL.revokeObjectURL(url);
+}
+
+function MRuleFlowEdgeInspector({
+  selectedEdge,
+  readOnly,
+  onUpdateEdgeType,
+  onDeleteEdge
+}: {
+  selectedEdge: Edge | null;
+  readOnly: boolean;
+  onUpdateEdgeType: (edgeType: MRuleFlowEdgeType) => void;
+  onDeleteEdge: () => void;
+}): React.JSX.Element {
+  if (!selectedEdge) {
+    return (
+      <div style={{ color: "#64748b", fontSize: 13, lineHeight: 1.5 }}>
+        Select a node or edge to edit it. Use edge routing to decide whether downstream nodes run `always`, `on pass`, `on fail`, or `on error`.
+      </div>
+    );
+  }
+
+  const edgeType = MNormalizeEdgeType(selectedEdge.data?.edgeType);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14, minHeight: 0 }}>
+      <div style={MSectionTitleStyle}>
+        <strong>Edge Routing</strong>
+        <span>{selectedEdge.source} → {selectedEdge.target}</span>
+      </div>
+      <label style={MInspectorLabelStyle}>
+        Edge Type
+        <select
+          style={MInspectorInputStyle}
+          value={edgeType}
+          disabled={readOnly}
+          onChange={(event) => onUpdateEdgeType(MNormalizeEdgeType(event.target.value))}
+        >
+          {(["always", "on-true", "on-false", "on-error"] as MRuleFlowEdgeType[]).map((item) => (
+            <option key={item} value={item}>{M_EDGE_TYPE_LABELS[item]}</option>
+          ))}
+        </select>
+      </label>
+      <div style={MEdgeHintCardStyle}>
+        <strong>{M_EDGE_TYPE_LABELS[edgeType]}</strong>
+        <span>{M_EDGE_TYPE_HINTS[edgeType]}</span>
+      </div>
+      {!readOnly ? (
+        <button type="button" style={MDeleteButtonStyle} onClick={onDeleteEdge}>
+          Delete Edge
+        </button>
+      ) : null}
+    </div>
+  );
 }
 
 const MEditorShellStyle: React.CSSProperties = {
@@ -1224,7 +1821,7 @@ function MPaletteButtonStyle(nodeType: MRuleFlowNodeType): React.CSSProperties {
 
 function MEditorShellLayoutStyle(isCompactLayout: boolean): React.CSSProperties {
   return {
-    gridTemplateColumns: isCompactLayout ? "minmax(0, 1fr)" : "minmax(360px, 460px) minmax(0, 1fr)",
+    gridTemplateColumns: isCompactLayout ? "minmax(0, 1fr)" : "minmax(420px, 540px) minmax(0, 1fr)",
     alignContent: isCompactLayout ? "start" : "stretch"
   };
 }
@@ -1237,7 +1834,9 @@ function MCanvasPanelLayoutStyle(isCompactLayout: boolean): React.CSSProperties 
 }
 
 function MSidebarLayoutStyle(_isCompactLayout: boolean): React.CSSProperties {
-  return {};
+  return {
+    overflow: "auto"
+  };
 }
 
 function MSidebarTopLayoutStyle(_isCompactLayout: boolean): React.CSSProperties {
@@ -1251,5 +1850,117 @@ function MSidebarInspectorPanelLayoutStyle(_isCompactLayout: boolean): React.CSS
 function MSidebarActionsPanelLayoutStyle(_isCompactLayout: boolean): React.CSSProperties {
   return {};
 }
+
+const MInspectorLabelStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  fontSize: 12,
+  color: "#475569",
+  fontWeight: 600
+};
+
+const MInspectorInputStyle: React.CSSProperties = {
+  width: "100%",
+  borderRadius: 12,
+  border: "1px solid rgba(148, 163, 184, 0.32)",
+  background: "#ffffff",
+  color: "#0f172a",
+  minHeight: 42,
+  padding: "10px 12px",
+  fontSize: 14
+};
+
+const MEdgeHintCardStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  padding: "12px 14px",
+  borderRadius: 14,
+  border: "1px solid rgba(148, 163, 184, 0.24)",
+  background: "rgba(248, 250, 252, 0.96)",
+  color: "#334155",
+  fontSize: 12,
+  lineHeight: 1.5
+};
+
+const MDeleteButtonStyle: React.CSSProperties = {
+  borderRadius: 14,
+  border: "1px solid rgba(220, 38, 38, 0.2)",
+  background: "rgba(254, 242, 242, 0.96)",
+  color: "#b91c1c",
+  padding: "11px 14px",
+  fontWeight: 700
+};
+
+const MDependencyOverlayStyle: React.CSSProperties = {
+  position: "absolute",
+  top: 16,
+  right: 16,
+  zIndex: 2,
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+  width: "min(320px, calc(100% - 32px))",
+  maxHeight: "calc(100% - 32px)",
+  padding: 14,
+  borderRadius: 18,
+  border: "1px solid rgba(148, 163, 184, 0.28)",
+  background: "rgba(255, 255, 255, 0.95)",
+  boxShadow: "0 18px 40px rgba(15, 23, 42, 0.12)",
+  overflow: "auto"
+};
+
+const MDependencyOverlayHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 4,
+  fontSize: 12,
+  color: "#64748b"
+};
+
+const MDependencyOverlayBodyStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8
+};
+
+function MDependencyOverlayItemStyle(selected: boolean): React.CSSProperties {
+  return {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
+    width: "100%",
+    textAlign: "left",
+    padding: "10px 12px",
+    borderRadius: 14,
+    border: selected ? "1px solid rgba(37, 99, 235, 0.26)" : "1px solid rgba(148, 163, 184, 0.2)",
+    background: selected ? "rgba(219, 234, 254, 0.92)" : "rgba(248, 250, 252, 0.94)",
+    color: "#0f172a"
+  };
+}
+
+const MPublishDialogBackdropStyle: React.CSSProperties = {
+  position: "fixed",
+  inset: 0,
+  zIndex: 20,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: 24,
+  background: "rgba(15, 23, 42, 0.38)"
+};
+
+const MPublishDialogStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 16,
+  width: "min(560px, 100%)",
+  padding: 20,
+  borderRadius: 22,
+  border: "1px solid rgba(148, 163, 184, 0.28)",
+  background: "#ffffff",
+  boxShadow: "0 24px 60px rgba(15, 23, 42, 0.22)"
+};
 
 export { MCreateRuleFlowGraphSignature, MEnsureRuleFlowGraph, MImportRuleFlowGraph, MSerializeRuleFlowGraph } from "./rule-flow-runtime.js";

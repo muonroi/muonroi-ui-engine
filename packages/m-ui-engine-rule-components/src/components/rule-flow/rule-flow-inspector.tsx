@@ -1,6 +1,7 @@
 import React from "react";
 import type {
   MContractValidationIssue,
+  MDecisionTableModel,
   MEffectiveInputMapping,
   MRuleFlowConditionConfig,
   MRuleFlowContractField,
@@ -56,6 +57,8 @@ export interface MRuleFlowInspectorProps {
   } | null;
   selectedExpression: { language: MRuleFlowExpressionLanguage; body: string };
   contractLoadState: MContractLoadState;
+  selectedDecisionTable?: MDecisionTableModel | null;
+  decisionTableLoadState?: { status: "idle" | "loading" | "ready" | "error"; message?: string };
   readOnly: boolean;
   apiBaseUrl?: string;
   inspectorTab: MInspectorTab;
@@ -171,7 +174,7 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
 }
 
 function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
-  const { selectedNode, readOnly, flowOptions, decisionTableOptions } = props;
+  const { selectedNode, readOnly, flowOptions, decisionTableOptions, selectedDecisionTable, decisionTableLoadState } = props;
   if (!selectedNode) {
     return <></>;
   }
@@ -235,7 +238,7 @@ function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
           <strong>Depends On:</strong>
           {dependsOn.length === 0 ? <span>none</span> : dependsOn.map((item) => (
-            <button key={item} type="button" style={MDependencyChipButtonStyle} onClick={() => props.onSelectNodeByRuleCode(item)}>
+            <button key={item} type="button" data-testid={`depends-chip-${item}`} style={MDependencyChipButtonStyle} onClick={() => props.onSelectNodeByRuleCode(item)}>
               {item}
             </button>
           ))}
@@ -245,20 +248,23 @@ function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
         <MConditionConfigEditor readOnly={readOnly} value={selectedNode.data.conditionConfig} onChange={props.onUpdateConditionConfig} />
       ) : null}
       {selectedNode.data.nodeType === "decision-table" ? (
-        <label style={MLabelStyle}>
-          Decision Table
-          <select
-            style={MInputStyle}
-            value={selectedNode.data.contractRef?.sourceCode ?? ""}
-            disabled={readOnly}
-            onChange={(event) => props.onUpdateDecisionTableCode(event.target.value)}
-          >
-            <option value="">Select decision table</option>
-            {decisionTableOptions.map((table) => (
-              <option key={table.code} value={table.code}>{table.label}</option>
-            ))}
-          </select>
-        </label>
+        <>
+          <label style={MLabelStyle}>
+            Decision Table
+            <select
+              style={MInputStyle}
+              value={selectedNode.data.contractRef?.sourceCode ?? ""}
+              disabled={readOnly}
+              onChange={(event) => props.onUpdateDecisionTableCode(event.target.value)}
+            >
+              <option value="">Select decision table</option>
+              {decisionTableOptions.map((table) => (
+                <option key={table.code} value={table.code}>{table.label}</option>
+              ))}
+            </select>
+          </label>
+          <MDecisionTableOverviewCard table={selectedDecisionTable} loadState={decisionTableLoadState} />
+        </>
       ) : null}
       {selectedNode.data.nodeType === "sub-flow" ? (
         <label style={MLabelStyle}>
@@ -366,6 +372,64 @@ function MConditionConfigEditor({
         Failure Message
         <textarea style={MTextareaStyle} value={normalized.failureMessage} disabled={readOnly} onChange={(event) => onChange({ ...normalized, failureMessage: event.target.value })} />
       </label>
+    </div>
+  );
+}
+
+function MDecisionTableOverviewCard({
+  table,
+  loadState
+}: {
+  table?: MDecisionTableModel | null;
+  loadState?: { status: "idle" | "loading" | "ready" | "error"; message?: string };
+}): React.JSX.Element {
+  return (
+    <div style={MMetadataCardStyle} data-testid="decision-table-overview">
+      <div style={MSectionTitleStyle}>
+        <strong>Decision Table Schema</strong>
+        <span>
+          {loadState?.status === "loading"
+            ? "Loading decision table columns..."
+            : loadState?.status === "error"
+              ? loadState.message
+              : "Input and output columns drive node contracts and FEEL cell authoring."}
+        </span>
+      </div>
+      {table ? (
+        <>
+          <div><strong>{table.name}</strong> · v{table.version} · hit policy {table.hitPolicy}</div>
+          {table.description ? <div>{table.description}</div> : null}
+          <div style={{ display: "grid", gap: 8 }}>
+            <div>
+              <strong>Input Columns</strong>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                {table.inputColumns.map((column) => (
+                  <span key={column.id} style={MDependencyChipStyle}>
+                    {column.label} ({column.dataType})
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div>
+              <strong>Output Columns</strong>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                {table.outputColumns.map((column) => (
+                  <span key={column.id} style={MDependencyChipStyle}>
+                    {column.label} ({column.dataType})
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div style={MExpressionHintStyle}>
+            <strong>FEEL cell hints</strong>
+            <span>Input columns become the effective input contract for this node. Output columns are emitted downstream after the table evaluates.</span>
+            <span>Use FEEL row expressions against the input column names exactly as defined here.</span>
+          </div>
+        </>
+      ) : loadState?.status === "idle" ? (
+        <span>Select a decision table to preview its column schema.</span>
+      ) : null}
     </div>
   );
 }
@@ -612,6 +676,13 @@ function MOutputContractTab({
 
   const editable = nodeType === "condition" || nodeType === "action";
   const fields = MFlattenContractFields(contract?.fields ?? []);
+  const isCondition = nodeType === "condition";
+  const sectionTitle = isCondition ? "Output Facts (on pass)" : "Output Contract";
+  const sectionSubtitle = isCondition
+    ? "These facts are written only when the condition passes."
+    : editable
+      ? "Edit the fields this node guarantees for downstream nodes."
+      : "Auto-composed contract for downstream validation.";
 
   function updateFieldAt(index: number, updater: (field: MRuleFlowContractField) => MRuleFlowContractField): void {
     onChange(fields.map((field, fieldIndex) => fieldIndex === index ? updater(field) : field));
@@ -638,8 +709,8 @@ function MOutputContractTab({
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
         <div style={MSectionTitleStyle}>
-          <strong>Output Contract</strong>
-          <span>{editable ? "Edit the fields this node guarantees for downstream nodes." : "Auto-composed contract for downstream validation."}</span>
+          <strong>{sectionTitle}</strong>
+          <span>{sectionSubtitle}</span>
         </div>
         {!readOnly && editable ? (
           <button type="button" style={MActionButtonStyle(false)} onClick={addField}>Add Field</button>
@@ -654,6 +725,7 @@ function MOutputContractTab({
               <tr>
                 <th style={MTableHeaderStyle}>Path</th>
                 <th style={MTableHeaderStyle}>Type</th>
+                {isCondition ? <th style={MTableHeaderStyle}>Value Expression</th> : null}
                 <th style={MTableHeaderStyle}>Use</th>
                 <th style={MTableHeaderStyle}>Expose</th>
               </tr>
@@ -683,8 +755,36 @@ function MOutputContractTab({
                       />
                     ) : field.dataType}
                   </td>
+                  {isCondition ? (
+                    <td style={MTableCellStyle}>
+                      {field.isResultPayload ? (
+                        <span style={{ color: "#64748b" }}>Auto</span>
+                      ) : editable ? (
+                        <input
+                          style={MInputStyle}
+                          value={field.valueExpression ?? ""}
+                          disabled={readOnly}
+                          onChange={(event) =>
+                            updateFieldAt(index, (current) => ({
+                              ...current,
+                              valueExpression: event.target.value,
+                              runtimeWritten: event.target.value.trim().length > 0 ? true : false
+                            }))
+                          }
+                        />
+                      ) : (
+                        field.valueExpression ?? "â€”"
+                      )}
+                    </td>
+                  ) : null}
                   <td style={MTableCellStyle}>
-                    {field.isResultPayload ? "result payload" : field.required ? "required" : "optional"}
+                    {field.isResultPayload
+                      ? "result payload"
+                      : isCondition
+                        ? field.runtimeWritten
+                          ? "runtime fact"
+                          : "metadata only"
+                        : field.required ? "required" : "optional"}
                   </td>
                   <td style={MTableCellStyle}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>

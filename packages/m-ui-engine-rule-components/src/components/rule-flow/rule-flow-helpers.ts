@@ -194,6 +194,15 @@ function MNormalizeGraphNode(node: Partial<MRuleFlowNode>, index: number): MRule
 
 export function MNormalizeNodeData(data: unknown): MRuleFlowNodeData {
   const candidate = data && typeof data === "object" ? (data as Record<string, unknown>) : {};
+  const outputFields = Array.isArray(candidate.outputFields)
+    ? candidate.outputFields.map(MNormalizeContractField).filter(Boolean) as MRuleFlowContractField[]
+    : [];
+  const contractOverride = MNormalizeContractOverride(candidate.contractOverride);
+  const responseFields = contractOverride?.responseFields?.length
+    ? contractOverride.responseFields
+    : outputFields.length
+      ? outputFields
+      : undefined;
   return {
     ...candidate,
     description: typeof candidate.description === "string" ? candidate.description : undefined,
@@ -201,7 +210,12 @@ export function MNormalizeNodeData(data: unknown): MRuleFlowNodeData {
     contractRef: MNormalizeContractReference(candidate.contractRef),
     requestContract: MNormalizeContractSchema(candidate.requestContract),
     responseContract: MNormalizeContractSchema(candidate.responseContract),
-    contractOverride: MNormalizeContractOverride(candidate.contractOverride),
+    contractOverride: contractOverride || responseFields
+      ? {
+          ...contractOverride,
+          responseFields
+        }
+      : undefined,
     inputMappings: Array.isArray(candidate.inputMappings)
       ? candidate.inputMappings.map(MNormalizeMappingRow).filter(Boolean) as MRuleFlowMappingRow[]
       : undefined,
@@ -288,6 +302,8 @@ export function MNormalizeContractField(value: unknown): MRuleFlowContractField 
     path,
     label,
     dataType,
+    valueExpression: typeof candidate.valueExpression === "string" ? candidate.valueExpression : undefined,
+    runtimeWritten: candidate.runtimeWritten === true ? true : undefined,
     required: Boolean(candidate.required),
     description: typeof candidate.description === "string" ? candidate.description : undefined,
     example: typeof candidate.example === "string" ? candidate.example : undefined,
