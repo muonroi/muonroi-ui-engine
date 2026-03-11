@@ -79,6 +79,8 @@ type MCommitOptions = {
   syncViewport?: boolean;
 };
 
+type MSidebarSection = "palette" | "actions" | "inspector";
+
 const M_DRAG_NODE_TYPE_KEY = "application/muonroi-rule-flow-node-type";
 const M_FIT_VIEW_OPTIONS = { duration: 0, padding: 0.22, minZoom: 0.18, maxZoom: 1.1 };
 const M_COMPACT_LAYOUT_BREAKPOINT = 860;
@@ -247,6 +249,7 @@ export function MuRuleFlowEditor({
   const isRestoringRef = useRef(false);
   const restoreUnlockRef = useRef<number | null>(null);
   const [shellWidth, setShellWidth] = useState(0);
+  const [openSection, setOpenSection] = useState<MSidebarSection>("inspector");
   const pendingCommitRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -471,6 +474,7 @@ export function MuRuleFlowEditor({
       setContractLoadState({ status: "idle" });
       return;
     }
+    setOpenSection("inspector");
     const cachedNode = selectedNode && nodeContractCacheRef.current.get(selectedNode.id);
     if (cachedNode || selectedNode.data.contractLayer?.upstreamScope || selectedNode.type === "trigger" || selectedNode.type === "end") {
       setContractLoadState({ status: "ready", title: cachedNode?.ruleCode ?? selectedNode.data.contractRef?.label ?? selectedNode.data.label });
@@ -646,7 +650,7 @@ export function MuRuleFlowEditor({
   const resolvedCanvasHeight = isCompactLayout ? "min(52vh, 520px)" : computedHeight;
   const themeStyles = theme === "dark" ? MDarkThemeStyle : MLightThemeStyle;
   const palettePanel = (
-    <div data-testid="rule-flow-sidebar-palette" style={{ ...MSidebarTopStyle, ...MSidebarTopLayoutStyle(isCompactLayout) }}>
+    <div data-testid="rule-flow-sidebar-palette" style={{ ...MSidebarSectionBodyStyle, ...MSidebarTopStyle, ...MSidebarTopLayoutStyle(isCompactLayout) }}>
       <div style={MSectionTitleStyle}>
         <strong>Palette</strong>
         <span>Add nodes to compose a publishable rule flow.</span>
@@ -659,7 +663,7 @@ export function MuRuleFlowEditor({
     </div>
   );
   const actionsPanel = (
-    <div data-testid="rule-flow-sidebar-actions" style={{ ...MSidebarActionsPanelStyle, ...MSidebarActionsPanelLayoutStyle(isCompactLayout) }}>
+    <div data-testid="rule-flow-sidebar-actions" style={{ ...MSidebarSectionBodyStyle, ...MSidebarActionsPanelStyle, ...MSidebarActionsPanelLayoutStyle(isCompactLayout) }}>
       <div style={MSectionTitleStyle}>
         <strong>Actions</strong>
         <span>Undo, publish and export without leaving the flow canvas.</span>
@@ -745,7 +749,7 @@ export function MuRuleFlowEditor({
     </div>
   );
   const inspectorPanel = (
-    <div data-testid="rule-flow-sidebar-inspector" style={{ ...MSidebarInspectorPanelStyle, ...MSidebarInspectorPanelLayoutStyle(isCompactLayout) }}>
+    <div data-testid="rule-flow-sidebar-inspector" style={{ ...MSidebarSectionBodyStyle, ...MSidebarInspectorPanelStyle, ...MSidebarInspectorPanelLayoutStyle(isCompactLayout) }}>
       <MRuleFlowInspector
         selectedNode={selectedNode ? { id: selectedNode.id, data: selectedNode.data } : null}
         selectedExpression={selectedExpression}
@@ -862,6 +866,7 @@ export function MuRuleFlowEditor({
           }), "immediate")
         }
         onDeleteNode={deleteSelectedNode}
+        showSectionHeader={false}
       />
     </div>
   );
@@ -870,9 +875,9 @@ export function MuRuleFlowEditor({
     <ReactFlowProvider>
       <section ref={shellRef} style={{ ...MEditorShellStyle, ...MEditorShellLayoutStyle(isCompactLayout), ...themeStyles }}>
         <aside style={{ ...MSidebarStyle, ...MSidebarLayoutStyle(isCompactLayout) }}>
-          {palettePanel}
-          {actionsPanel}
-          {inspectorPanel}
+          {renderSidebarSection("palette", "Palette", "Compose and add nodes from the library of rule blocks.", palettePanel)}
+          {renderSidebarSection("actions", "Actions", "Undo, import, export and publish the current flow.", actionsPanel)}
+          {renderSidebarSection("inspector", "Inspector", selectedNode ? `Editing ${M_NODE_TITLES[selectedNode.data.nodeType]}` : "Open this section to define conditions, mappings and contracts.", inspectorPanel)}
         </aside>
 
         <div
@@ -1008,6 +1013,36 @@ export function MuRuleFlowEditor({
     const rect = event.currentTarget.getBoundingClientRect();
     addNode(draggedType, { x: Math.max(32, event.clientX - rect.left - 84), y: Math.max(32, event.clientY - rect.top - 24) });
   }
+
+  function renderSidebarSection(section: MSidebarSection, title: string, description: string, content: React.JSX.Element): React.JSX.Element {
+    const isOpen = openSection === section;
+    return (
+      <section
+        key={section}
+        data-sidebar-section={section}
+        data-sidebar-open={isOpen ? "true" : "false"}
+        style={MSidebarSectionStyle(isOpen)}
+      >
+        <button
+          type="button"
+          style={MSidebarSectionHeaderStyle(isOpen)}
+          onClick={() => setOpenSection((current) => current === section ? section : section)}
+          aria-expanded={isOpen}
+        >
+          <span style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0, textAlign: "left" }}>
+            <strong>{title}</strong>
+            <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>{description}</span>
+          </span>
+          <span style={MSidebarChevronStyle(isOpen)}>▾</span>
+        </button>
+        {isOpen ? (
+          <div style={MSidebarSectionContentStyle}>
+            {content}
+          </div>
+        ) : null}
+      </section>
+    );
+  }
 }
 
 function canvasNodeToGraphNode(node: Node<MCanvasNodeData>): MRuleFlowNode {
@@ -1050,33 +1085,28 @@ const MEditorShellStyle: React.CSSProperties = {
 const MSidebarStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 14,
-  padding: 18,
+  gap: 12,
+  padding: 16,
   borderRadius: 22,
   border: "1px solid rgba(148, 163, 184, 0.25)",
   minHeight: 0,
-  overflow: "auto"
+  overflow: "hidden"
 };
 const MSidebarTopStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 12,
-  flex: "0 0 auto"
+  gap: 12
 };
 const MSidebarActionsPanelStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: 10,
-  minHeight: 0,
-  borderRadius: 18,
-  border: "1px solid rgba(148, 163, 184, 0.22)",
-  background: "rgba(255, 255, 255, 0.94)",
-  padding: "12px 14px",
-  boxShadow: "0 1px 4px rgba(15,23,42,0.06)"
+  minHeight: 0
 };
 const MSidebarInspectorPanelStyle: React.CSSProperties = {
   display: "flex",
-  flex: "0 0 auto"
+  flex: "1 1 auto",
+  minHeight: 0
 };
 const MCanvasPanelStyle: React.CSSProperties = {
   position: "relative",
@@ -1116,6 +1146,69 @@ const MValidationSummaryStyle = (hasErrors: boolean): React.CSSProperties => ({
   color: hasErrors ? "#b91c1c" : "#92400e",
   fontSize: 12
 });
+
+const MSidebarSectionBodyStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 12,
+  minHeight: 0,
+  height: "100%",
+  overflow: "auto",
+  paddingRight: 4
+};
+
+function MSidebarSectionStyle(isOpen: boolean): React.CSSProperties {
+  return {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    minHeight: 0,
+    flex: isOpen ? "1 1 auto" : "0 0 auto",
+    borderRadius: 20,
+    border: isOpen ? "1px solid rgba(148, 163, 184, 0.28)" : "1px solid rgba(148, 163, 184, 0.18)",
+    background: isOpen ? "rgba(255, 255, 255, 0.94)" : "rgba(248, 250, 252, 0.92)",
+    boxShadow: isOpen ? "0 12px 30px rgba(15, 23, 42, 0.06)" : "none",
+    overflow: "hidden"
+  };
+}
+
+function MSidebarSectionHeaderStyle(isOpen: boolean): React.CSSProperties {
+  return {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    width: "100%",
+    border: "none",
+    background: "transparent",
+    padding: isOpen ? "14px 16px 0" : "14px 16px",
+    color: "#0f172a",
+    cursor: "pointer"
+  };
+}
+
+const MSidebarSectionContentStyle: React.CSSProperties = {
+  display: "flex",
+  flex: "1 1 auto",
+  minHeight: 0,
+  padding: "0 16px 16px"
+};
+
+function MSidebarChevronStyle(isOpen: boolean): React.CSSProperties {
+  return {
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: 28,
+    height: 28,
+    borderRadius: 999,
+    background: "rgba(148, 163, 184, 0.12)",
+    color: "#475569",
+    fontSize: 14,
+    transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
+    transition: "transform 160ms ease"
+  };
+}
 
 function MPaletteButtonStyle(nodeType: MRuleFlowNodeType): React.CSSProperties {
   return {

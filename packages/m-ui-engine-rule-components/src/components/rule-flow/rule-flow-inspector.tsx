@@ -78,18 +78,21 @@ export interface MRuleFlowInspectorProps {
   onChangeEffectiveMappings: (rows: MEffectiveInputMapping[]) => void;
   onChangeOutputContract: (fields: MRuleFlowContractField[]) => void;
   onDeleteNode: () => void;
+  showSectionHeader?: boolean;
 }
 
 export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.Element {
-  const { selectedNode, contractLoadState, readOnly, inspectorTab, setInspectorTab } = props;
+  const { selectedNode, contractLoadState, readOnly, inspectorTab, setInspectorTab, showSectionHeader = true } = props;
   const layer = selectedNode?.data.contractLayer;
 
   return (
     <div style={MInspectorShellStyle}>
-      <div style={MSectionTitleStyle}>
-        <strong>Inspector</strong>
-        <span>{selectedNode ? `Editing ${M_NODE_TITLES[selectedNode.data.nodeType]}` : "Select a node to edit it."}</span>
-      </div>
+      {showSectionHeader ? (
+        <div style={MSectionTitleStyle}>
+          <strong>Inspector</strong>
+          <span>{selectedNode ? `Editing ${M_NODE_TITLES[selectedNode.data.nodeType]}` : "Select a node to edit it."}</span>
+        </div>
+      ) : null}
 
       {selectedNode ? (
         <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>
@@ -610,8 +613,12 @@ function MOutputContractTab({
   const editable = nodeType === "condition" || nodeType === "action";
   const fields = MFlattenContractFields(contract?.fields ?? []);
 
-  function updateField(path: string, updater: (field: MRuleFlowContractField) => MRuleFlowContractField): void {
-    onChange(fields.map((field) => field.path === path ? updater(field) : field));
+  function updateFieldAt(index: number, updater: (field: MRuleFlowContractField) => MRuleFlowContractField): void {
+    onChange(fields.map((field, fieldIndex) => fieldIndex === index ? updater(field) : field));
+  }
+
+  function removeFieldAt(index: number): void {
+    onChange(fields.filter((_, fieldIndex) => fieldIndex !== index));
   }
 
   function addField(): void {
@@ -652,28 +659,50 @@ function MOutputContractTab({
               </tr>
             </thead>
             <tbody>
-              {fields.map((field) => (
-                <tr key={field.path}>
+              {fields.map((field, index) => (
+                <tr key={`output-contract-${index}`}>
                   <td style={MTableCellStyle}>
                     {editable && !field.isResultPayload ? (
-                      <input style={MInputStyle} value={field.path} disabled={readOnly} onChange={(event) => updateField(field.path, (current) => ({ ...current, path: event.target.value, label: event.target.value }))} />
+                      <input
+                        style={MInputStyle}
+                        value={field.path}
+                        disabled={readOnly}
+                        onChange={(event) => updateFieldAt(index, (current) => ({ ...current, path: event.target.value, label: event.target.value }))}
+                      />
                     ) : (
                       <button type="button" style={MInlinePathButtonStyle} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
                     )}
                   </td>
                   <td style={MTableCellStyle}>
                     {editable && !field.isResultPayload ? (
-                      <input style={MInputStyle} value={field.dataType} disabled={readOnly} onChange={(event) => updateField(field.path, (current) => ({ ...current, dataType: event.target.value }))} />
+                      <input
+                        style={MInputStyle}
+                        value={field.dataType}
+                        disabled={readOnly}
+                        onChange={(event) => updateFieldAt(index, (current) => ({ ...current, dataType: event.target.value }))}
+                      />
                     ) : field.dataType}
                   </td>
                   <td style={MTableCellStyle}>
                     {field.isResultPayload ? "result payload" : field.required ? "required" : "optional"}
                   </td>
                   <td style={MTableCellStyle}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <input type="checkbox" checked={field.exposeToParent !== false} disabled={readOnly || field.isResultPayload} onChange={(event) => updateField(field.path, (current) => ({ ...current, exposeToParent: event.target.checked }))} />
-                      parent
-                    </label>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <input
+                          type="checkbox"
+                          checked={field.exposeToParent !== false}
+                          disabled={readOnly || field.isResultPayload}
+                          onChange={(event) => updateFieldAt(index, (current) => ({ ...current, exposeToParent: event.target.checked }))}
+                        />
+                        parent
+                      </label>
+                      {!readOnly && editable && !field.isResultPayload ? (
+                        <button type="button" style={MInlinePathButtonStyle} onClick={() => removeFieldAt(index)}>
+                          delete
+                        </button>
+                      ) : null}
+                    </div>
                   </td>
                 </tr>
               ))}
