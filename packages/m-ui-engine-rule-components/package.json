@@ -19,7 +19,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@muonroi/ui-engine-core": "0.1.2",
+    "@muonroi/ui-engine-core": "workspace:*",
     "@xyflow/react": "^12.9.3",
     "lit": "^3.2.0",
     "@dnd-kit/core": "^6.3.0",

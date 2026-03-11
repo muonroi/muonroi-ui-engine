@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MLicenseVerifier } from "@muonroi/ui-engine-core";
 import { MuRuleFlowEditor, MEnsureRuleFlowGraph } from "../src/components/rule-flow/MuRuleFlowEditor";
 import type { MRuleFlowGraph } from "../src/models";
@@ -56,6 +56,17 @@ const M_GRAPH: MRuleFlowGraph = {
 };
 
 describe("rule flow editor", () => {
+  beforeEach(() => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () =>
+      new Response(JSON.stringify({}), {
+        status: 200,
+        headers: {
+          "Content-Type": "application/json"
+        }
+      })
+    );
+  });
+
   afterEach(() => {
     vi.restoreAllMocks();
     MLicenseVerifier.MResetForTests();
@@ -202,5 +213,26 @@ describe("rule flow editor", () => {
 
     await new Promise((resolve) => window.setTimeout(resolve, 450));
     expect(MGetReactFlowTestState().fitViewCalls).toBe(0);
+  });
+
+  it("disables publish when validation errors exist", () => {
+    const invalidGraph: MRuleFlowGraph = {
+      metadata: { version: 1, ruleSetCode: "wf.invalid" },
+      nodes: [
+        { id: "start", type: "trigger", label: "Start", position: { x: 0, y: 0 }, data: {} },
+        { id: "sub", type: "sub-flow", label: "Child Flow", ruleCode: "RULE_SUB", position: { x: 140, y: 0 }, data: { subFlowConfig: { targetFlowCode: "child-flow", inputMappings: [], outputMappings: [], childTriggerSchema: { contractName: "child-trigger", fields: [{ path: "orderId", label: "orderId", dataType: "string", required: true }] } } } },
+        { id: "end", type: "end", label: "End", position: { x: 280, y: 0 }, data: {} }
+      ],
+      edges: [
+        { id: "e1", source: "start", target: "sub", edgeType: "always" },
+        { id: "e2", source: "sub", target: "end", edgeType: "always" }
+      ]
+    };
+
+    render(<MuRuleFlowEditor graph={invalidGraph} onPublish={vi.fn()} />);
+
+    const publishButton = screen.getByRole("button", { name: "Publish" });
+    expect(publishButton.hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText(/publish blocked/i)).toBeTruthy();
   });
 });

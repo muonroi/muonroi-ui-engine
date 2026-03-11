@@ -24,6 +24,12 @@ export interface MRuleFlowContractField {
   required?: boolean;
   description?: string;
   example?: string;
+  exposeToParent?: boolean;
+  isResultPayload?: boolean;
+  sourceNodeId?: string;
+  sourceNodeLabel?: string;
+  sourceNodeType?: MRuleFlowNodeType;
+  sourceKind?: "flow-input" | "node-output" | "result-payload" | "sub-flow-output" | "inline";
   children?: MRuleFlowContractField[];
 }
 
@@ -60,8 +66,54 @@ export interface MRuleFlowMappingRow {
   language?: MRuleFlowExpressionLanguage;
 }
 
+export type MContractValidationSeverity = "error" | "warning" | "info";
+
+export interface MContractValidationIssue {
+  code: string;
+  severity: MContractValidationSeverity;
+  message: string;
+  nodeId?: string;
+  fieldPath?: string;
+  sourcePath?: string;
+  targetPath?: string;
+  relatedNodeId?: string;
+}
+
+export interface MEffectiveInputMapping extends MRuleFlowMappingRow {
+  targetField?: string;
+  sourceDataType?: string;
+  targetDataType?: string;
+  sourceNodeId?: string;
+  sourceNodeLabel?: string;
+  required?: boolean;
+  status?: "mapped" | "missing" | "type-mismatch" | "suggested";
+  transformSuggestion?: string;
+}
+
+export interface MNodeEffectiveInput {
+  contractName: string;
+  title?: string;
+  description?: string;
+  mode?: "auto" | "manual" | "expression" | "decision-table" | "sub-flow";
+  fields: MRuleFlowContractField[];
+  mappings: MEffectiveInputMapping[];
+}
+
+export interface MNodeContractLayer {
+  upstreamScope?: MRuleFlowContractSchema;
+  effectiveInput?: MNodeEffectiveInput;
+  outputContract?: MRuleFlowContractSchema;
+  validationIssues?: MContractValidationIssue[];
+}
+
+export interface MRuleFlowContractOverride {
+  requestFields?: MRuleFlowContractField[];
+  responseFields?: MRuleFlowContractField[];
+}
+
 export interface MRuleFlowSubFlowConfig {
   targetFlowCode?: string;
+  childTriggerSchema?: MRuleFlowContractSchema;
   inputMappings: MRuleFlowMappingRow[];
   outputMappings: MRuleFlowMappingRow[];
 }
@@ -77,6 +129,11 @@ export interface MRuleFlowNodeData {
   contractRef?: MRuleFlowContractReference;
   requestContract?: MRuleFlowContractSchema;
   responseContract?: MRuleFlowContractSchema;
+  contractOverride?: MRuleFlowContractOverride;
+  inputMappings?: MRuleFlowMappingRow[];
+  contractLayer?: MNodeContractLayer;
+  dependsOn?: string[];
+  order?: number;
   conditionConfig?: MRuleFlowConditionConfig;
   subFlowConfig?: MRuleFlowSubFlowConfig;
   liquidConfig?: MRuleFlowLiquidConfig;

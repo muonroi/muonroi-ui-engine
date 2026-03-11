@@ -80,6 +80,28 @@ describe("MLicenseVerifier", () => {
     expect(MLicenseVerifier.current.isValid).toBe(false);
     expect(MLicenseVerifier.current.reason).toBe("expired");
   });
+
+  it("shares license state across duplicated module copies", async () => {
+    const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
+    const activationProof = MCreateJwt(
+      {
+        tier: "Enterprise",
+        tenantId: "tenant-a",
+        features: ["decision-table", "rule-flow-designer"],
+        exp: Math.floor(Date.now() / 1000) + 3600
+      },
+      privateKey
+    );
+
+    await MLicenseVerifier.initialize(activationProof, {
+      publicKeyPem: publicKey.export({ type: "pkcs1", format: "pem" }).toString()
+    });
+
+    const duplicateModule = await import("../src/license/MLicenseVerifier.ts?duplicate-copy");
+    expect(duplicateModule.MLicenseVerifier.current.isValid).toBe(true);
+    expect(duplicateModule.MLicenseVerifier.current.tier).toBe("Enterprise");
+    expect(duplicateModule.MLicenseVerifier.hasFeature("rule-flow-designer")).toBe(true);
+  });
 });
 
 function MCreateJwt(payload: Record<string, unknown>, privateKey: KeyObject): string {

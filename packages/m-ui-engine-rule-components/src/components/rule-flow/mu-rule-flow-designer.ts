@@ -13,6 +13,7 @@ import { MCreateRuleFlowGraphSignature, MEnsureRuleFlowGraph } from "./rule-flow
 import { MRuleFlowGraphConverter } from "../../utils/m-rule-flow-graph-converter.js";
 
 const M_FEATURE_KEY = "rule-flow-designer";
+type MRuleStudioPublishDetail = { graph: MRuleFlowGraph; ruleSet: Record<string, unknown> };
 
 @customElement("mu-rule-flow-designer")
 export class MuRuleFlowDesigner extends LitElement {
@@ -46,6 +47,7 @@ export class MuRuleFlowDesigner extends LitElement {
   private mInternalGraphUpdate = false;
   private mLastGraphSignature = MCreateRuleFlowGraphSignature(this.graph);
   private mWorkflowLoadVersion = 0;
+  private mLoadedRuleSet: Record<string, unknown> | null = null;
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -192,9 +194,14 @@ export class MuRuleFlowDesigner extends LitElement {
           );
         },
         onPublish: async (nextGraph: MRuleFlowGraph) => {
+          const ruleSet = MRuleFlowGraphConverter.toRuleSet(nextGraph, this.mLoadedRuleSet ?? undefined);
+          this.mLoadedRuleSet = ruleSet;
           this.dispatchEvent(
-            new CustomEvent<MRuleFlowGraph>("publish", {
-              detail: nextGraph,
+            new CustomEvent<MRuleStudioPublishDetail>("publish", {
+              detail: {
+                graph: nextGraph,
+                ruleSet
+              },
               bubbles: true,
               composed: true
             })
@@ -228,6 +235,7 @@ export class MuRuleFlowDesigner extends LitElement {
       }
 
       const ruleSet = JSON.parse(payload.ruleSetJson);
+      this.mLoadedRuleSet = ruleSet;
       const nextGraph = MEnsureRuleFlowGraph(MRuleFlowGraphConverter.fromRuleSet(ruleSet));
       this.mInternalGraphUpdate = true;
       this.graph = nextGraph;
