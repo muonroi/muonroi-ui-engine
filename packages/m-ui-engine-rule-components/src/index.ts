@@ -13,3 +13,5 @@ export * from "./runtime/request-context.js";
 export * from "./components/rule-flow/MuRuleFlowEditor.js";
 export * from "./store/decision-table-store.js";
 export * from "./store/rule-engine-store.js";
+export { MuRuleTraceViewerReact } from "./components/trace-viewer/MuRuleTraceViewer.js";
+export { MuRuleResultPanelReact } from "./components/result-panel/MuRuleResultPanel.js";
