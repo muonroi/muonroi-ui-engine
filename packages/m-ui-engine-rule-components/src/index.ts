@@ -4,6 +4,7 @@ export * from "./models.js";
 export * from "./registry.js";
 export * from "./services/rule-engine-api.js";
 export * from "./services/feel-service.js";
+export * from "./services/trace-api.js";
 export * from "./services/rule-flow-contract-service.js";
 export * from "./services/rule-catalog-service.js";
 export * from "./services/schema-notifier.js";

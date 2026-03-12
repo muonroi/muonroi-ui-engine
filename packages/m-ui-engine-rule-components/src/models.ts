@@ -91,3 +91,5 @@ export interface MDecisionTableDiff {
 }
 
 export * from "./models/rule-flow.js";
+export * from "./models/trace-models.js";
+export * from "./models/result-models.js";
