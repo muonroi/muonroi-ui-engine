@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-rule-components",
-  "version": "0.1.4-dev",
+  "version": "0.1.5-alpha.0",
   "description": "Muonroi rule engine web components",
   "type": "module",
   "main": "dist/muonroi-rule-components.esm.js",
@@ -15,7 +15,7 @@
     "dist"
   ],
   "scripts": {
-    "build": "npm run -w @muonroi/ui-engine-core build && vite build && tsc -p tsconfig.json --emitDeclarationOnly",
+    "build": "npm run -w @muonroi/ui-engine-core build && vite build && vite build -c vite.trace.config.ts && tsc -p tsconfig.json --emitDeclarationOnly",
     "test": "vitest run"
   },
   "dependencies": {

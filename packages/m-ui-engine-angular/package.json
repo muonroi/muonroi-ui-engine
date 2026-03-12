@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-angular",
-  "version": "0.1.4-dev",
+  "version": "0.1.5-alpha.0",
   "description": "Angular helper mappings for Muonroi UI Engine",
   "type": "module",
   "main": "dist/index.js",
