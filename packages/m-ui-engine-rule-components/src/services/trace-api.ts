@@ -13,12 +13,16 @@ import { MBuildRuleComponentHeaders } from "../runtime/request-context.js";
 export class MRuleTraceApiClient {
   constructor(
     private readonly baseUrl: string,
-    private readonly mGetHeaders: () => Record<string, string> = () =>
-      MBuildRuleComponentHeaders()
+    private readonly mGetHeaders?: () => HeadersInit
   ) {}
 
   private async mFetch<T>(path: string, init?: RequestInit): Promise<T> {
-    const headers = { ...this.mGetHeaders(), ...init?.headers };
+    const base = this.mGetHeaders?.() ?? MBuildRuleComponentHeaders();
+    const headers = new Headers(base);
+    if (init?.headers) {
+      const extra = new Headers(init.headers);
+      extra.forEach((v, k) => headers.set(k, v));
+    }
     const res = await fetch(`${this.baseUrl}${path}`, { ...init, headers });
     if (!res.ok)
       throw new Error(`Trace API ${res.status}: ${await res.text()}`);
