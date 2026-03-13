@@ -65,6 +65,15 @@ import {
   type MCanvasNodeData,
   type MInspectorTab
 } from "./rule-flow-runtime.js";
+import {
+  MGetThemeTokens,
+  M_NODE_ICONS,
+  M_NODE_DESCRIPTIONS,
+  M_EDGE_COLORS,
+  M_EDGE_COLORS_DARK,
+  type MFlowTheme,
+  type MFlowThemeTokens
+} from "./rule-flow-theme.js";
 import { MApplyRuleFlowAuthoringLayers, MOrderRuleFlowGraph, MValidateGraphForPublish } from "./rule-flow-authoring.js";
 
 export interface MuRuleFlowEditorProps {
@@ -125,33 +134,42 @@ const M_EDGE_TYPE_HINTS: Record<MRuleFlowEdgeType, string> = {
 
 function MRuleFlowNodeCard({ data, selected }: { data: MCanvasNodeData; selected?: boolean }): React.JSX.Element {
   const accent = M_NODE_ACCENTS[data.nodeType];
+  const tokens = MGetThemeTokens(data._theme ?? "light");
   const expression = MEnsureExpression(data);
   const requestCount = data.requestContract?.fields.length ?? 0;
   const responseCount = data.responseContract?.fields.length ?? 0;
+  const iconPath = M_NODE_ICONS[data.nodeType];
 
   return (
     <div
       style={{
         ...M_BASE_NODE_STYLE,
-        borderTop: selected ? `2px solid ${accent}` : "1px solid rgba(15, 23, 42, 0.12)",
-        borderRight: selected ? `2px solid ${accent}` : "1px solid rgba(15, 23, 42, 0.12)",
-        borderBottom: selected ? `2px solid ${accent}` : "1px solid rgba(15, 23, 42, 0.12)",
+        background: tokens.nodeBg,
+        boxShadow: tokens.nodeShadow,
+        borderTop: selected ? `2px solid ${accent}` : tokens.nodeBorder,
+        borderRight: selected ? `2px solid ${accent}` : tokens.nodeBorder,
+        borderBottom: selected ? `2px solid ${accent}` : tokens.nodeBorder,
         borderLeft: `8px solid ${accent}`,
         borderRadius: data.nodeType === "end" ? 999 : data.nodeType === "condition" ? 24 : 18
       }}
     >
       <Handle type="target" position={Position.Left} />
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        <span style={{ color: accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>{M_NODE_TITLES[data.nodeType]}</span>
-        <strong style={{ fontSize: 14 }}>{data.label}</strong>
-        {data.ruleCode ? <span style={{ fontSize: 12, color: "#475569" }}>Rule: {data.ruleCode}</span> : null}
-        {data.contractRef?.sourceCode ? <span style={{ fontSize: 11, color: "#64748b" }}>Contract: {data.contractRef.sourceType}/{data.contractRef.sourceCode}</span> : null}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <svg width={14} height={14} viewBox="0 0 16 16" fill={accent} style={{ flexShrink: 0 }}>
+            <path d={iconPath} />
+          </svg>
+          <span style={{ color: accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>{M_NODE_TITLES[data.nodeType]}</span>
+        </div>
+        <strong style={{ fontSize: 14, color: tokens.nodeText }}>{data.label}</strong>
+        {data.ruleCode ? <span style={{ fontSize: 12, color: tokens.nodeSubtext }}>Rule: {data.ruleCode}</span> : null}
+        {data.contractRef?.sourceCode ? <span style={{ fontSize: 11, color: tokens.nodeMutedText }}>Contract: {data.contractRef.sourceType}/{data.contractRef.sourceCode}</span> : null}
         {expression.body ? (
-          <span style={{ display: "inline-block", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, color: "#334155" }}>
+          <span style={{ display: "inline-block", maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 12, color: tokens.nodeSubtext }}>
             {expression.language.toUpperCase()}: {expression.body}
           </span>
         ) : null}
-        {(requestCount > 0 || responseCount > 0) ? <span style={{ fontSize: 11, color: "#64748b" }}>Inline contracts {requestCount}/{responseCount}</span> : null}
+        {(requestCount > 0 || responseCount > 0) ? <span style={{ fontSize: 11, color: tokens.nodeMutedText }}>Inline contracts {requestCount}/{responseCount}</span> : null}
       </div>
       <Handle type="source" position={Position.Right} />
     </div>
@@ -261,8 +279,29 @@ export function MuRuleFlowEditor({
 }: MuRuleFlowEditorProps): React.JSX.Element {
   const initialGraph = useMemo(() => MEnsureRuleFlowGraph(graph), [graph]);
   const history = useRuleFlowHistory(initialGraph);
-  const [nodes, setNodes] = useState<Node<MCanvasNodeData>[]>(() => MGraphToCanvasNodes(history.present));
-  const [edges, setEdges] = useState<Edge[]>(() => MGraphToCanvasEdges(history.present));
+
+  function MInjectTheme(canvasNodes: Node<MCanvasNodeData>[]): Node<MCanvasNodeData>[] {
+    return canvasNodes.map((node) => ({ ...node, data: { ...node.data, _theme: theme as MFlowTheme } }));
+  }
+
+  function MStyleEdges(rawEdges: Edge[]): Edge[] {
+    const colors = theme === "dark" ? M_EDGE_COLORS_DARK : M_EDGE_COLORS;
+    return rawEdges.map((edge) => {
+      const edgeType = (edge.data as { edgeType?: string } | undefined)?.edgeType ?? "always";
+      const color = colors[edgeType as keyof typeof colors] ?? colors.always;
+      return {
+        ...edge,
+        style: { stroke: color, strokeWidth: 2 },
+        labelStyle: { fill: color, fontWeight: 600, fontSize: 11 },
+        labelBgStyle: { fill: MGetThemeTokens(theme as MFlowTheme).edgeLabelBg, fillOpacity: 0.92 },
+        labelBgPadding: [6, 4] as [number, number],
+        labelBgBorderRadius: 8
+      };
+    });
+  }
+
+  const [nodes, setNodes] = useState<Node<MCanvasNodeData>[]>(() => MInjectTheme(MGraphToCanvasNodes(history.present)));
+  const [edges, setEdges] = useState<Edge[]>(() => MStyleEdges(MGraphToCanvasEdges(history.present)));
   const [selectedNodeId, setSelectedNodeId] = useState("");
   const [selectedEdgeId, setSelectedEdgeId] = useState("");
   const [inspectorTab, setInspectorTab] = useState<MInspectorTab>("general");
@@ -299,6 +338,7 @@ export function MuRuleFlowEditor({
   const restoreUnlockRef = useRef<number | null>(null);
   const [shellWidth, setShellWidth] = useState(0);
   const [openSection, setOpenSection] = useState<MSidebarSection | null>("inspector");
+  const [depOverlayOpen, setDepOverlayOpen] = useState(true);
   const pendingCommitRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -312,6 +352,11 @@ export function MuRuleFlowEditor({
     flushPendingCommit();
     flushRestoreUnlock();
   }, []);
+
+  useEffect(() => {
+    setNodes((prev) => MInjectTheme(prev));
+    setEdges((prev) => MStyleEdges(prev));
+  }, [theme]);
 
   useEffect(() => {
     const nextGraph = MEnsureRuleFlowGraph(graph);
@@ -344,19 +389,40 @@ export function MuRuleFlowEditor({
   }, [history.present]);
 
   useEffect(() => {
-    if (readOnly) {
-      return;
-    }
     const handler = (event: KeyboardEvent) => {
-      if (event.key !== "Delete") {
+      const target = event.target as HTMLElement;
+      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable;
+
+      if ((event.ctrlKey || event.metaKey) && event.key === "z" && !event.shiftKey) {
+        event.preventDefault();
+        flushPendingCommit();
+        history.undo();
         return;
       }
-      if (selectedNodeId) {
-        deleteSelectedNode();
+      if ((event.ctrlKey || event.metaKey) && (event.key === "y" || (event.key === "z" && event.shiftKey))) {
+        event.preventDefault();
+        flushPendingCommit();
+        history.redo();
         return;
       }
-      if (selectedEdgeId) {
-        deleteSelectedEdge();
+      if (event.key === "Escape") {
+        setSelectedNodeId("");
+        setSelectedEdgeId("");
+        setInspectorTab("general");
+        return;
+      }
+
+      if (readOnly || isInput) {
+        return;
+      }
+      if (event.key === "Delete" || event.key === "Backspace") {
+        if (selectedNodeId) {
+          deleteSelectedNode();
+          return;
+        }
+        if (selectedEdgeId) {
+          deleteSelectedEdge();
+        }
       }
     };
     window.addEventListener("keydown", handler);
@@ -392,7 +458,7 @@ export function MuRuleFlowEditor({
       }),
     [authoringVersion, currentGraph, workflowCode]
   );
-  const selectedNode = useMemo(() => (selectedNodeId ? MGraphToCanvasNodes(derivedGraph).find((node) => node.id === selectedNodeId) ?? null : null), [derivedGraph, selectedNodeId]);
+  const selectedNode = useMemo(() => (selectedNodeId ? MInjectTheme(MGraphToCanvasNodes(derivedGraph)).find((node) => node.id === selectedNodeId) ?? null : null), [derivedGraph, selectedNodeId, theme]);
   const selectedEdge = useMemo(
     () => (selectedEdgeId ? edges.find((edge) => edge.id === selectedEdgeId) ?? null : null),
     [edges, selectedEdgeId]
@@ -622,8 +688,9 @@ export function MuRuleFlowEditor({
   }, [contractService, selectedNode, authoringVersion]);
 
   if (licenseStatus === "unlicensed") {
+    const lt = MGetThemeTokens(theme as MFlowTheme);
     return (
-      <section style={MLicenseFallbackStyle}>
+      <section style={{ ...MLicenseFallbackStyle, background: lt.licenseBg, border: lt.licenseBorder, color: lt.licenseText }}>
         <strong>Rule Flow Designer requires a Muonroi commercial license.</strong>
         <span>Load an activation proof before rendering this editor.</span>
       </section>
@@ -647,8 +714,8 @@ export function MuRuleFlowEditor({
   function restoreCanvasState(nextGraph: MRuleFlowGraph): void {
     flushRestoreUnlock();
     isRestoringRef.current = true;
-    setNodes(MGraphToCanvasNodes(nextGraph));
-    setEdges(MGraphToCanvasEdges(nextGraph));
+    setNodes(MInjectTheme(MGraphToCanvasNodes(nextGraph)));
+    setEdges(MStyleEdges(MGraphToCanvasEdges(nextGraph)));
     restoreUnlockRef.current = window.setTimeout(() => {
       isRestoringRef.current = false;
       restoreUnlockRef.current = null;
@@ -706,7 +773,7 @@ export function MuRuleFlowEditor({
     }).graph;
     metadataRef.current = nextGraph.metadata;
     lastGraphSignatureRef.current = MCreateRuleFlowGraphSignature(nextGraph);
-    setNodes(MGraphToCanvasNodes(nextGraph));
+    setNodes(MInjectTheme(MGraphToCanvasNodes(nextGraph)));
     if (notify) {
       onGraphChange?.(nextGraph);
     }
@@ -725,7 +792,7 @@ export function MuRuleFlowEditor({
     }).graph;
     metadataRef.current = nextGraph.metadata;
     lastGraphSignatureRef.current = MCreateRuleFlowGraphSignature(nextGraph);
-    setNodes(MGraphToCanvasNodes(nextGraph));
+    setNodes(MInjectTheme(MGraphToCanvasNodes(nextGraph)));
     onGraphChange?.(nextGraph);
     if (commitMode === "immediate") {
       history.commit(nextGraph);
@@ -863,16 +930,23 @@ export function MuRuleFlowEditor({
   const computedHeight = typeof height === "number" ? `${height}px` : height;
   const isCompactLayout = shellWidth > 0 && shellWidth < M_COMPACT_LAYOUT_BREAKPOINT;
   const resolvedCanvasHeight = isCompactLayout ? "min(52vh, 520px)" : computedHeight;
-  const themeStyles = theme === "dark" ? MDarkThemeStyle : MLightThemeStyle;
+  const tokens = MGetThemeTokens(theme as MFlowTheme);
+  const themeStyles: React.CSSProperties = { color: tokens.textPrimary };
   const palettePanel = (
     <div data-testid="rule-flow-sidebar-palette" style={{ ...MSidebarSectionBodyStyle, ...MSidebarTopStyle, ...MSidebarTopLayoutStyle(isCompactLayout) }}>
-      <div style={MSectionTitleStyle}>
-        <strong>Palette</strong>
+      <div style={{ ...MSectionTitleStyle, color: tokens.sectionDescColor }}>
+        <strong style={{ color: tokens.textPrimary }}>Palette</strong>
         <span>Add nodes to compose a publishable rule flow.</span>
       </div>
       {(["trigger", "condition", "action", "decision-table", "sub-flow", "liquid", "end"] as MRuleFlowNodeType[]).map((nodeType) => (
-        <button key={nodeType} type="button" style={MPaletteButtonStyle(nodeType)} data-testid={`palette-${nodeType}`} draggable={!readOnly} onClick={() => addNode(nodeType)} onDragStart={(event) => handlePaletteDragStart(event, nodeType)} disabled={readOnly}>
-          {M_NODE_TITLES[nodeType]}
+        <button key={nodeType} type="button" style={MPaletteButtonStyle(nodeType, tokens)} data-testid={`palette-${nodeType}`} draggable={!readOnly} onClick={() => addNode(nodeType)} onDragStart={(event) => handlePaletteDragStart(event, nodeType)} disabled={readOnly}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <svg width={16} height={16} viewBox="0 0 16 16" fill={M_NODE_ACCENTS[nodeType]} style={{ flexShrink: 0 }}>
+              <path d={M_NODE_ICONS[nodeType]} />
+            </svg>
+            <span style={{ fontWeight: 600 }}>{M_NODE_TITLES[nodeType]}</span>
+          </div>
+          <span style={{ fontSize: 11, color: tokens.textMuted, fontWeight: 400 }}>{M_NODE_DESCRIPTIONS[nodeType]}</span>
         </button>
       ))}
       {catalogApiBase ? (
@@ -888,8 +962,8 @@ export function MuRuleFlowEditor({
   );
   const actionsPanel = (
     <div data-testid="rule-flow-sidebar-actions" style={{ ...MSidebarSectionBodyStyle, ...MSidebarActionsPanelStyle, ...MSidebarActionsPanelLayoutStyle(isCompactLayout) }}>
-      <div style={MSectionTitleStyle}>
-        <strong>Actions</strong>
+      <div style={{ ...MSectionTitleStyle, color: tokens.sectionDescColor }}>
+        <strong style={{ color: tokens.textPrimary }}>Actions</strong>
         <span>Undo, publish and export without leaving the flow canvas.</span>
       </div>
       {currentValidation.issues.length > 0 ? (
@@ -1118,7 +1192,7 @@ export function MuRuleFlowEditor({
   return (
     <ReactFlowProvider>
       <section ref={shellRef} style={{ ...MEditorShellStyle, ...MEditorShellLayoutStyle(isCompactLayout), ...themeStyles }}>
-        <aside style={{ ...MSidebarStyle, ...MSidebarLayoutStyle(isCompactLayout) }}>
+        <aside style={{ ...MSidebarStyle, ...MSidebarLayoutStyle(isCompactLayout), background: tokens.sidebarBg, border: tokens.sidebarBorder }}>
           {renderSidebarSection("palette", "Palette", "Compose and add nodes from the library of rule blocks.", palettePanel)}
           {renderSidebarSection("actions", "Actions", "Undo, import, export and publish the current flow.", actionsPanel)}
           {renderSidebarSection("inspector", "Inspector", selectedNode ? `Editing ${M_NODE_TITLES[selectedNode.data.nodeType]}` : "Open this section to define conditions, mappings and contracts.", inspectorPanel)}
@@ -1126,7 +1200,7 @@ export function MuRuleFlowEditor({
 
         <div
           ref={canvasPanelRef}
-          style={{ ...MCanvasPanelStyle, ...MCanvasPanelLayoutStyle(isCompactLayout), height: resolvedCanvasHeight }}
+          style={{ ...MCanvasPanelStyle, ...MCanvasPanelLayoutStyle(isCompactLayout), height: resolvedCanvasHeight, background: tokens.canvasGradient }}
           data-testid="rule-flow-canvas"
           data-node-count={nodes.length}
           data-edge-count={edges.length}
@@ -1135,6 +1209,7 @@ export function MuRuleFlowEditor({
         >
           <ReactFlow
             style={{ width: "100%", height: "100%" }}
+            colorMode={theme === "dark" ? "dark" : "light"}
             nodes={nodes}
             edges={edges}
             nodeTypes={M_NODE_TYPES}
@@ -1182,31 +1257,41 @@ export function MuRuleFlowEditor({
             <Background />
           </ReactFlow>
           {dependencyOverlay.length > 0 ? (
-            <aside data-testid="rule-flow-dependency-overlay" style={MDependencyOverlayStyle}>
-              <div style={MDependencyOverlayHeaderStyle}>
-                <strong>Dependency Overlay</strong>
-                <span>Execution order, prerequisites, and downstream dependents.</span>
-              </div>
-              <div style={MDependencyOverlayBodyStyle}>
-                {dependencyOverlay.map((item) => (
-                  <button
-                    key={item.nodeId}
-                    type="button"
-                    data-testid={`dependency-overlay-${item.ruleCode}`}
-                    style={MDependencyOverlayItemStyle(item.nodeId === selectedNodeId)}
-                    onClick={() => selectNodeById(item.nodeId)}
-                  >
-                    <span style={{ fontWeight: 700 }}>#{item.order} {item.label}</span>
-                    <span style={{ fontSize: 11, color: "#475569" }}>{item.ruleCode}</span>
-                    <span style={{ fontSize: 11, color: "#64748b" }}>
-                      Depends on: {item.dependsOn.length > 0 ? item.dependsOn.join(", ") : "none"}
-                    </span>
-                    <span style={{ fontSize: 11, color: "#64748b" }}>
-                      Unlocks: {item.dependents.length > 0 ? item.dependents.join(", ") : "none"}
-                    </span>
-                  </button>
-                ))}
-              </div>
+            <aside data-testid="rule-flow-dependency-overlay" style={{ ...MDependencyOverlayStyle, background: tokens.overlayBg, border: tokens.overlayBorder, boxShadow: tokens.overlayShadow }}>
+              <button
+                type="button"
+                style={{ ...MDependencyOverlayHeaderStyle, cursor: "pointer", background: "transparent", border: "none", width: "100%", textAlign: "left", display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                onClick={() => setDepOverlayOpen((prev) => !prev)}
+                aria-expanded={depOverlayOpen}
+              >
+                <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <strong>Dependency Overlay</strong>
+                  <span style={{ fontSize: 12, color: tokens.textMuted }}>Execution order, prerequisites, and downstream dependents.</span>
+                </span>
+                <span style={{ ...MSidebarChevronStyle(depOverlayOpen), width: 22, height: 22, fontSize: 12 }}>▾</span>
+              </button>
+              {depOverlayOpen ? (
+                <div style={MDependencyOverlayBodyStyle}>
+                  {dependencyOverlay.map((item) => (
+                    <button
+                      key={item.nodeId}
+                      type="button"
+                      data-testid={`dependency-overlay-${item.ruleCode}`}
+                      style={MDependencyOverlayItemStyle(item.nodeId === selectedNodeId, tokens)}
+                      onClick={() => selectNodeById(item.nodeId)}
+                    >
+                      <span style={{ fontWeight: 700, color: tokens.textPrimary }}>#{item.order} {item.label}</span>
+                      <span style={{ fontSize: 11, color: tokens.textSecondary }}>{item.ruleCode}</span>
+                      <span style={{ fontSize: 11, color: tokens.textMuted }}>
+                        Depends on: {item.dependsOn.length > 0 ? item.dependsOn.join(", ") : "none"}
+                      </span>
+                      <span style={{ fontSize: 11, color: tokens.textMuted }}>
+                        Unlocks: {item.dependents.length > 0 ? item.dependents.join(", ") : "none"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </aside>
           ) : null}
         </div>
@@ -1335,19 +1420,24 @@ export function MuRuleFlowEditor({
         key={section}
         data-sidebar-section={section}
         data-sidebar-open={isOpen ? "true" : "false"}
-        style={MSidebarSectionStyle(isOpen)}
+        style={{
+          ...MSidebarSectionStyle(isOpen),
+          border: isOpen ? tokens.sidebarOpenBorder : tokens.sidebarBorder,
+          background: isOpen ? tokens.sidebarOpenBg : tokens.sidebarBg,
+          boxShadow: isOpen ? tokens.sidebarOpenShadow : "none"
+        }}
       >
         <button
           type="button"
-          style={MSidebarSectionHeaderStyle(isOpen)}
+          style={{ ...MSidebarSectionHeaderStyle(isOpen), color: tokens.sidebarHeaderColor }}
           onClick={() => setOpenSection((current) => current === section ? null : section)}
           aria-expanded={isOpen}
         >
           <span style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0, textAlign: "left" }}>
             <strong>{title}</strong>
-            <span style={{ fontSize: 12, color: "#64748b", fontWeight: 500 }}>{description}</span>
+            <span style={{ fontSize: 12, color: tokens.textMuted, fontWeight: 500 }}>{description}</span>
           </span>
-          <span style={MSidebarChevronStyle(isOpen)}>▾</span>
+          <span style={{ ...MSidebarChevronStyle(isOpen), background: tokens.chevronBg, color: tokens.chevronColor }}>▾</span>
         </button>
         {isOpen ? (
           <div style={MSidebarSectionContentStyle}>
@@ -1720,8 +1810,7 @@ const MSectionTitleStyle: React.CSSProperties = {
   fontSize: 13,
   color: "#64748b"
 };
-const MLightThemeStyle: React.CSSProperties = { color: "#0f172a" };
-const MDarkThemeStyle: React.CSSProperties = { color: "#e2e8f0" };
+/* Theme styles are now computed via MGetThemeTokens — see tokens variable. */
 const MLicenseFallbackStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
@@ -1807,15 +1896,21 @@ function MSidebarChevronStyle(isOpen: boolean): React.CSSProperties {
   };
 }
 
-function MPaletteButtonStyle(nodeType: MRuleFlowNodeType): React.CSSProperties {
+function MPaletteButtonStyle(nodeType: MRuleFlowNodeType, t?: MFlowThemeTokens): React.CSSProperties {
+  const alphaB = t?.paletteBtnBorderAlpha ?? "22";
+  const alphaG = t?.paletteBtnBgAlpha ?? "10";
   return {
+    display: "flex",
+    flexDirection: "column",
+    gap: 4,
     borderRadius: 14,
-    border: `1px solid ${M_NODE_ACCENTS[nodeType]}22`,
-    background: `${M_NODE_ACCENTS[nodeType]}10`,
-    color: "#0f172a",
+    border: `1px solid ${M_NODE_ACCENTS[nodeType]}${alphaB}`,
+    background: `${M_NODE_ACCENTS[nodeType]}${alphaG}`,
+    color: t?.textPrimary ?? "#0f172a",
     padding: "11px 12px",
     textAlign: "left",
-    fontWeight: 600
+    fontWeight: 600,
+    cursor: "grab"
   };
 }
 
@@ -1925,7 +2020,7 @@ const MDependencyOverlayBodyStyle: React.CSSProperties = {
   gap: 8
 };
 
-function MDependencyOverlayItemStyle(selected: boolean): React.CSSProperties {
+function MDependencyOverlayItemStyle(selected: boolean, t?: MFlowThemeTokens): React.CSSProperties {
   return {
     display: "flex",
     flexDirection: "column",
@@ -1934,9 +2029,10 @@ function MDependencyOverlayItemStyle(selected: boolean): React.CSSProperties {
     textAlign: "left",
     padding: "10px 12px",
     borderRadius: 14,
-    border: selected ? "1px solid rgba(37, 99, 235, 0.26)" : "1px solid rgba(148, 163, 184, 0.2)",
-    background: selected ? "rgba(219, 234, 254, 0.92)" : "rgba(248, 250, 252, 0.94)",
-    color: "#0f172a"
+    border: selected ? (t?.overlayItemSelectedBorder ?? "1px solid rgba(37, 99, 235, 0.26)") : (t?.overlayItemBorder ?? "1px solid rgba(148, 163, 184, 0.2)"),
+    background: selected ? (t?.overlayItemSelectedBg ?? "rgba(219, 234, 254, 0.92)") : (t?.overlayItemBg ?? "rgba(248, 250, 252, 0.94)"),
+    color: t?.textPrimary ?? "#0f172a",
+    cursor: "pointer"
   };
 }
 

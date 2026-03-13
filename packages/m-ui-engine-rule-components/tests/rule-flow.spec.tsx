@@ -97,7 +97,7 @@ describe("rule flow editor", () => {
     render(<MuRuleFlowEditor graph={M_GRAPH} onGraphChange={onGraphChange} />);
 
     fireEvent.click(screen.getByRole("button", { name: /palette compose and add nodes/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Action" }));
+    fireEvent.click(screen.getByTestId("palette-action"));
 
     expect(onGraphChange).toHaveBeenCalled();
     const latestGraph = onGraphChange.mock.calls.at(-1)?.[0] as MRuleFlowGraph;
@@ -169,7 +169,7 @@ describe("rule flow editor", () => {
     render(<MuRuleFlowEditor graph={M_GRAPH} readOnly />);
 
     fireEvent.click(screen.getByRole("button", { name: /palette compose and add nodes/i }));
-    expect(screen.getByRole("button", { name: "Condition" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByTestId("palette-condition").hasAttribute("disabled")).toBe(true);
   });
 
   it("shows a local fallback when license status is unlicensed", () => {
@@ -216,7 +216,7 @@ describe("rule flow editor", () => {
 
     const paletteButton = Array.from(element.shadowRoot?.querySelectorAll("button") ?? []).find((candidate) => candidate.textContent?.includes("Palette"));
     fireEvent.click(paletteButton!);
-    const actionButton = Array.from(element.shadowRoot?.querySelectorAll("button") ?? []).find((candidate) => candidate.textContent?.trim() === "Action");
+    const actionButton = element.shadowRoot?.querySelector("[data-testid='palette-action']") as HTMLButtonElement;
     fireEvent.click(actionButton!);
 
     await waitFor(() => {
