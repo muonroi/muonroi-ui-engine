@@ -26,6 +26,7 @@ export type MCanvasNodeData = MRuleFlowNodeData & {
   label: string;
   ruleCode?: string;
   nodeType: MRuleFlowNodeType;
+  _theme?: "light" | "dark";
 };
 
 export type MInspectorTab = "general" | "input-scope" | "effective-input" | "output-contract" | "expression";
