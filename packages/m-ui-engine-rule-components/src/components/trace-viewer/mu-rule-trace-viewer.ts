@@ -22,7 +22,7 @@ export class MuRuleTraceViewer extends LitElement {
   @state() private _phaseFilter: MRuleTracePhase | "all" = "all";
   @state() private _successFilter: "all" | "success" | "failure" = "all";
 
-  private _apiClient: MRuleTraceApiClient | null = null;
+  @state() private _apiClient: MRuleTraceApiClient | null = null;
 
   connectedCallback() {
     super.connectedCallback();

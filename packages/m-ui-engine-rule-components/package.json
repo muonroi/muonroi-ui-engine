@@ -15,7 +15,8 @@
     "dist"
   ],
   "scripts": {
-    "build": "npm run -w @muonroi/ui-engine-core build && vite build && vite build -c vite.trace.config.ts && tsc -p tsconfig.json --emitDeclarationOnly",
+    "build": "npm run -w @muonroi/ui-engine-core build && vite build && vite build -c vite.trace.config.ts && vite build -c vite.flow.config.ts && tsc -p tsconfig.json --emitDeclarationOnly",
+    "build:flow": "vite build -c vite.flow.config.ts",
     "test": "vitest run"
   },
   "dependencies": {
