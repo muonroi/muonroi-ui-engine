@@ -107,6 +107,7 @@
 |------|-------|-------------|
 | store/decision-table-store.ts | `DecisionTableEditorState` | `loadTable()`, `addRow()`, `updateCell()`, `setHitPolicy()`, `undo()`, `redo()`, `validate()`, `saveTable()`, `loadHistory()`, `loadVersionSnapshot()` |
 | store/rule-engine-store.ts | `MRuleEngineStoreState` | Current screen, tier, schema staleness |
+| store/connector-store.ts | `MConnectorStoreState` | Connector list, catalog, test result, CRUD actions |
 
 ### Services (API Clients)
 
@@ -117,13 +118,14 @@
 | services/rule-catalog-service.ts | `MRuleCatalogService` | Rule catalog query (search, filter by category) |
 | services/rule-flow-contract-service.ts | `MRuleFlowContractService` | Flow/node contract schema lookup |
 | services/trace-api.ts | `MRuleTraceApiClient` | Trace query, debugger enable/disable |
+| services/connector-service.ts | `MConnectorService` | Connector CRUD, test, catalog, credentials |
 
 ### Models
 
 | File | Key Types | Purpose |
 |------|-----------|---------|
 | models.ts | `MDecisionTableModel`, `MDecisionTableColumn`, `MDecisionTableRow`, `MDecisionTableCell`, `MValidationError`, `MDecisionTableVersionInfo`, `MDecisionTableDiff` | Decision table structures |
-| models/rule-flow.ts | `MRuleFlowGraph`, `MRuleFlowNode`, `MRuleFlowEdge`, `MRuleFlowNodeType`, `MRuleFlowEdgeType`, `MRuleFlowContractSchema`, `MRuleCatalogItem` | Flow graph + catalog |
+| models/rule-flow.ts | `MRuleFlowGraph`, `MRuleFlowNode`, `MRuleFlowEdge`, `MRuleFlowNodeType`, `MRuleFlowEdgeType`, `MRuleFlowContractSchema`, `MRuleCatalogItem`, `MRuleFlowConnectorConfig` | Flow graph + catalog + connector |
 | models/trace-models.ts | `MRuleTraceEntry`, `MRuleTracePhase`, `MRuleDebuggerStatus` | Trace viewer |
 | models/result-models.ts | `MRuleResult`, `MValidationSummary` | Validation results |
 
@@ -137,6 +139,7 @@
 | decision-table | DMN table evaluation |
 | sub-flow | Nested flow graph |
 | liquid | Liquid template |
+| connector | External service integration |
 | end | Termination |
 
 ### Edge Types

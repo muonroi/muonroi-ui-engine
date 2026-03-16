@@ -18,7 +18,8 @@ const M_FEATURE_ALIASES: Record<string, string[]> = {
   "feel-playground": ["rule-components.feel-playground"],
   "rule-flow-designer": ["rule-components.rule-flow-designer"],
   "rule-test-runner": ["rule-components.rule-test-runner"],
-  "ui-engine-app": ["rule-components.ui-engine-app"]
+  "ui-engine-app": ["rule-components.ui-engine-app"],
+  connectors: ["rule-components.connectors", "connectors"]
 };
 
 export function MCanRenderCommercialFeature(featureKey: string): boolean {

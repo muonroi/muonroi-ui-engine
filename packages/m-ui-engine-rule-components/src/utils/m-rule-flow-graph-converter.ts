@@ -25,13 +25,39 @@ export class MRuleFlowGraphConverter {
     const objectRuleSet = MAsObject(ruleSet);
     const graphCandidate = objectRuleSet.flowGraph;
     if (MIsGraph(graphCandidate)) {
-      return MNormalizeGraph({
+      const restored = MNormalizeGraph({
         ...graphCandidate,
         metadata: {
           ...graphCandidate.metadata,
           workflowName: MReadString(objectRuleSet.workflowName) ?? graphCandidate.metadata.workflowName
         }
       });
+
+      // Deserialize connector-specific and expression language fields from raw nodes
+      const rawNodes = (graphCandidate as MRuleFlowGraph).nodes ?? [];
+      restored.nodes = restored.nodes.map((node, index) => {
+        const raw = MAsObject(rawNodes[index]);
+        const expressionLanguage = raw.expressionLanguage;
+        const connectorConfig = MAsObject(raw.data).connectorConfig;
+        return {
+          ...node,
+          expressionLanguage: expressionLanguage === "feel" || expressionLanguage === "javascript" ? expressionLanguage : undefined,
+          data: {
+            ...node.data,
+            connectorConfig: connectorConfig && typeof connectorConfig === "object"
+              ? {
+                  connectorType: typeof connectorConfig.connectorType === "string" ? connectorConfig.connectorType : undefined,
+                  connectorConfig: connectorConfig.connectorConfig && typeof connectorConfig.connectorConfig === "object"
+                    ? connectorConfig.connectorConfig as Record<string, unknown>
+                    : undefined,
+                  credentialId: typeof connectorConfig.credentialId === "string" ? connectorConfig.credentialId : undefined
+                }
+              : undefined
+          }
+        };
+      });
+
+      return restored;
     }
 
     const workflowName = MReadString(objectRuleSet.workflowName) ?? MReadString(objectRuleSet.WorkflowName) ?? "wf.new";
@@ -84,7 +110,8 @@ export class MRuleFlowGraphConverter {
 
   public static toRuleSet(graph: MRuleFlowGraph, existingRuleSet?: unknown): MRuleSetLike {
     const source = MAsObject(existingRuleSet);
-    const orderedRuleCodes = MCollectOrderedRuleCodes(MNormalizeGraph(graph));
+    const normalized = MNormalizeGraph(graph);
+    const orderedRuleCodes = MCollectOrderedRuleCodes(normalized);
     const workflowName =
       graph.metadata.workflowName ??
       graph.metadata.ruleSetCode ??
@@ -92,11 +119,29 @@ export class MRuleFlowGraphConverter {
       MReadString(source.WorkflowName) ??
       "wf.new";
 
+    // Serialize connector-specific and expression language fields into each node
+    const serializedGraph: MRuleFlowGraph = {
+      ...normalized,
+      nodes: normalized.nodes.map((node) => {
+        const serialized = { ...node };
+        if (node.expressionLanguage) {
+          serialized.expressionLanguage = node.expressionLanguage;
+        }
+        if (node.data?.connectorConfig) {
+          serialized.data = {
+            ...serialized.data,
+            connectorConfig: node.data.connectorConfig
+          };
+        }
+        return serialized;
+      })
+    };
+
     return {
       ...source,
       workflowName,
       rules: orderedRuleCodes,
-      flowGraph: MNormalizeGraph(graph)
+      flowGraph: serializedGraph
     };
   }
 
@@ -167,6 +212,7 @@ function MNormalizeGraph(graph: MRuleFlowGraph): MRuleFlowGraph {
       ...node,
       id: node.id || `${node.type}-${index + 1}`,
       label: node.label.trim() || `${MTitleCase(node.type)} ${index + 1}`,
+      expressionLanguage: node.expressionLanguage === "feel" || node.expressionLanguage === "javascript" ? node.expressionLanguage : undefined,
       position: {
         x: Number.isFinite(node.position?.x) ? node.position.x : index * 220,
         y: Number.isFinite(node.position?.y) ? node.position.y : 180
@@ -184,10 +230,11 @@ function MNormalizeGraph(graph: MRuleFlowGraph): MRuleFlowGraph {
                   runtimeWritten: true
                 }))
             : (node.data as any)?.outputFields,
+        connectorConfig: node.data?.connectorConfig,
         contractRef:
           node.type !== "trigger" && node.type !== "end" && node.ruleCode
             ? {
-                sourceType: node.type === "decision-table" ? "decision-table" : node.type === "sub-flow" ? "flow" : "rule",
+                sourceType: node.type === "decision-table" ? "decision-table" : node.type === "sub-flow" ? "flow" : node.type === "connector" ? "api" : "rule",
                 sourceCode: node.ruleCode
               }
             : (node.data?.contractRef ?? undefined)

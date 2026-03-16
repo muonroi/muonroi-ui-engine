@@ -1,4 +1,4 @@
-export type MRuleFlowNodeType = "trigger" | "condition" | "action" | "decision-table" | "sub-flow" | "liquid" | "end";
+export type MRuleFlowNodeType = "trigger" | "condition" | "action" | "decision-table" | "sub-flow" | "liquid" | "connector" | "end";
 
 export type MRuleFlowEdgeType = "always" | "on-true" | "on-false" | "on-error";
 
@@ -142,6 +142,12 @@ export interface MRuleFlowLiquidConfig {
   outputFormat?: "json" | "text" | "object";
 }
 
+export interface MRuleFlowConnectorConfig {
+  connectorType?: string;
+  connectorConfig?: Record<string, unknown>;
+  credentialId?: string;
+}
+
 export interface MRuleFlowNodeData {
   description?: string;
   expression?: MRuleFlowExpression;
@@ -156,6 +162,7 @@ export interface MRuleFlowNodeData {
   conditionConfig?: MRuleFlowConditionConfig;
   subFlowConfig?: MRuleFlowSubFlowConfig;
   liquidConfig?: MRuleFlowLiquidConfig;
+  connectorConfig?: MRuleFlowConnectorConfig;
   [key: string]: unknown;
 }
 
@@ -165,6 +172,7 @@ export interface MRuleFlowNode {
   label: string;
   feelExpression?: string;
   ruleCode?: string;
+  expressionLanguage?: "feel" | "javascript";
   position: MRuleFlowPosition;
   data: MRuleFlowNodeData;
 }

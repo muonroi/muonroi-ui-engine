@@ -246,6 +246,7 @@ export const M_NODE_ICONS: Record<MRuleFlowNodeType, string> = {
   "decision-table": "M2 3h12v1.5H2zm0 3.5h12V8H2zm0 3.5h12V11.5H2zm0 3.5h12V15H2z",
   "sub-flow": "M3 3h4v4H3zm6 0h4v4H9zM5 7v2h6V7M8 9v3M5 12h6",
   liquid: "M8 1C5.8 5.3 3 7.4 3 10.5 3 13 5.2 15 8 15s5-2 5-4.5C13 7.4 10.2 5.3 8 1z",
+  connector: "M2 4h4v3H2zm8 0h4v3h-4zM4 7v2h1v1H4v2h2v-2h1V9h2v2h1v2h2v-2h-1V9H9.5V7m-5 0",
   end: "M8 2a6 6 0 100 12A6 6 0 008 2zm0 3a3 3 0 110 6 3 3 0 010-6z"
 };
 
@@ -257,6 +258,7 @@ export const M_NODE_DESCRIPTIONS: Record<MRuleFlowNodeType, string> = {
   "decision-table": "Evaluate a FEEL decision table",
   "sub-flow": "Delegate to another rule flow",
   liquid: "Transform data with Liquid templates",
+  connector: "Integrate with external services via connectors",
   end: "Terminal node — flow completes here"
 };
 
