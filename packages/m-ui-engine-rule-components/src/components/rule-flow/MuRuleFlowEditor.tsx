@@ -183,6 +183,7 @@ const M_NODE_TYPES = {
   "decision-table": MRuleFlowNodeCard,
   "sub-flow": MRuleFlowNodeCard,
   liquid: MRuleFlowNodeCard,
+  connector: MRuleFlowNodeCard,
   end: MRuleFlowNodeCard
 };
 
@@ -938,7 +939,7 @@ export function MuRuleFlowEditor({
         <strong style={{ color: tokens.textPrimary }}>Palette</strong>
         <span>Add nodes to compose a publishable rule flow.</span>
       </div>
-      {(["trigger", "condition", "action", "decision-table", "sub-flow", "liquid", "end"] as MRuleFlowNodeType[]).map((nodeType) => (
+      {(Object.keys(M_NODE_TYPES) as MRuleFlowNodeType[]).map((nodeType) => (
         <button key={nodeType} type="button" style={MPaletteButtonStyle(nodeType, tokens)} data-testid={`palette-${nodeType}`} draggable={!readOnly} onClick={() => addNode(nodeType)} onDragStart={(event) => handlePaletteDragStart(event, nodeType)} disabled={readOnly}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <svg width={16} height={16} viewBox="0 0 16 16" fill={M_NODE_ACCENTS[nodeType]} style={{ flexShrink: 0 }}>
