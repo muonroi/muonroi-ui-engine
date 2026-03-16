@@ -334,6 +334,7 @@ function MExpressionTab({
         <select style={MInputStyle} value={expression.language} disabled={readOnly} onChange={(event) => onChangeLanguage(event.target.value as MRuleFlowExpressionLanguage)}>
           <option value="feel">FEEL</option>
           <option value="javascript">JavaScript</option>
+          <option value="scriban">Scriban</option>
           <option value="liquid">Liquid</option>
           <option value="plain-text">Plain Text</option>
         </select>
@@ -402,7 +403,7 @@ function MConnectorConfigEditor({
   onChange?: (config: MRuleFlowConnectorConfig) => void;
 }): React.JSX.Element {
   const selectedMeta = catalog.find((item) => item.connectorType === config.connectorType);
-  const requiresCredentials = selectedMeta?.credentialFields && selectedMeta.credentialFields.length > 0;
+  const requiresCredentials = selectedMeta?.requiresCredentials || (selectedMeta?.credentialFields && selectedMeta.credentialFields.length > 0);
 
   function update(partial: Partial<MRuleFlowConnectorConfig>): void {
     onChange?.({ ...config, ...partial });
