@@ -587,12 +587,15 @@ export function MInferContractReference(
   };
 }
 
+/** Set of node types that are considered "executable" (not structural trigger/end). */
+const M_EXECUTABLE_NODE_TYPES: ReadonlySet<string> = new Set<MRuleFlowNodeType>(["condition", "action", "decision-table", "sub-flow", "liquid", "connector"]);
+
 export function MDefaultInspectorTabForNode(nodeType: MRuleFlowNodeType): MInspectorTab {
   if (nodeType === "trigger") {
     return "input-scope";
   }
 
-  if (nodeType === "condition" || nodeType === "action" || nodeType === "decision-table" || nodeType === "sub-flow" || nodeType === "liquid" || nodeType === "connector") {
+  if (M_EXECUTABLE_NODE_TYPES.has(nodeType)) {
     return "effective-input";
   }
 
@@ -642,8 +645,11 @@ export function MCreateDefaultExpression(nodeType: MRuleFlowNodeType): MRuleFlow
   };
 }
 
+/** Derives valid node types from M_NODE_TITLES keys — single source of truth. */
+const M_VALID_NODE_TYPES: ReadonlySet<string> = new Set(Object.keys(M_NODE_TITLES));
+
 export function MIsNodeType(value: string): value is MRuleFlowNodeType {
-  return value === "trigger" || value === "condition" || value === "action" || value === "decision-table" || value === "sub-flow" || value === "liquid" || value === "connector" || value === "end";
+  return M_VALID_NODE_TYPES.has(value);
 }
 
 export function MNormalizeNodeType(value: unknown): MRuleFlowNodeType {
