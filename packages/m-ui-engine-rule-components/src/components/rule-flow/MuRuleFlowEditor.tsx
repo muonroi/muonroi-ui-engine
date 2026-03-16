@@ -534,14 +534,15 @@ export function MuRuleFlowEditor({
   }, [ruleEngineApi]);
 
   useEffect(() => {
-    if (!apiBaseUrl) {
+    const catalogBase = catalogApiBase ? catalogApiBase.replace(/\/palette\/?$/, "") : apiBaseUrl;
+    if (!catalogBase) {
       return;
     }
 
     let cancelled = false;
     void (async () => {
       try {
-        const catalog = await MConnectorService.MGetCatalog(apiBaseUrl, {});
+        const catalog = await MConnectorService.MGetCatalog(catalogBase, {});
         if (!cancelled) {
           setConnectorCatalog(catalog);
         }
@@ -555,7 +556,7 @@ export function MuRuleFlowEditor({
     return () => {
       cancelled = true;
     };
-  }, [apiBaseUrl]);
+  }, [catalogApiBase, apiBaseUrl]);
 
   useEffect(() => {
     if (selectedNode?.data.nodeType !== "decision-table") {

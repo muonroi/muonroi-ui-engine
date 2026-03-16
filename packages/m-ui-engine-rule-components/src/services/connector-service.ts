@@ -100,7 +100,7 @@ export class MConnectorService {
    * Get the catalog of available connector types and their metadata.
    */
   static async MGetCatalog(apiBase: string, headers: HeadersInit): Promise<MConnectorMetadata[]> {
-    const url = `${apiBase.replace(/\/$/, "")}/connectors/catalog`;
+    const url = `${apiBase.replace(/\/$/, "")}/connectors`;
     const response = await fetch(url, { method: "GET", headers });
     if (!response.ok) {
       throw new Error(`Failed to load connector catalog: ${response.status}`);
