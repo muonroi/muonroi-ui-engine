@@ -33,6 +33,7 @@ import type {
 import { MRuleFlowContractService, type MRuleFlowSummary } from "../../services/rule-flow-contract-service.js";
 import { MRuleCatalogService } from "../../services/rule-catalog-service.js";
 import { MRuleEngineApi } from "../../services/rule-engine-api.js";
+import { MConnectorService, type MConnectorMetadata } from "../../services/connector-service.js";
 import { useRuleFlowHistory } from "../../hooks/useRuleFlowHistory.js";
 import {
   MActionButtonStyle,
@@ -311,6 +312,7 @@ export function MuRuleFlowEditor({
   const [decisionTableOptions, setDecisionTableOptions] = useState<Array<{ code: string; label: string }>>([]);
   const [selectedDecisionTable, setSelectedDecisionTable] = useState<MDecisionTableModel | null>(null);
   const [decisionTableLoadState, setDecisionTableLoadState] = useState<MDecisionTableLoadState>({ status: "idle" });
+  const [connectorCatalog, setConnectorCatalog] = useState<MConnectorMetadata[]>([]);
   const [catalogGroups, setCatalogGroups] = useState<MRuleCatalogGroup[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [publishConfirmState, setPublishConfirmState] = useState<MPublishConfirmState | null>(null);
@@ -530,6 +532,30 @@ export function MuRuleFlowEditor({
       cancelled = true;
     };
   }, [ruleEngineApi]);
+
+  useEffect(() => {
+    if (!apiBaseUrl) {
+      return;
+    }
+
+    let cancelled = false;
+    void (async () => {
+      try {
+        const catalog = await MConnectorService.MGetCatalog(apiBaseUrl, {});
+        if (!cancelled) {
+          setConnectorCatalog(catalog);
+        }
+      } catch {
+        if (!cancelled) {
+          setConnectorCatalog([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiBaseUrl]);
 
   useEffect(() => {
     if (selectedNode?.data.nodeType !== "decision-table") {
@@ -1168,6 +1194,13 @@ export function MuRuleFlowEditor({
             }), "immediate")
           }
           onDeleteNode={deleteSelectedNode}
+          connectorCatalog={connectorCatalog}
+          onUpdateConnectorConfig={(config) =>
+            updateSelectedNode((node) => ({
+              ...node,
+              data: { ...node.data, connectorConfig: config }
+            }))
+          }
           showSectionHeader={false}
         />
       ) : (

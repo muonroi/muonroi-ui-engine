@@ -2,7 +2,7 @@ export type MRuleFlowNodeType = "trigger" | "condition" | "action" | "decision-t
 
 export type MRuleFlowEdgeType = "always" | "on-true" | "on-false" | "on-error";
 
-export type MRuleFlowExpressionLanguage = "feel" | "liquid" | "plain-text";
+export type MRuleFlowExpressionLanguage = "feel" | "liquid" | "plain-text" | "javascript";
 
 export type MRuleFlowContractSourceType = "rule" | "flow" | "decision-table" | "api" | "inline";
 

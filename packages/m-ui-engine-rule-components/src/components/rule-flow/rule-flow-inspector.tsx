@@ -4,6 +4,7 @@ import type {
   MDecisionTableModel,
   MEffectiveInputMapping,
   MRuleFlowConditionConfig,
+  MRuleFlowConnectorConfig,
   MRuleFlowContractField,
   MRuleFlowContractReference,
   MRuleFlowContractSchema,
@@ -12,6 +13,7 @@ import type {
   MRuleFlowNodeType,
   MRuleFlowSubFlowConfig
 } from "../../models.js";
+import type { MConnectorMetadata } from "../../services/connector-service.js";
 import {
   MAvailableInspectorTabs,
   MDefaultContractSourceType,
@@ -42,6 +44,7 @@ export interface MRuleFlowInspectorProps {
       conditionConfig?: MRuleFlowConditionConfig;
       subFlowConfig?: MRuleFlowSubFlowConfig;
       liquidConfig?: MRuleFlowLiquidConfig;
+      connectorConfig?: MRuleFlowConnectorConfig;
       dependsOn?: string[];
       order?: number;
       contractLayer?: {
@@ -82,6 +85,8 @@ export interface MRuleFlowInspectorProps {
   onChangeOutputContract: (fields: MRuleFlowContractField[]) => void;
   onDeleteNode: () => void;
   showSectionHeader?: boolean;
+  connectorCatalog?: MConnectorMetadata[];
+  onUpdateConnectorConfig?: (config: MRuleFlowConnectorConfig) => void;
 }
 
 export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.Element {
@@ -287,6 +292,14 @@ function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
           </select>
         </label>
       ) : null}
+      {selectedNode.data.nodeType === "connector" ? (
+        <MConnectorConfigEditor
+          config={selectedNode.data.connectorConfig ?? { connectorType: "", connectorConfig: {}, credentialId: undefined }}
+          catalog={props.connectorCatalog ?? []}
+          readOnly={readOnly}
+          onChange={props.onUpdateConnectorConfig}
+        />
+      ) : null}
     </div>
   );
 }
@@ -320,6 +333,7 @@ function MExpressionTab({
         Expression Language
         <select style={MInputStyle} value={expression.language} disabled={readOnly} onChange={(event) => onChangeLanguage(event.target.value as MRuleFlowExpressionLanguage)}>
           <option value="feel">FEEL</option>
+          <option value="javascript">JavaScript</option>
           <option value="liquid">Liquid</option>
           <option value="plain-text">Plain Text</option>
         </select>
@@ -372,6 +386,91 @@ function MConditionConfigEditor({
         Failure Message
         <textarea style={MTextareaStyle} value={normalized.failureMessage} disabled={readOnly} onChange={(event) => onChange({ ...normalized, failureMessage: event.target.value })} />
       </label>
+    </div>
+  );
+}
+
+function MConnectorConfigEditor({
+  config,
+  catalog,
+  readOnly,
+  onChange
+}: {
+  config: MRuleFlowConnectorConfig;
+  catalog: MConnectorMetadata[];
+  readOnly: boolean;
+  onChange?: (config: MRuleFlowConnectorConfig) => void;
+}): React.JSX.Element {
+  const selectedMeta = catalog.find((item) => item.connectorType === config.connectorType);
+  const requiresCredentials = selectedMeta?.credentialFields && selectedMeta.credentialFields.length > 0;
+
+  function update(partial: Partial<MRuleFlowConnectorConfig>): void {
+    onChange?.({ ...config, ...partial });
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 10 }}>
+      <label style={MLabelStyle}>
+        Connector Type
+        <select
+          style={MInputStyle}
+          value={config.connectorType ?? ""}
+          disabled={readOnly}
+          onChange={(event) => update({ connectorType: event.target.value, connectorConfig: {}, credentialId: undefined })}
+        >
+          <option value="">Select connector type</option>
+          {catalog.map((item) => (
+            <option key={item.connectorType} value={item.connectorType}>
+              {item.displayName} {item.category ? `(${item.category})` : ""}
+            </option>
+          ))}
+        </select>
+      </label>
+      {config.connectorType ? (
+        <>
+          {selectedMeta?.description ? (
+            <div style={MExpressionHintStyle}>
+              <span>{selectedMeta.description}</span>
+            </div>
+          ) : null}
+          <label style={MLabelStyle}>
+            Config JSON
+            <textarea
+              style={{ ...MTextareaStyle, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: 13 }}
+              value={JSON.stringify(config.connectorConfig ?? {}, null, 2)}
+              disabled={readOnly}
+              onChange={(event) => {
+                try {
+                  const parsed = JSON.parse(event.target.value) as Record<string, unknown>;
+                  update({ connectorConfig: parsed });
+                } catch {
+                  // Allow intermediate invalid JSON while typing
+                }
+              }}
+            />
+          </label>
+          {selectedMeta?.configSchema ? (
+            <div style={MExpressionHintStyle}>
+              <strong>Config Schema</strong>
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: 11 }}>
+                {JSON.stringify(selectedMeta.configSchema, null, 2)}
+              </pre>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+      {requiresCredentials ? (
+        <label style={MLabelStyle}>
+          Credential ID
+          <input
+            style={MInputStyle}
+            value={config.credentialId ?? ""}
+            disabled={readOnly}
+            placeholder="Enter credential identifier"
+            onChange={(event) => update({ credentialId: event.target.value })}
+          />
+        </label>
+      ) : null}
     </div>
   );
 }
