@@ -29,6 +29,7 @@ export interface MConnectorMetadata {
   category?: string;
   configSchema?: Record<string, unknown>;
   credentialFields?: string[];
+  requiresCredentials?: boolean;
 }
 
 export class MConnectorService {
@@ -104,7 +105,16 @@ export class MConnectorService {
     if (!response.ok) {
       throw new Error(`Failed to load connector catalog: ${response.status}`);
     }
-    return (await response.json()) as MConnectorMetadata[];
+    const raw = (await response.json()) as Array<Record<string, unknown>>;
+    return raw.map((item) => ({
+      connectorType: String(item.type ?? item.connectorType ?? ""),
+      displayName: String(item.displayName ?? ""),
+      description: typeof item.description === "string" ? item.description : undefined,
+      icon: typeof item.iconSvg === "string" ? item.iconSvg : typeof item.icon === "string" ? item.icon : undefined,
+      category: typeof item.category === "string" ? item.category : undefined,
+      requiresCredentials: Boolean(item.requiresCredentials),
+      credentialFields: Array.isArray(item.credentialFields) ? item.credentialFields as string[] : undefined
+    }));
   }
 
   /**
