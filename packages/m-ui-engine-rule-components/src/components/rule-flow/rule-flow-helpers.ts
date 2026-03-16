@@ -3,6 +3,7 @@ import type {
   MContractValidationIssue,
   MEffectiveInputMapping,
   MRuleFlowConditionConfig,
+  MRuleFlowConnectorConfig,
   MRuleFlowContractField,
   MRuleFlowContractOverride,
   MRuleFlowContractReference,
@@ -38,6 +39,7 @@ export const M_NODE_TITLES: Record<MRuleFlowNodeType, string> = {
   "decision-table": "Decision Table",
   "sub-flow": "Sub Flow",
   liquid: "Liquid",
+  connector: "Connector",
   end: "End"
 };
 
@@ -48,6 +50,7 @@ export const M_NODE_ACCENTS: Record<MRuleFlowNodeType, string> = {
   "decision-table": "#ea580c",
   "sub-flow": "#0891b2",
   liquid: "#0f766e",
+  connector: "#9333ea",
   end: "#dc2626"
 };
 
@@ -58,6 +61,7 @@ export const M_NODE_DEFAULT_LABELS: Record<MRuleFlowNodeType, string> = {
   "decision-table": "Decision Table",
   "sub-flow": "Sub Flow",
   liquid: "Liquid Transform",
+  connector: "New Connector",
   end: "End"
 };
 
@@ -182,6 +186,7 @@ function MNormalizeGraphNode(node: Partial<MRuleFlowNode>, index: number): MRule
     label: typeof node.label === "string" && node.label ? node.label : M_NODE_DEFAULT_LABELS[type],
     feelExpression: expression.language === "feel" ? expression.body : undefined,
     ruleCode: typeof node.ruleCode === "string" ? node.ruleCode : undefined,
+    expressionLanguage: node.expressionLanguage === "feel" || node.expressionLanguage === "javascript" ? node.expressionLanguage : undefined,
     position: {
       x: Number.isFinite(position?.x) ? position.x : 40 + index * 48,
       y: Number.isFinite(position?.y) ? position.y : 60 + (index % 4) * 88
@@ -227,7 +232,8 @@ export function MNormalizeNodeData(data: unknown): MRuleFlowNodeData {
     order: typeof candidate.order === "number" && Number.isFinite(candidate.order) ? candidate.order : undefined,
     conditionConfig: MNormalizeConditionConfig(candidate.conditionConfig),
     subFlowConfig: MNormalizeSubFlowConfig(candidate.subFlowConfig),
-    liquidConfig: MNormalizeLiquidConfig(candidate.liquidConfig)
+    liquidConfig: MNormalizeLiquidConfig(candidate.liquidConfig),
+    connectorConfig: MNormalizeConnectorConfig(candidate.connectorConfig)
   };
 }
 
@@ -380,6 +386,29 @@ export function MNormalizeSubFlowConfig(value: unknown): MRuleFlowSubFlowConfig 
     outputMappings: Array.isArray(candidate.outputMappings)
       ? candidate.outputMappings.map(MNormalizeMappingRow).filter(Boolean) as MRuleFlowMappingRow[]
       : []
+  };
+}
+
+export function MNormalizeConnectorConfig(value: unknown): MRuleFlowConnectorConfig | undefined {
+  if (!value || typeof value !== "object") {
+    return undefined;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return {
+    connectorType: typeof candidate.connectorType === "string" ? candidate.connectorType : undefined,
+    connectorConfig: candidate.connectorConfig && typeof candidate.connectorConfig === "object"
+      ? candidate.connectorConfig as Record<string, unknown>
+      : undefined,
+    credentialId: typeof candidate.credentialId === "string" ? candidate.credentialId : undefined
+  };
+}
+
+export function MEnsureConnectorConfig(value: MRuleFlowConnectorConfig | undefined): MRuleFlowConnectorConfig {
+  return value ?? {
+    connectorType: "",
+    connectorConfig: {},
+    credentialId: undefined
   };
 }
 
@@ -563,7 +592,7 @@ export function MDefaultInspectorTabForNode(nodeType: MRuleFlowNodeType): MInspe
     return "input-scope";
   }
 
-  if (nodeType === "condition" || nodeType === "action" || nodeType === "decision-table" || nodeType === "sub-flow" || nodeType === "liquid") {
+  if (nodeType === "condition" || nodeType === "action" || nodeType === "decision-table" || nodeType === "sub-flow" || nodeType === "liquid" || nodeType === "connector") {
     return "effective-input";
   }
 
@@ -578,6 +607,9 @@ export function MDefaultContractSourceType(nodeType: MRuleFlowNodeType): MRuleFl
     return "decision-table";
   }
   if (nodeType === "liquid") {
+    return "api";
+  }
+  if (nodeType === "connector") {
     return "api";
   }
   return "rule";
@@ -611,7 +643,7 @@ export function MCreateDefaultExpression(nodeType: MRuleFlowNodeType): MRuleFlow
 }
 
 export function MIsNodeType(value: string): value is MRuleFlowNodeType {
-  return value === "trigger" || value === "condition" || value === "action" || value === "decision-table" || value === "sub-flow" || value === "liquid" || value === "end";
+  return value === "trigger" || value === "condition" || value === "action" || value === "decision-table" || value === "sub-flow" || value === "liquid" || value === "connector" || value === "end";
 }
 
 export function MNormalizeNodeType(value: unknown): MRuleFlowNodeType {
