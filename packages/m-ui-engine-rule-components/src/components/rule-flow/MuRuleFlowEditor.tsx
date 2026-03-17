@@ -34,6 +34,7 @@ import { MRuleFlowContractService, type MRuleFlowSummary } from "../../services/
 import { MRuleCatalogService } from "../../services/rule-catalog-service.js";
 import { MRuleEngineApi } from "../../services/rule-engine-api.js";
 import { MConnectorService, type MConnectorMetadata } from "../../services/connector-service.js";
+import { MBuildRuleComponentHeaders } from "../../runtime/request-context.js";
 import { useRuleFlowHistory } from "../../hooks/useRuleFlowHistory.js";
 import {
   MActionButtonStyle,
@@ -542,7 +543,7 @@ export function MuRuleFlowEditor({
     let cancelled = false;
     void (async () => {
       try {
-        const catalog = await MConnectorService.MGetCatalog(catalogBase, {});
+        const catalog = await MConnectorService.MGetCatalog(catalogBase, MBuildRuleComponentHeaders(undefined, { tenantId }));
         if (!cancelled) {
           setConnectorCatalog(catalog);
         }
