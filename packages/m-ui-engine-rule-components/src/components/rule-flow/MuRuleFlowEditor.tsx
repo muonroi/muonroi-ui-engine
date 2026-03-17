@@ -534,7 +534,7 @@ export function MuRuleFlowEditor({
   }, [ruleEngineApi]);
 
   useEffect(() => {
-    const catalogBase = catalogApiBase ? catalogApiBase.replace(/\/palette\/?$/, "") : apiBaseUrl;
+    const catalogBase = catalogApiBase ? catalogApiBase.replace(/\/catalog\/palette\/?$/, "") : apiBaseUrl;
     if (!catalogBase) {
       return;
     }
