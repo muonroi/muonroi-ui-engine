@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-rule-components",
-  "version": "0.1.6-alpha.6",
+  "version": "0.1.6-alpha.7",
   "description": "Muonroi rule engine web components",
   "type": "module",
   "main": "dist/muonroi-rule-components.esm.js",
