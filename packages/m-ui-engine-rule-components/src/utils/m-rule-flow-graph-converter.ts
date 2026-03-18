@@ -199,7 +199,7 @@ function MCollectOrderedRuleCodes(graph: MRuleFlowGraph): string[] {
 
     const nextEdge = (outgoing.get(currentId) ?? [])
       .slice()
-      .sort((left, right) => left.target.localeCompare(right.target))[0];
+      .sort((left, right) => (left.target ?? "").localeCompare(right.target ?? ""))[0];
     currentId = nextEdge?.target;
   }
 
