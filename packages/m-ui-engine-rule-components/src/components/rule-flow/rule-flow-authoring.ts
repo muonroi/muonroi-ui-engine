@@ -135,7 +135,7 @@ export function MOrderRuleFlowGraph(
       if (leftOrder !== rightOrder) {
         return leftOrder - rightOrder;
       }
-      return left.label.localeCompare(right.label);
+      return (left.label ?? "").localeCompare(right.label ?? "");
     })
     .filter((node) => (indegree.get(node.id) ?? 0) === 0)
     .map((node) => node.id);
@@ -632,7 +632,7 @@ function MResolveCurrentFlowInput(
       if (leftOrder !== rightOrder) {
         return leftOrder - rightOrder;
       }
-      return left.label.localeCompare(right.label);
+      return (left.label ?? "").localeCompare(right.label ?? "");
     })[0];
 
   if (!firstExecutableNode) {
@@ -738,7 +738,7 @@ function MDeduplicateFields(fields: MRuleFlowContractField[]): MRuleFlowContract
     }
   }
 
-  return [...seen.values()].sort((left, right) => left.path.localeCompare(right.path));
+  return [...seen.values()].sort((left, right) => (left.path ?? "").localeCompare(right.path ?? ""));
 }
 
 function MCloneFields(fields: readonly MRuleFlowContractField[]): MRuleFlowContractField[] {

@@ -1773,7 +1773,7 @@ function MCreateAutoLayoutGraph(graph: MRuleFlowGraph): MRuleFlowGraph {
         if (leftOrder !== rightOrder) {
           return leftOrder - rightOrder;
         }
-        return left.label.localeCompare(right.label);
+        return (left.label ?? "").localeCompare(right.label ?? "");
       })
       .forEach((node, index) => {
         const target = nextNodes.find((candidate) => candidate.id === node.id);
@@ -1822,7 +1822,7 @@ function MBuildDependencyOverlay(graph: MRuleFlowGraph): MDependencyOverlayItem[
       if (left.order !== right.order) {
         return left.order - right.order;
       }
-      return left.label.localeCompare(right.label);
+      return (left.label ?? "").localeCompare(right.label ?? "");
     });
 }
 

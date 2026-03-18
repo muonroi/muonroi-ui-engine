@@ -155,7 +155,7 @@ export function MCreateRuleFlowGraphSignature(graph: MRuleFlowGraph): string {
         position: node.position,
         data: MNormalizeNodeData(node.data)
       }))
-      .sort((left, right) => left.id.localeCompare(right.id)),
+      .sort((left, right) => (left.id ?? "").localeCompare(right.id ?? "")),
     edges: normalized.edges
       .map((edge) => ({
         id: edge.id,
@@ -164,7 +164,7 @@ export function MCreateRuleFlowGraphSignature(graph: MRuleFlowGraph): string {
         label: edge.label ?? "",
         edgeType: edge.edgeType
       }))
-      .sort((left, right) => left.id.localeCompare(right.id)),
+      .sort((left, right) => (left.id ?? "").localeCompare(right.id ?? "")),
     metadata: {
       version: normalized.metadata.version,
       tenantId: normalized.metadata.tenantId ?? "",

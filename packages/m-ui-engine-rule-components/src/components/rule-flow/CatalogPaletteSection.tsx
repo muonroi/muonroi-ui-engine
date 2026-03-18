@@ -19,13 +19,13 @@ export function CatalogPaletteSection({
   const [search, setSearch] = useState("");
   const normalizedSearch = search.trim().toLowerCase();
   const filteredGroups = useMemo(() => {
-    const sortedGroups = [...groups].sort((left, right) => left.category.localeCompare(right.category));
+    const sortedGroups = [...groups].sort((left, right) => (left.category ?? "").localeCompare(right.category ?? ""));
     return sortedGroups
       .map((group) => ({
         ...group,
         items: [...group.items]
           .filter((item) => MMatchesSearch(item, normalizedSearch))
-          .sort((left, right) => left.displayName.localeCompare(right.displayName))
+          .sort((left, right) => (left.displayName ?? "").localeCompare(right.displayName ?? ""))
       }))
       .filter((group) => group.items.length > 0);
   }, [groups, normalizedSearch]);
@@ -60,7 +60,9 @@ export function CatalogPaletteSection({
       {!loading
         ? filteredGroups.map((group) => (
             <div key={group.category} data-testid={`catalog-group-${group.category}`} style={MCatalogGroupStyle}>
-              <span style={MCatalogGroupTitleStyle}>{group.category}</span>
+              <span style={MCatalogGroupTitleStyle} title={group.category}>
+                {MShortCategory(group.category)}
+              </span>
               {group.items.map((item) => (
                 <button
                   key={item.code}
@@ -87,6 +89,11 @@ export function CatalogPaletteSection({
         : null}
     </div>
   );
+}
+
+function MShortCategory(category: string): string {
+  const parts = category.split(".");
+  return parts.length <= 2 ? category : parts.slice(-2).join(".");
 }
 
 function MMatchesSearch(item: MRuleCatalogItem, search: string): boolean {
