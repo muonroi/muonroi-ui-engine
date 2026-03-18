@@ -96,7 +96,7 @@ describe("rule flow editor", () => {
     const onGraphChange = vi.fn();
     render(<MuRuleFlowEditor graph={M_GRAPH} onGraphChange={onGraphChange} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /palette compose and add nodes/i }));
+    // In the 3-panel layout, palette buttons are always visible in the left panel
     fireEvent.click(screen.getByTestId("palette-action"));
 
     expect(onGraphChange).toHaveBeenCalled();
@@ -147,7 +147,7 @@ describe("rule flow editor", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /palette compose and add nodes/i }));
+    // Catalog rules load into the always-visible left panel
     await waitFor(() => {
       expect(screen.getByRole("button", { name: /validate liner code/i })).toBeTruthy();
     });
@@ -168,7 +168,7 @@ describe("rule flow editor", () => {
   it("keeps palette buttons disabled in read only mode", () => {
     render(<MuRuleFlowEditor graph={M_GRAPH} readOnly />);
 
-    fireEvent.click(screen.getByRole("button", { name: /palette compose and add nodes/i }));
+    // Palette buttons are always visible in the left panel
     expect(screen.getByTestId("palette-condition").hasAttribute("disabled")).toBe(true);
   });
 
@@ -208,14 +208,14 @@ describe("rule flow editor", () => {
     document.body.appendChild(element);
     await element.updateComplete;
 
+    // In the new layout, "Node Library" is the left panel header
     await waitFor(() => {
-      expect(Array.from(element.shadowRoot?.querySelectorAll("button") ?? []).some((candidate) => candidate.textContent?.includes("Palette"))).toBe(
+      expect(Array.from(element.shadowRoot?.querySelectorAll("strong") ?? []).some((candidate) => candidate.textContent?.includes("Node Library"))).toBe(
         true
       );
     });
 
-    const paletteButton = Array.from(element.shadowRoot?.querySelectorAll("button") ?? []).find((candidate) => candidate.textContent?.includes("Palette"));
-    fireEvent.click(paletteButton!);
+    // Palette buttons are always visible — click action directly
     const actionButton = element.shadowRoot?.querySelector("[data-testid='palette-action']") as HTMLButtonElement;
     fireEvent.click(actionButton!);
 
@@ -296,7 +296,7 @@ describe("rule flow editor", () => {
 
     render(<MuRuleFlowEditor graph={invalidGraph} onPublish={vi.fn()} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /actions undo, import, export and publish/i }));
+    // In the new layout, actions toolbar is always visible (floating on canvas)
     const publishButton = screen.getByRole("button", { name: "Publish" });
     expect(publishButton.hasAttribute("disabled")).toBe(true);
     expect(screen.getByText(/publish blocked/i)).toBeTruthy();
@@ -336,13 +336,14 @@ describe("rule flow editor", () => {
     render(<MuRuleFlowEditor graph={graph} />);
 
     fireEvent.click(screen.getByTestId("xy-node-rule-b"));
-    fireEvent.click(screen.getByRole("button", { name: "General" }));
+    // Inspector tabs are renamed: "General" → "Basic Info"
+    fireEvent.click(screen.getByRole("button", { name: "Basic Info" }));
     expect(screen.getByDisplayValue("Rule B")).toBeTruthy();
 
     fireEvent.click(screen.getByTestId("depends-chip-RULE_A"));
 
     await waitFor(() => {
-      fireEvent.click(screen.getByRole("button", { name: "General" }));
+      fireEvent.click(screen.getByRole("button", { name: "Basic Info" }));
       expect(screen.getByDisplayValue("Rule A")).toBeTruthy();
     });
   });
@@ -366,10 +367,12 @@ describe("rule flow editor", () => {
 
     render(<MuRuleFlowEditor graph={graph} onGraphChange={onGraphChange} />);
 
+    // Dependency overlay exists but defaults to collapsed — expand it to see items
     expect(screen.getByTestId("rule-flow-dependency-overlay")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /execution order/i }));
     expect(screen.getByTestId("dependency-overlay-RULE_A")).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: /actions undo, import, export and publish the current flow/i }));
+    // Actions toolbar is always visible in the new layout (floating on canvas)
     fireEvent.click(screen.getByRole("button", { name: "Auto Layout" }));
 
     await waitFor(() => {
@@ -454,7 +457,8 @@ describe("rule flow editor", () => {
     render(<MuRuleFlowEditor graph={graph} apiBaseUrl="http://localhost:5000/api/v1/control-plane" />);
 
     fireEvent.click(screen.getByTestId("xy-node-dt-1"));
-    fireEvent.click(screen.getByRole("button", { name: "General" }));
+    // Inspector tabs renamed: "General" → "Basic Info"
+    fireEvent.click(screen.getByRole("button", { name: "Basic Info" }));
 
     await waitFor(() => {
       const overview = screen.getByTestId("decision-table-overview");
@@ -470,7 +474,7 @@ describe("rule flow editor", () => {
     const onPublish = vi.fn().mockResolvedValue(undefined);
     render(<MuRuleFlowEditor graph={M_GRAPH} onPublish={onPublish} />);
 
-    fireEvent.click(screen.getByRole("button", { name: /actions undo, import, export and publish the current flow/i }));
+    // Actions toolbar is always visible in the new layout
     fireEvent.click(screen.getByRole("button", { name: "Publish" }));
 
     expect(onPublish).not.toHaveBeenCalled();
