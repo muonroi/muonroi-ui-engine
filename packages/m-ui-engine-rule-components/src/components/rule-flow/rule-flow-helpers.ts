@@ -30,7 +30,7 @@ export type MCanvasNodeData = MRuleFlowNodeData & {
   _theme?: "light" | "dark";
 };
 
-export type MInspectorTab = "general" | "input-scope" | "effective-input" | "output-contract" | "expression";
+export type MInspectorTab = "basic-info" | "input-data" | "data-mapping" | "output-data" | "logic";
 
 export const M_NODE_TITLES: Record<MRuleFlowNodeType, string> = {
   trigger: "Trigger",
@@ -233,7 +233,14 @@ export function MNormalizeNodeData(data: unknown): MRuleFlowNodeData {
     conditionConfig: MNormalizeConditionConfig(candidate.conditionConfig),
     subFlowConfig: MNormalizeSubFlowConfig(candidate.subFlowConfig),
     liquidConfig: MNormalizeLiquidConfig(candidate.liquidConfig),
-    connectorConfig: MNormalizeConnectorConfig(candidate.connectorConfig)
+    connectorConfig: (() => {
+      const normalized = MNormalizeConnectorConfig(candidate.connectorConfig);
+      // Merge top-level connectorType into normalized config (runtime format stores it separately)
+      if (normalized && !normalized.connectorType && typeof candidate.connectorType === "string") {
+        normalized.connectorType = candidate.connectorType;
+      }
+      return normalized;
+    })()
   };
 }
 
@@ -395,6 +402,32 @@ export function MNormalizeConnectorConfig(value: unknown): MRuleFlowConnectorCon
   }
 
   const candidate = value as Record<string, unknown>;
+  const candidateKeys = Object.keys(candidate);
+
+  console.log("[muonroi-debug] MNormalizeConnectorConfig input keys:", candidateKeys.join(","), "| has url:", "url" in candidate, "| has connectorType:", typeof candidate.connectorType);
+
+  // Nested format: { connectorType, connectorConfig: { url, method, ... }, credentialId }
+  if (typeof candidate.connectorType === "string" && candidate.connectorConfig && typeof candidate.connectorConfig === "object") {
+    console.log("[muonroi-debug] → nested format detected");
+    return {
+      connectorType: candidate.connectorType,
+      connectorConfig: candidate.connectorConfig as Record<string, unknown>,
+      credentialId: typeof candidate.credentialId === "string" ? candidate.credentialId : undefined
+    };
+  }
+
+  // Flat format from runtime: { url, method, body, headers, ... }
+  const hasRuntimeKeys = candidateKeys.some(k => ["url", "method", "body", "operation", "webhookUrl", "to", "key", "headers"].includes(k));
+  if (hasRuntimeKeys) {
+    console.log("[muonroi-debug] → flat/runtime format detected, using candidate as connectorConfig");
+    return {
+      connectorType: typeof candidate.connectorType === "string" ? candidate.connectorType : undefined,
+      connectorConfig: candidate as Record<string, unknown>,
+      credentialId: typeof candidate.credentialId === "string" ? candidate.credentialId : undefined
+    };
+  }
+
+  console.log("[muonroi-debug] → legacy/fallback format");
   return {
     connectorType: typeof candidate.connectorType === "string" ? candidate.connectorType : undefined,
     connectorConfig: candidate.connectorConfig && typeof candidate.connectorConfig === "object"
@@ -592,14 +625,14 @@ const M_EXECUTABLE_NODE_TYPES: ReadonlySet<string> = new Set<MRuleFlowNodeType>(
 
 export function MDefaultInspectorTabForNode(nodeType: MRuleFlowNodeType): MInspectorTab {
   if (nodeType === "trigger") {
-    return "input-scope";
+    return "input-data";
   }
 
   if (M_EXECUTABLE_NODE_TYPES.has(nodeType)) {
-    return "effective-input";
+    return "data-mapping";
   }
 
-  return "general";
+  return "basic-info";
 }
 
 export function MDefaultContractSourceType(nodeType: MRuleFlowNodeType): MRuleFlowContractReference["sourceType"] {
@@ -619,23 +652,23 @@ export function MDefaultContractSourceType(nodeType: MRuleFlowNodeType): MRuleFl
 }
 
 export function MAvailableInspectorTabs(nodeType: MRuleFlowNodeType): MInspectorTab[] {
-  const tabs: MInspectorTab[] = ["general", "input-scope", "effective-input", "output-contract"];
+  const tabs: MInspectorTab[] = ["basic-info", "input-data", "data-mapping", "output-data"];
   if (nodeType !== "trigger" && nodeType !== "end") {
-    tabs.push("expression");
+    tabs.push("logic");
   }
   return tabs;
 }
 
 export function MInspectorTabTitle(tab: MInspectorTab): string {
-  return tab === "general"
-    ? "General"
-    : tab === "input-scope"
-      ? "Input Scope"
-      : tab === "effective-input"
-        ? "Effective Input"
-        : tab === "output-contract"
-          ? "Output Contract"
-          : "Expression";
+  return tab === "basic-info"
+    ? "Basic Info"
+    : tab === "input-data"
+      ? "Input Data"
+      : tab === "data-mapping"
+        ? "Data Mapping"
+        : tab === "output-data"
+          ? "Output Data"
+          : "Logic";
 }
 
 export function MCreateDefaultExpression(nodeType: MRuleFlowNodeType): MRuleFlowExpression {
@@ -661,7 +694,16 @@ export function MNormalizeEdgeType(value: unknown): MRuleFlowEdge["edgeType"] {
 }
 
 export function MNormalizeExpressionLanguage(value: unknown): MRuleFlowExpressionLanguage {
-  return value === "feel" || value === "liquid" || value === "plain-text" ? value : "feel";
+  if (typeof value !== "string") {
+    return "feel";
+  }
+  const normalized = value.trim().toLowerCase();
+  // Supported expression languages in the Muonroi rule engine ecosystem
+  if (normalized === "feel" || normalized === "liquid" || normalized === "plain-text"
+    || normalized === "javascript" || normalized === "scriban") {
+    return normalized as MRuleFlowExpressionLanguage;
+  }
+  return "feel";
 }
 
 export function MNormalizeContractSourceType(value: unknown): MRuleFlowContractReference["sourceType"] {

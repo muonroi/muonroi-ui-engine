@@ -119,6 +119,12 @@ export function MOrderRuleFlowGraph(
   }
 
   for (const edge of normalized.edges) {
+    // on-error edges are fallback paths, not execution dependencies.
+    // Including them in topological ordering can create false cycles
+    // (e.g. rule A → error handler → rule B, where B also depends on A).
+    if (edge.edgeType === "on-error") {
+      continue;
+    }
     addEdge(edge.source, edge.target);
   }
 
@@ -370,7 +376,14 @@ function MBuildNodeContractLayers(
     }
 
     if (node.type === "condition" || node.type === "liquid") {
-      const refs = MExtractExpressionPaths(MEnsureExpression(node.data).body, upstreamFields);
+      const exprObj = MEnsureExpression(node.data);
+      const exprLang = (exprObj.language ?? "").toLowerCase();
+      // Only extract expression paths for FEEL-like languages.
+      // JavaScript, Scriban, and Liquid have different scoping rules
+      // (local vars, function args, template loops) that produce false positives.
+      const refs = (exprLang === "feel" || exprLang === "")
+        ? MExtractExpressionPaths(exprObj.body, upstreamFields)
+        : [];
       return {
         contractName: `${node.ruleCode ?? node.id}_effective_input`,
         title: "Effective Input",
@@ -434,10 +447,16 @@ function MBuildNodeContractLayers(
 
       const sourceField = upstreamFields.find((field) => field.path === mapping.sourcePath);
       if (!sourceField) {
+        // Sub-flow and connector nodes resolve inputs from FactBag at runtime,
+        // which may contain keys not visible in static contract propagation.
+        // Downgrade to warning for these node types.
+        const isRuntimeResolved = node.type === "sub-flow" || node.type === "connector" || node.type === "decision-table";
         issues.push({
           code: "MRF002",
-          severity: "error",
-          message: `Source field '${mapping.sourcePath}' is not available in upstream scope.`,
+          severity: isRuntimeResolved ? "warning" : "error",
+          message: isRuntimeResolved
+            ? `Source field '${mapping.sourcePath}' is not in upstream scope (may be resolved from FactBag at runtime).`
+            : `Source field '${mapping.sourcePath}' is not available in upstream scope.`,
           nodeId: node.id,
           sourcePath: mapping.sourcePath,
           targetPath: mapping.targetField ?? mapping.targetPath
@@ -474,17 +493,40 @@ function MBuildNodeContractLayers(
     }
 
     if (node.type === "condition" || node.type === "liquid") {
-      const expression = MEnsureExpression(node.data).body;
-      const refs = MExtractExpressionTokenStrings(expression);
-      for (const ref of refs) {
-        if (!upstreamFields.some((field) => field.path === ref)) {
-          issues.push({
-            code: "MRF005",
-            severity: "error",
-            message: `Expression references '${ref}' but that field is not available in input scope.`,
-            nodeId: node.id,
-            fieldPath: ref
-          });
+      const expressionObj = MEnsureExpression(node.data);
+      const expression = expressionObj.body;
+      const language = (expressionObj.language ?? "").toLowerCase();
+
+      // MRF005 token validation only applies to FEEL expressions.
+      // JavaScript, Scriban, Liquid, and plain-text use different token/scoping rules
+      // that are not compatible with this static upstream-scope check.
+      const isFeelLike = language === "feel" || language === "";
+
+      if (isFeelLike) {
+        // Extract loop-variable prefixes from FEEL for...in / every...satisfies / some...satisfies
+        // e.g. "for d in Details return d.ContainerNo" → "d" is a loop variable, skip "d.*" refs
+        const loopVarPrefixes = MExtractFeelLoopVariables(expression);
+
+        const refs = MExtractExpressionTokenStrings(expression);
+        for (const ref of refs) {
+          // Skip refs whose root is a loop variable (d.ContainerNo, c.vgmWeight, etc.)
+          const rootToken = ref.split(".")[0];
+          if (loopVarPrefixes.has(rootToken)) {
+            continue;
+          }
+          // Skip well-known FEEL built-in prefixes and graph internal keys
+          if (rootToken.startsWith("__graph") || M_FEEL_BUILTIN_PREFIXES.has(rootToken)) {
+            continue;
+          }
+          if (!upstreamFields.some((field) => field.path === ref || ref.startsWith(field.path + "."))) {
+            issues.push({
+              code: "MRF005",
+              severity: "error",
+              message: `Expression references '${ref}' but that field is not available in input scope.`,
+              nodeId: node.id,
+              fieldPath: ref
+            });
+          }
         }
       }
     }
@@ -758,3 +800,32 @@ function MLeafName(path: string): string {
   const parts = path.split(".");
   return parts[parts.length - 1] ?? path;
 }
+
+/**
+ * Extract loop variable names from FEEL quantifier and iteration expressions.
+ * Patterns: "for x in ...", "every x in ... satisfies", "some x in ... satisfies"
+ * Returns a set of variable names (e.g. {"d", "c", "x"}).
+ */
+function MExtractFeelLoopVariables(expression: string): Set<string> {
+  const vars = new Set<string>();
+  const patterns = [
+    /\bfor\s+([a-zA-Z_]\w*)\s+in\b/g,
+    /\bevery\s+([a-zA-Z_]\w*)\s+in\b/g,
+    /\bsome\s+([a-zA-Z_]\w*)\s+in\b/g
+  ];
+  for (const pattern of patterns) {
+    let m: RegExpExecArray | null = pattern.exec(expression);
+    while (m) {
+      vars.add(m[1]);
+      m = pattern.exec(expression);
+    }
+  }
+  return vars;
+}
+
+/** Well-known FEEL built-in function/type prefixes that should not trigger MRF005. */
+const M_FEEL_BUILTIN_PREFIXES: ReadonlySet<string> = new Set([
+  "string", "number", "date", "time", "duration", "list", "context",
+  "math", "Math", "Date", "JSON", "RegExp", "Object", "Array",
+  "console", "forloop", "now", "true", "false", "null"
+]);

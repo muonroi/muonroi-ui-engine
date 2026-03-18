@@ -112,8 +112,8 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
             ))}
           </div>
 
-          {inspectorTab === "general" ? <MGeneralTab {...props} /> : null}
-          {inspectorTab === "input-scope" ? (
+          {inspectorTab === "basic-info" ? <MGeneralTab {...props} /> : null}
+          {inspectorTab === "input-data" ? (
             <MScopeTable
               title="Input Scope"
               subtitle={layer?.upstreamScope?.title ?? "Everything available before this node executes."}
@@ -124,7 +124,7 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
               groupBySource
             />
           ) : null}
-          {inspectorTab === "effective-input" ? (
+          {inspectorTab === "data-mapping" ? (
             <MEffectiveInputTab
               nodeType={selectedNode.data.nodeType}
               readOnly={readOnly}
@@ -136,7 +136,7 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
               onChange={props.onChangeEffectiveMappings}
             />
           ) : null}
-          {inspectorTab === "output-contract" ? (
+          {inspectorTab === "output-data" ? (
             <MOutputContractTab
               nodeType={selectedNode.data.nodeType}
               contract={layer?.outputContract}
@@ -147,7 +147,7 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
               onChange={props.onChangeOutputContract}
             />
           ) : null}
-          {inspectorTab === "expression" ? (
+          {inspectorTab === "logic" ? (
             <MExpressionTab
               nodeType={selectedNode.data.nodeType}
               expression={props.selectedExpression}
@@ -294,7 +294,17 @@ function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
       ) : null}
       {selectedNode.data.nodeType === "connector" ? (
         <MConnectorConfigEditor
-          config={selectedNode.data.connectorConfig ?? { connectorType: "", connectorConfig: {}, credentialId: undefined }}
+          config={{
+            connectorType: selectedNode.data.connectorConfig?.connectorType ?? "",
+            connectorConfig: selectedNode.data.connectorConfig?.connectorConfig ?? (
+              // If connectorConfig is a flat object with url/method/body (runtime format),
+              // use it directly as the nested config
+              selectedNode.data.connectorConfig && ("url" in selectedNode.data.connectorConfig || "method" in selectedNode.data.connectorConfig)
+                ? selectedNode.data.connectorConfig as Record<string, unknown>
+                : {}
+            ),
+            credentialId: selectedNode.data.connectorConfig?.credentialId
+          }}
           catalog={props.connectorCatalog ?? []}
           readOnly={readOnly}
           onChange={props.onUpdateConnectorConfig}

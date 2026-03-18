@@ -90,6 +90,7 @@ export interface MuRuleFlowEditorProps {
   workflowCode?: string;
   onPublish?: (graph: MRuleFlowGraph) => Promise<void> | void;
   licenseStatus?: "licensed" | "trial" | "unlicensed";
+  showHeader?: boolean;
 }
 
 type MCommitOptions = {
@@ -134,6 +135,30 @@ const M_EDGE_TYPE_HINTS: Record<MRuleFlowEdgeType, string> = {
   "on-error": "Continue only when the source node threw an exception."
 };
 
+function MNodeContextSubtitle(data: MCanvasNodeData): string | null {
+  if (data.nodeType === "condition" && data.conditionConfig?.successLabel) {
+    return `Pass: ${data.conditionConfig.successLabel} / Fail: ${data.conditionConfig.failureLabel ?? "—"}`;
+  }
+  if (data.nodeType === "action") {
+    return "Execute side-effect";
+  }
+  if (data.nodeType === "decision-table") {
+    return data.contractRef?.sourceCode ? `Table: ${data.contractRef.sourceCode}` : "Decision table lookup";
+  }
+  if (data.nodeType === "connector") {
+    const connType = data.connectorConfig?.connectorType;
+    return connType ? `Connector: ${connType}` : "External service call";
+  }
+  if (data.nodeType === "sub-flow") {
+    return data.subFlowConfig?.targetFlowCode ? `Flow: ${data.subFlowConfig.targetFlowCode}` : "Delegate to sub-flow";
+  }
+  if (data.nodeType === "liquid") {
+    const fmt = data.liquidConfig?.outputFormat ?? "json";
+    return `Liquid → ${fmt}`;
+  }
+  return null;
+}
+
 function MRuleFlowNodeCard({ data, selected }: { data: MCanvasNodeData; selected?: boolean }): React.JSX.Element {
   const accent = M_NODE_ACCENTS[data.nodeType];
   const tokens = MGetThemeTokens(data._theme ?? "light");
@@ -141,6 +166,7 @@ function MRuleFlowNodeCard({ data, selected }: { data: MCanvasNodeData; selected
   const requestCount = data.requestContract?.fields.length ?? 0;
   const responseCount = data.responseContract?.fields.length ?? 0;
   const iconPath = M_NODE_ICONS[data.nodeType];
+  const contextSubtitle = MNodeContextSubtitle(data);
 
   return (
     <div
@@ -164,6 +190,7 @@ function MRuleFlowNodeCard({ data, selected }: { data: MCanvasNodeData; selected
           <span style={{ color: accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>{M_NODE_TITLES[data.nodeType]}</span>
         </div>
         <strong style={{ fontSize: 14, color: tokens.nodeText }}>{data.label}</strong>
+        {contextSubtitle ? <span style={{ fontSize: 11, color: tokens.nodeMutedText, maxWidth: 220, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{contextSubtitle}</span> : null}
         {data.ruleCode ? <span style={{ fontSize: 12, color: tokens.nodeSubtext }}>Rule: {data.ruleCode}</span> : null}
         {data.contractRef?.sourceCode ? <span style={{ fontSize: 11, color: tokens.nodeMutedText }}>Contract: {data.contractRef.sourceType}/{data.contractRef.sourceCode}</span> : null}
         {expression.body ? (
@@ -278,7 +305,8 @@ export function MuRuleFlowEditor({
   tenantId,
   workflowCode,
   onPublish,
-  licenseStatus = "licensed"
+  licenseStatus = "licensed",
+  showHeader = true
 }: MuRuleFlowEditorProps): React.JSX.Element {
   const initialGraph = useMemo(() => MEnsureRuleFlowGraph(graph), [graph]);
   const history = useRuleFlowHistory(initialGraph);
@@ -307,7 +335,7 @@ export function MuRuleFlowEditor({
   const [edges, setEdges] = useState<Edge[]>(() => MStyleEdges(MGraphToCanvasEdges(history.present)));
   const [selectedNodeId, setSelectedNodeId] = useState("");
   const [selectedEdgeId, setSelectedEdgeId] = useState("");
-  const [inspectorTab, setInspectorTab] = useState<MInspectorTab>("general");
+  const [inspectorTab, setInspectorTab] = useState<MInspectorTab>("basic-info");
   const [contractLoadState, setContractLoadState] = useState<MContractLoadState>({ status: "idle" });
   const [flowOptions, setFlowOptions] = useState<Array<{ code: string; label: string }>>([]);
   const [decisionTableOptions, setDecisionTableOptions] = useState<Array<{ code: string; label: string }>>([]);
@@ -342,7 +370,7 @@ export function MuRuleFlowEditor({
   const restoreUnlockRef = useRef<number | null>(null);
   const [shellWidth, setShellWidth] = useState(0);
   const [openSection, setOpenSection] = useState<MSidebarSection | null>("inspector");
-  const [depOverlayOpen, setDepOverlayOpen] = useState(true);
+  const [depOverlayOpen, setDepOverlayOpen] = useState(false);
   const pendingCommitRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -375,7 +403,7 @@ export function MuRuleFlowEditor({
     setViewportSyncToken((current) => current + 1);
     setSelectedNodeId("");
     setSelectedEdgeId("");
-    setInspectorTab("general");
+    setInspectorTab("basic-info");
     restoreCanvasState(nextGraph);
   }, [graph, history.reset]);
 
@@ -412,7 +440,7 @@ export function MuRuleFlowEditor({
       if (event.key === "Escape") {
         setSelectedNodeId("");
         setSelectedEdgeId("");
-        setInspectorTab("general");
+        setInspectorTab("basic-info");
         return;
       }
 
@@ -840,7 +868,7 @@ export function MuRuleFlowEditor({
       return;
     }
     setSelectedNodeId("");
-    setInspectorTab("general");
+    setInspectorTab("basic-info");
     commitGraph(buildGraph(nodesRef.current.filter((node) => node.id !== selectedNodeId), edgesRef.current.filter((edge) => edge.source !== selectedNodeId && edge.target !== selectedNodeId)));
   }
 
@@ -963,10 +991,6 @@ export function MuRuleFlowEditor({
   const themeStyles: React.CSSProperties = { color: tokens.textPrimary };
   const palettePanel = (
     <div data-testid="rule-flow-sidebar-palette" style={{ ...MSidebarSectionBodyStyle, ...MSidebarTopStyle, ...MSidebarTopLayoutStyle(isCompactLayout) }}>
-      <div style={{ ...MSectionTitleStyle, color: tokens.sectionDescColor }}>
-        <strong style={{ color: tokens.textPrimary }}>Palette</strong>
-        <span>Add nodes to compose a publishable rule flow.</span>
-      </div>
       {(Object.keys(M_NODE_TYPES) as MRuleFlowNodeType[]).map((nodeType) => (
         <button key={nodeType} type="button" style={MPaletteButtonStyle(nodeType, tokens)} data-testid={`palette-${nodeType}`} draggable={!readOnly} onClick={() => addNode(nodeType)} onDragStart={(event) => handlePaletteDragStart(event, nodeType)} disabled={readOnly}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -990,15 +1014,23 @@ export function MuRuleFlowEditor({
     </div>
   );
   const actionsPanel = (
-    <div data-testid="rule-flow-sidebar-actions" style={{ ...MSidebarSectionBodyStyle, ...MSidebarActionsPanelStyle, ...MSidebarActionsPanelLayoutStyle(isCompactLayout) }}>
-      <div style={{ ...MSectionTitleStyle, color: tokens.sectionDescColor }}>
-        <strong style={{ color: tokens.textPrimary }}>Actions</strong>
-        <span>Undo, publish and export without leaving the flow canvas.</span>
-      </div>
+    <div data-testid="rule-flow-sidebar-actions" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       {currentValidation.issues.length > 0 ? (
         <div style={MValidationSummaryStyle(validationErrors.length > 0)}>
           <strong>{validationErrors.length > 0 ? "Publish blocked" : "Publish warnings"}</strong>
           <span>{validationErrors.length} error(s) / {validationWarnings.length} warning(s)</span>
+          {validationErrors.length > 0 ? (
+            <ul style={{ margin: "6px 0 0", padding: "0 0 0 16px", fontSize: 12, lineHeight: 1.5 }}>
+              {validationErrors.slice(0, 20).map((issue, idx) => (
+                <li key={idx} style={{ marginBottom: 2 }}>
+                  <code style={{ fontSize: 11, fontWeight: 600 }}>{issue.code}</code>
+                  {issue.nodeId ? <span style={{ color: "#6b7280" }}> [{issue.nodeId}]</span> : null}
+                  {" "}{issue.message}
+                </li>
+              ))}
+              {validationErrors.length > 20 ? <li>...and {validationErrors.length - 20} more</li> : null}
+            </ul>
+          ) : null}
         </div>
       ) : null}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -1007,6 +1039,20 @@ export function MuRuleFlowEditor({
         <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 96 }} onClick={applyAutoLayout} disabled={readOnly}>
           Auto Layout
         </button>
+        <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 80 }} onClick={() => {
+          const validation = MValidateGraphForPublish(buildGraph(nodesRef.current, edgesRef.current), {
+            flowCode: workflowCode,
+            currentFlowContract: workflowCode ? flowContractCacheRef.current.get(workflowCode) : undefined,
+            flowContractsByCode: flowContractCacheRef.current,
+            nodeContractsById: nodeContractCacheRef.current
+          });
+          setAuthoringVersion((current) => current + 1);
+          if (validation.isValid) {
+            setContractLoadState({ status: "ready", title: `Valid — ${validation.issues.filter((i) => i.severity === "warning").length} warning(s)` });
+          } else {
+            setContractLoadState({ status: "error", message: `${validation.issues.filter((i) => i.severity === "error").length} error(s) found.` });
+          }
+        }} disabled={readOnly}>Validate</button>
         <button
           type="button"
           style={{ ...MActionButtonStyle(true), flex: "1 1 auto", minWidth: 80 }}
@@ -1033,46 +1079,49 @@ export function MuRuleFlowEditor({
         >
           Publish
         </button>
-        <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => importInputRef.current?.click()} disabled={readOnly}>Import</button>
+        <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} disabled={readOnly} onClick={() => {
+          // Create input in document.body (outside any Shadow DOM) and click it
+          // synchronously to preserve user gesture / transient activation.
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = "application/json,.json";
+          input.style.position = "fixed";
+          input.style.top = "-9999px";
+          document.body.appendChild(input);
+          input.addEventListener("change", () => {
+            const file = input.files?.[0];
+            document.body.removeChild(input);
+            if (!file) return;
+            void (async () => {
+              try {
+                const payload = await file.text();
+                const importedGraph = MOrderRuleFlowGraph(MImportRuleFlowGraph(payload), {
+                  flowCode: workflowCode,
+                  currentFlowContract: workflowCode ? flowContractCacheRef.current.get(workflowCode) : undefined,
+                  flowContractsByCode: flowContractCacheRef.current,
+                  nodeContractsById: nodeContractCacheRef.current
+                }).graph;
+                metadataRef.current = importedGraph.metadata;
+                lastGraphSignatureRef.current = MCreateRuleFlowGraphSignature(importedGraph);
+                history.reset(importedGraph);
+                restoreCanvasState(importedGraph);
+                setSelectedNodeId("");
+                setSelectedEdgeId("");
+                setInspectorTab("basic-info");
+                allowAutoFitRef.current = true;
+                setViewportSyncToken((current) => current + 1);
+                onGraphChange?.(importedGraph);
+                setContractLoadState({ status: "ready", title: importedGraph.metadata.ruleSetCode ?? "Imported flow" });
+              } catch (error) {
+                setContractLoadState({ status: "error", message: (error as Error).message });
+              }
+            })();
+          });
+          // Synchronous click — preserves user gesture for file picker
+          input.click();
+        }}>Import</button>
         <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => exportGraph(buildGraph(nodesRef.current, edgesRef.current), metadataRef.current.ruleSetCode)}>Export</button>
       </div>
-      <input
-        ref={importInputRef}
-        type="file"
-        accept="application/json,.json"
-        style={{ display: "none" }}
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.currentTarget.value = "";
-          if (!file) {
-            return;
-          }
-          void (async () => {
-            try {
-              const payload = await file.text();
-              const importedGraph = MOrderRuleFlowGraph(MImportRuleFlowGraph(payload), {
-                flowCode: workflowCode,
-                currentFlowContract: workflowCode ? flowContractCacheRef.current.get(workflowCode) : undefined,
-                flowContractsByCode: flowContractCacheRef.current,
-                nodeContractsById: nodeContractCacheRef.current
-              }).graph;
-              metadataRef.current = importedGraph.metadata;
-              lastGraphSignatureRef.current = MCreateRuleFlowGraphSignature(importedGraph);
-              history.reset(importedGraph);
-              restoreCanvasState(importedGraph);
-              setSelectedNodeId("");
-              setSelectedEdgeId("");
-              setInspectorTab("general");
-              allowAutoFitRef.current = true;
-              setViewportSyncToken((current) => current + 1);
-              onGraphChange?.(importedGraph);
-              setContractLoadState({ status: "ready", title: importedGraph.metadata.ruleSetCode ?? "Imported flow" });
-            } catch (error) {
-              setContractLoadState({ status: "error", message: (error as Error).message });
-            }
-          })();
-        }}
-      />
     </div>
   );
   const inspectorPanel = (
@@ -1225,15 +1274,43 @@ export function MuRuleFlowEditor({
     </div>
   );
 
+  const envLabel = apiBaseUrl ? (apiBaseUrl.includes("localhost") || apiBaseUrl.includes("127.0.0.1") ? "DEV" : "PROD") : null;
+  const [headerInfoOpen, setHeaderInfoOpen] = useState(false);
+
   return (
     <ReactFlowProvider>
-      <section ref={shellRef} style={{ ...MEditorShellStyle, ...MEditorShellLayoutStyle(isCompactLayout), ...themeStyles }}>
-        <aside style={{ ...MSidebarStyle, ...MSidebarLayoutStyle(isCompactLayout), background: tokens.sidebarBg, border: tokens.sidebarBorder }}>
-          {renderSidebarSection("palette", "Palette", "Compose and add nodes from the library of rule blocks.", palettePanel)}
-          {renderSidebarSection("actions", "Actions", "Undo, import, export and publish the current flow.", actionsPanel)}
-          {renderSidebarSection("inspector", "Inspector", selectedNode ? `Editing ${M_NODE_TITLES[selectedNode.data.nodeType]}` : "Open this section to define conditions, mappings and contracts.", inspectorPanel)}
+      {showHeader ? (
+        <header style={{ ...MHeaderBarStyle, background: tokens.sidebarBg, borderBottom: tokens.sidebarBorder, color: tokens.textPrimary }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <strong style={{ fontSize: 14 }}>Rule Studio</strong>
+            {workflowCode ? <span style={{ ...MHeaderBadgeStyle, background: tokens.actionPrimaryBg, border: tokens.actionPrimaryBorder, color: tokens.textPrimary }}>{workflowCode}</span> : null}
+            {envLabel ? <span style={{ ...MHeaderBadgeStyle, background: envLabel === "DEV" ? "rgba(245,158,11,0.15)" : "rgba(22,163,74,0.15)", border: envLabel === "DEV" ? "1px solid rgba(245,158,11,0.3)" : "1px solid rgba(22,163,74,0.3)", color: envLabel === "DEV" ? tokens.warningText : "#16a34a", fontSize: 10, fontWeight: 700 }}>{envLabel}</span> : null}
+            {readOnly ? <span style={{ ...MHeaderBadgeStyle, background: tokens.errorBg, border: tokens.errorBorder, color: tokens.errorText, fontSize: 10, fontWeight: 700 }}>READ-ONLY</span> : null}
+          </div>
+          <div style={{ position: "relative" }}>
+            <button type="button" style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, color: tokens.textMuted, fontSize: 16 }} onClick={() => setHeaderInfoOpen((prev) => !prev)} title="Technical details">
+              <svg width={16} height={16} viewBox="0 0 16 16" fill="currentColor"><path d="M7.5 1.5a6 6 0 100 12 6 6 0 000-12zM7 5h1v1H7V5zm0 2h1v4H7V7z" /></svg>
+            </button>
+            {headerInfoOpen ? (
+              <div style={{ ...MHeaderPopoverStyle, background: tokens.dialogBg, border: tokens.dialogBorder, boxShadow: tokens.dialogShadow, color: tokens.textSecondary }}>
+                {tenantId ? <span style={{ fontSize: 11 }}>Tenant: {tenantId}</span> : null}
+                {apiBaseUrl ? <span style={{ fontSize: 11, wordBreak: "break-all" }}>API: {apiBaseUrl}</span> : null}
+                {!tenantId && !apiBaseUrl ? <span style={{ fontSize: 11 }}>No API configured</span> : null}
+              </div>
+            ) : null}
+          </div>
+        </header>
+      ) : null}
+      <section ref={shellRef} style={{ ...MEditorShellStyle, ...MEditorShellLayoutStyle3(isCompactLayout, !!(selectedNode || selectedEdge)), ...themeStyles }}>
+        {/* Left panel — Node Library */}
+        <aside data-testid="rule-flow-left-panel" style={{ ...MLeftPanelStyle, background: tokens.sidebarBg, border: tokens.sidebarBorder }}>
+          <div style={{ padding: "12px 14px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <strong style={{ fontSize: 13, color: tokens.textPrimary }}>Node Library</strong>
+          </div>
+          {palettePanel}
         </aside>
 
+        {/* Center — Canvas with floating toolbar */}
         <div
           ref={canvasPanelRef}
           style={{ ...MCanvasPanelStyle, ...MCanvasPanelLayoutStyle(isCompactLayout), height: resolvedCanvasHeight, background: tokens.canvasGradient }}
@@ -1243,7 +1320,12 @@ export function MuRuleFlowEditor({
           onDragOver={handleCanvasDragOver}
           onDrop={handleCanvasDrop}
         >
+          {/* Floating toolbar */}
+          <div style={{ ...MFloatingToolbarStyle, background: tokens.overlayBg, border: tokens.overlayBorder, boxShadow: tokens.overlayShadow }}>
+            {actionsPanel}
+          </div>
           <ReactFlow
+            proOptions={{ hideAttribution: true }}
             style={{ width: "100%", height: "100%" }}
             colorMode={theme === "dark" ? "dark" : "light"}
             nodes={nodes}
@@ -1277,12 +1359,11 @@ export function MuRuleFlowEditor({
               const nextEdgeId = `${connection.source}-${connection.target}-${edgesRef.current.length + 1}`;
               setSelectedEdgeId(nextEdgeId);
               setSelectedNodeId("");
-              setOpenSection("inspector");
               commitGraph(MCreateAutoLayoutGraph(tentativeGraph.graph), { syncViewport: true });
             }}
             onNodeClick={(_event, node) => { selectNodeById(node.id); }}
-            onEdgeClick={(_event, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(""); setInspectorTab("general"); setOpenSection("inspector"); }}
-            onPaneClick={() => { setSelectedNodeId(""); setSelectedEdgeId(""); setInspectorTab("general"); }}
+            onEdgeClick={(_event, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(""); setInspectorTab("basic-info"); }}
+            onPaneClick={() => { setSelectedNodeId(""); setSelectedEdgeId(""); setInspectorTab("basic-info"); }}
             nodesConnectable={!readOnly}
             nodesDraggable={!readOnly}
             elementsSelectable
@@ -1301,8 +1382,8 @@ export function MuRuleFlowEditor({
                 aria-expanded={depOverlayOpen}
               >
                 <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <strong>Dependency Overlay</strong>
-                  <span style={{ fontSize: 12, color: tokens.textMuted }}>Execution order, prerequisites, and downstream dependents.</span>
+                  <strong>Execution Order</strong>
+                  <span style={{ fontSize: 12, color: tokens.textMuted }}>Prerequisites and downstream dependents.</span>
                 </span>
                 <span style={{ ...MSidebarChevronStyle(depOverlayOpen), width: 22, height: 22, fontSize: 12 }}>▾</span>
               </button>
@@ -1331,6 +1412,17 @@ export function MuRuleFlowEditor({
             </aside>
           ) : null}
         </div>
+
+        {/* Right panel — Inspector (visible only when node or edge is selected) */}
+        {(selectedNode || selectedEdge) ? (
+          <aside data-testid="rule-flow-right-panel" style={{ ...MRightPanelStyle, background: tokens.sidebarBg, border: tokens.sidebarBorder }}>
+            <div style={{ padding: "12px 14px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <strong style={{ fontSize: 13, color: tokens.textPrimary }}>Inspector</strong>
+              <button type="button" style={{ background: "transparent", border: "none", cursor: "pointer", color: tokens.textMuted, fontSize: 14, padding: 2 }} onClick={() => { setSelectedNodeId(""); setSelectedEdgeId(""); }} title="Close inspector">✕</button>
+            </div>
+            {inspectorPanel}
+          </aside>
+        ) : null}
       </section>
       {publishConfirmState ? (
         <MPublishConfirmDialog
@@ -1957,6 +2049,46 @@ function MEditorShellLayoutStyle(isCompactLayout: boolean): React.CSSProperties 
   };
 }
 
+function MEditorShellLayoutStyle3(isCompactLayout: boolean, hasRightPanel: boolean): React.CSSProperties {
+  if (isCompactLayout) {
+    return { gridTemplateColumns: "minmax(0, 1fr)", alignContent: "start" };
+  }
+  return {
+    gridTemplateColumns: hasRightPanel
+      ? "minmax(220px, 280px) minmax(0, 1fr) minmax(320px, 420px)"
+      : "minmax(220px, 280px) minmax(0, 1fr)",
+    alignContent: "stretch"
+  };
+}
+
+const MLeftPanelStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 0,
+  borderRadius: 18,
+  minHeight: 0,
+  overflow: "auto"
+};
+
+const MRightPanelStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 0,
+  borderRadius: 18,
+  minHeight: 0,
+  overflow: "auto"
+};
+
+const MFloatingToolbarStyle: React.CSSProperties = {
+  position: "absolute",
+  top: 12,
+  left: 12,
+  zIndex: 3,
+  borderRadius: 14,
+  padding: "8px 12px",
+  maxWidth: "calc(100% - 24px)"
+};
+
 function MCanvasPanelLayoutStyle(isCompactLayout: boolean): React.CSSProperties {
   return {
     minHeight: isCompactLayout ? 420 : 640,
@@ -2093,6 +2225,39 @@ const MPublishDialogStyle: React.CSSProperties = {
   border: "1px solid rgba(148, 163, 184, 0.28)",
   background: "#ffffff",
   boxShadow: "0 24px 60px rgba(15, 23, 42, 0.22)"
+};
+
+const MHeaderBarStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "8px 16px",
+  borderRadius: "18px 18px 0 0",
+  minHeight: 42
+};
+
+const MHeaderBadgeStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "2px 10px",
+  borderRadius: 8,
+  fontSize: 12,
+  fontWeight: 600,
+  letterSpacing: "0.02em"
+};
+
+const MHeaderPopoverStyle: React.CSSProperties = {
+  position: "absolute",
+  top: "calc(100% + 4px)",
+  right: 0,
+  zIndex: 10,
+  display: "flex",
+  flexDirection: "column",
+  gap: 6,
+  padding: "10px 14px",
+  borderRadius: 12,
+  minWidth: 200,
+  maxWidth: 360
 };
 
 export { MCreateRuleFlowGraphSignature, MEnsureRuleFlowGraph, MImportRuleFlowGraph, MSerializeRuleFlowGraph } from "./rule-flow-runtime.js";
