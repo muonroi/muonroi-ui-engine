@@ -78,6 +78,13 @@ import {
 } from "./rule-flow-theme.js";
 import { MApplyRuleFlowAuthoringLayers, MOrderRuleFlowGraph, MValidateGraphForPublish } from "./rule-flow-authoring.js";
 
+export type MVersionItem = {
+  version: number;
+  status: string;
+  isActive: boolean;
+  createdAt: string;
+};
+
 export interface MuRuleFlowEditorProps {
   graph: MRuleFlowGraph;
   onGraphChange?: (graph: MRuleFlowGraph) => void;
@@ -91,6 +98,8 @@ export interface MuRuleFlowEditorProps {
   onPublish?: (graph: MRuleFlowGraph) => Promise<void> | void;
   licenseStatus?: "licensed" | "trial" | "unlicensed";
   showHeader?: boolean;
+  version?: number | null;
+  onVersionChange?: (version: number | null) => void;
 }
 
 type MCommitOptions = {
@@ -306,7 +315,9 @@ export function MuRuleFlowEditor({
   workflowCode,
   onPublish,
   licenseStatus = "licensed",
-  showHeader = true
+  showHeader = true,
+  version = null,
+  onVersionChange
 }: MuRuleFlowEditorProps): React.JSX.Element {
   const initialGraph = useMemo(() => MEnsureRuleFlowGraph(graph), [graph]);
   const history = useRuleFlowHistory(initialGraph);
@@ -372,6 +383,29 @@ export function MuRuleFlowEditor({
   const [openSection, setOpenSection] = useState<MSidebarSection | null>("inspector");
   const [depOverlayOpen, setDepOverlayOpen] = useState(false);
   const pendingCommitRef = useRef<number | null>(null);
+  const [versions, setVersions] = useState<MVersionItem[]>([]);
+  const activeVersion = useMemo(() => versions.find((v) => v.isActive) ?? null, [versions]);
+  const isViewingNonActive = version != null && activeVersion != null && version !== activeVersion.version;
+  const effectiveReadOnly = readOnly || isViewingNonActive;
+
+  useEffect(() => {
+    if (!apiBaseUrl || !workflowCode) {
+      setVersions([]);
+      return;
+    }
+    const baseUrl = apiBaseUrl.replace(/\/$/, "");
+    const headers = MBuildRuleComponentHeaders(undefined, { tenantId });
+    let cancelled = false;
+    fetch(`${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/versions`, { headers })
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data: MVersionItem[] | { items?: MVersionItem[] }) => {
+        if (cancelled) return;
+        const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
+        setVersions(items.sort((a, b) => b.version - a.version));
+      })
+      .catch(() => { if (!cancelled) setVersions([]); });
+    return () => { cancelled = true; };
+  }, [apiBaseUrl, workflowCode, tenantId]);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -444,7 +478,7 @@ export function MuRuleFlowEditor({
         return;
       }
 
-      if (readOnly || isInput) {
+      if (effectiveReadOnly || isInput) {
         return;
       }
       if (event.key === "Delete" || event.key === "Backspace") {
@@ -459,7 +493,7 @@ export function MuRuleFlowEditor({
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [readOnly, selectedNodeId, selectedEdgeId]);
+  }, [effectiveReadOnly, selectedNodeId, selectedEdgeId]);
 
   useEffect(() => {
     const shellElement = shellRef.current;
@@ -514,7 +548,7 @@ export function MuRuleFlowEditor({
     () => currentValidation.issues.filter((issue) => issue.severity === "warning"),
     [currentValidation.issues]
   );
-  const canPublish = !readOnly && Boolean(onPublish) && validationErrors.length === 0;
+  const canPublish = !effectiveReadOnly && Boolean(onPublish) && validationErrors.length === 0;
   const dependencyOverlay = useMemo(() => MBuildDependencyOverlay(derivedGraph), [derivedGraph]);
 
   useEffect(() => {
@@ -1039,7 +1073,7 @@ export function MuRuleFlowEditor({
         <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 96 }} onClick={applyAutoLayout} disabled={readOnly}>
           Auto Layout
         </button>
-        <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 80 }} onClick={() => {
+        <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 80, display: isViewingNonActive ? "none" : undefined }} onClick={() => {
           const validation = MValidateGraphForPublish(buildGraph(nodesRef.current, edgesRef.current), {
             flowCode: workflowCode,
             currentFlowContract: workflowCode ? flowContractCacheRef.current.get(workflowCode) : undefined,
@@ -1052,10 +1086,10 @@ export function MuRuleFlowEditor({
           } else {
             setContractLoadState({ status: "error", message: `${validation.issues.filter((i) => i.severity === "error").length} error(s) found.` });
           }
-        }} disabled={readOnly}>Validate</button>
+        }} disabled={effectiveReadOnly}>Validate</button>
         <button
           type="button"
-          style={{ ...MActionButtonStyle(true), flex: "1 1 auto", minWidth: 80 }}
+          style={{ ...MActionButtonStyle(true), flex: "1 1 auto", minWidth: 80, display: isViewingNonActive ? "none" : undefined }}
           onClick={() => {
             const validation = MValidateGraphForPublish(buildGraph(nodesRef.current, edgesRef.current), {
               flowCode: workflowCode,
@@ -1284,8 +1318,29 @@ export function MuRuleFlowEditor({
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <strong style={{ fontSize: 14 }}>Rule Studio</strong>
             {workflowCode ? <span style={{ ...MHeaderBadgeStyle, background: tokens.actionPrimaryBg, border: tokens.actionPrimaryBorder, color: tokens.textPrimary }}>{workflowCode}</span> : null}
+            {versions.length > 0 ? (
+              <select
+                value={version != null ? String(version) : ""}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  onVersionChange?.(val === "" ? null : Number(val));
+                }}
+                style={{ ...MHeaderBadgeStyle, cursor: "pointer", background: tokens.actionPrimaryBg, border: tokens.actionPrimaryBorder, color: tokens.textPrimary, fontSize: 11, fontWeight: 600, outline: "none", appearance: "auto" }}
+              >
+                <option value="">Active{activeVersion ? ` (v${activeVersion.version})` : ""}</option>
+                {versions.map((v) => (
+                  <option key={v.version} value={String(v.version)}>
+                    v{v.version} ({v.status}){v.isActive ? " \u2605" : ""}
+                  </option>
+                ))}
+              </select>
+            ) : version != null ? (
+              <span style={{ ...MHeaderBadgeStyle, background: tokens.actionPrimaryBg, border: tokens.actionPrimaryBorder, color: tokens.textPrimary, fontSize: 11 }}>v{version}</span>
+            ) : (
+              <span style={{ ...MHeaderBadgeStyle, background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.3)", color: "#16a34a", fontSize: 11, fontWeight: 700 }}>Active</span>
+            )}
             {envLabel ? <span style={{ ...MHeaderBadgeStyle, background: envLabel === "DEV" ? "rgba(245,158,11,0.15)" : "rgba(22,163,74,0.15)", border: envLabel === "DEV" ? "1px solid rgba(245,158,11,0.3)" : "1px solid rgba(22,163,74,0.3)", color: envLabel === "DEV" ? tokens.warningText : "#16a34a", fontSize: 10, fontWeight: 700 }}>{envLabel}</span> : null}
-            {readOnly ? <span style={{ ...MHeaderBadgeStyle, background: tokens.errorBg, border: tokens.errorBorder, color: tokens.errorText, fontSize: 10, fontWeight: 700 }}>READ-ONLY</span> : null}
+            {effectiveReadOnly ? <span style={{ ...MHeaderBadgeStyle, background: tokens.errorBg, border: tokens.errorBorder, color: tokens.errorText, fontSize: 10, fontWeight: 700 }}>READ-ONLY</span> : null}
           </div>
           <div style={{ position: "relative" }}>
             <button type="button" style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, color: tokens.textMuted, fontSize: 16 }} onClick={() => setHeaderInfoOpen((prev) => !prev)} title="Technical details">
@@ -1300,6 +1355,12 @@ export function MuRuleFlowEditor({
             ) : null}
           </div>
         </header>
+      ) : null}
+      {isViewingNonActive ? (
+        <div style={{ padding: "8px 16px", background: "rgba(245,158,11,0.12)", borderBottom: "1px solid rgba(245,158,11,0.25)", color: tokens.warningText, fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
+          <svg width={14} height={14} viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l7 14H1L8 1zm-.5 5v4h1V6h-1zm0 5v1h1v-1h-1z" /></svg>
+          <span>Viewing version {version} (read-only). Switch to the active version to edit.</span>
+        </div>
       ) : null}
       <section ref={shellRef} style={{ ...MEditorShellStyle, ...MEditorShellLayoutStyle3(isCompactLayout, !!(selectedNode || selectedEdge)), ...themeStyles }}>
         {/* Left panel — Node Library */}
@@ -1364,8 +1425,8 @@ export function MuRuleFlowEditor({
             onNodeClick={(_event, node) => { selectNodeById(node.id); }}
             onEdgeClick={(_event, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(""); setInspectorTab("basic-info"); }}
             onPaneClick={() => { setSelectedNodeId(""); setSelectedEdgeId(""); setInspectorTab("basic-info"); }}
-            nodesConnectable={!readOnly}
-            nodesDraggable={!readOnly}
+            nodesConnectable={!effectiveReadOnly}
+            nodesDraggable={!effectiveReadOnly}
             elementsSelectable
           >
             <MFlowRuntimeSync nodeIds={nodes.map((node) => node.id)} syncToken={viewportSyncToken} hostElement={allowAutoFitRef.current ? canvasPanelRef.current : null} />

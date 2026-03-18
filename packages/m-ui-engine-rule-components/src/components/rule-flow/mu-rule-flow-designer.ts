@@ -64,6 +64,9 @@ export class MuRuleFlowDesigner extends LitElement {
   @property({ type: Boolean, attribute: "show-header" })
   showHeader = true;
 
+  @property({ type: Number })
+  version: number | null = null;
+
   private mRoot?: Root;
   private mInternalGraphUpdate = false;
   private mLastGraphSignature = MCreateRuleFlowGraphSignature(this.graph);
@@ -82,6 +85,7 @@ export class MuRuleFlowDesigner extends LitElement {
     this.MUpgradeProperty("workflowCode");
     this.MUpgradeProperty("tenantId");
     this.MUpgradeProperty("showHeader");
+    this.MUpgradeProperty("version");
     this.MSyncGraphFromJson();
   }
 
@@ -100,11 +104,18 @@ export class MuRuleFlowDesigner extends LitElement {
       return;
     }
 
-    if (!this.mInternalGraphUpdate && (changed.has("graph") || changed.has("graphJson") || changed.has("readOnly") || changed.has("theme") || changed.has("apiBaseUrl") || changed.has("catalogApiBase") || changed.has("height") || changed.has("tenantId") || changed.has("showHeader"))) {
+    if (!this.mInternalGraphUpdate && (changed.has("graph") || changed.has("graphJson") || changed.has("readOnly") || changed.has("theme") || changed.has("apiBaseUrl") || changed.has("catalogApiBase") || changed.has("height") || changed.has("tenantId") || changed.has("showHeader") || changed.has("version"))) {
       this.MRenderEditor();
     }
 
-    if ((changed.has("workflowCode") || changed.has("apiBaseUrl") || changed.has("tenantId")) && !this.graphJson.trim()) {
+    if (changed.has("version") && this.graphJson.trim()) {
+      this.mInternalGraphUpdate = true;
+      this.graphJson = "";
+      this.graph = MCreateEmptyRuleFlowGraph();
+      this.mLastGraphSignature = MCreateRuleFlowGraphSignature(this.graph);
+    }
+
+    if ((changed.has("workflowCode") || changed.has("apiBaseUrl") || changed.has("tenantId") || changed.has("version")) && !this.graphJson.trim()) {
       void this.MLoadWorkflowGraphAsync();
     }
 
@@ -200,6 +211,17 @@ export class MuRuleFlowDesigner extends LitElement {
         workflowCode: this.workflowCode || undefined,
         height: this.height,
         showHeader: this.showHeader,
+        version: this.version,
+        onVersionChange: (nextVersion: number | null) => {
+          this.version = nextVersion;
+          this.dispatchEvent(
+            new CustomEvent<{ version: number | null }>("version-change", {
+              detail: { version: nextVersion },
+              bubbles: true,
+              composed: true
+            })
+          );
+        },
         onGraphChange: (nextGraph: MRuleFlowGraph) => {
           const nextSignature = MCreateRuleFlowGraphSignature(nextGraph);
           if (nextSignature === this.mLastGraphSignature) {
@@ -365,7 +387,8 @@ export class MuRuleFlowDesigner extends LitElement {
     }
 
     const currentVersion = ++this.mWorkflowLoadVersion;
-    const exportUrl = `${apiBaseUrl.replace(/\/$/, "")}/rulesets/${encodeURIComponent(workflowCode)}/export`;
+    const versionQuery = this.version != null ? `?version=${this.version}` : "";
+    const exportUrl = `${apiBaseUrl.replace(/\/$/, "")}/rulesets/${encodeURIComponent(workflowCode)}/export${versionQuery}`;
 
     try {
       const response = await fetch(exportUrl, {
