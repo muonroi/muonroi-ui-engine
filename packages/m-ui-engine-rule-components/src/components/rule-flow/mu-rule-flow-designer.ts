@@ -61,6 +61,9 @@ export class MuRuleFlowDesigner extends LitElement {
   @property({ type: String, attribute: "tenant-id" })
   tenantId = "";
 
+  @property({ type: Boolean, attribute: "show-header" })
+  showHeader = true;
+
   private mRoot?: Root;
   private mInternalGraphUpdate = false;
   private mLastGraphSignature = MCreateRuleFlowGraphSignature(this.graph);
@@ -78,6 +81,7 @@ export class MuRuleFlowDesigner extends LitElement {
     this.MUpgradeProperty("height");
     this.MUpgradeProperty("workflowCode");
     this.MUpgradeProperty("tenantId");
+    this.MUpgradeProperty("showHeader");
     this.MSyncGraphFromJson();
   }
 
@@ -96,7 +100,7 @@ export class MuRuleFlowDesigner extends LitElement {
       return;
     }
 
-    if (!this.mInternalGraphUpdate && (changed.has("graph") || changed.has("graphJson") || changed.has("readOnly") || changed.has("theme") || changed.has("apiBaseUrl") || changed.has("catalogApiBase") || changed.has("height") || changed.has("tenantId"))) {
+    if (!this.mInternalGraphUpdate && (changed.has("graph") || changed.has("graphJson") || changed.has("readOnly") || changed.has("theme") || changed.has("apiBaseUrl") || changed.has("catalogApiBase") || changed.has("height") || changed.has("tenantId") || changed.has("showHeader"))) {
       this.MRenderEditor();
     }
 
@@ -195,6 +199,7 @@ export class MuRuleFlowDesigner extends LitElement {
         tenantId: this.tenantId || undefined,
         workflowCode: this.workflowCode || undefined,
         height: this.height,
+        showHeader: this.showHeader,
         onGraphChange: (nextGraph: MRuleFlowGraph) => {
           const nextSignature = MCreateRuleFlowGraphSignature(nextGraph);
           if (nextSignature === this.mLastGraphSignature) {

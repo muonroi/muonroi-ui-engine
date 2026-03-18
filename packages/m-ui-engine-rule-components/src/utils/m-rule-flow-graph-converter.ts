@@ -38,21 +38,46 @@ export class MRuleFlowGraphConverter {
       restored.nodes = restored.nodes.map((node, index) => {
         const raw = MAsObject(rawNodes[index]);
         const expressionLanguage = raw.expressionLanguage;
-        const connectorConfig = MAsObject(raw.data).connectorConfig;
+        const rawData = MAsObject(raw.data);
+        const connectorConfig = rawData.connectorConfig;
+        // connectorType may be at data level (runtime format) or inside connectorConfig (nested format)
+        const rawConnectorType = typeof rawData.connectorType === "string" ? rawData.connectorType : undefined;
+
+        let normalizedConnectorConfig: { connectorType?: string; connectorConfig?: Record<string, unknown>; credentialId?: string } | undefined;
+        if (connectorConfig && typeof connectorConfig === "object") {
+          const cc = connectorConfig as Record<string, unknown>;
+          // Nested format: { connectorType, connectorConfig: { url, ... }, credentialId }
+          if (cc.connectorConfig && typeof cc.connectorConfig === "object") {
+            normalizedConnectorConfig = {
+              connectorType: typeof cc.connectorType === "string" ? cc.connectorType : rawConnectorType,
+              connectorConfig: cc.connectorConfig as Record<string, unknown>,
+              credentialId: typeof cc.credentialId === "string" ? cc.credentialId : undefined
+            };
+          }
+          // Flat/runtime format: { url, method, body, headers, ... }
+          else if ("url" in cc || "method" in cc || "body" in cc || "operation" in cc || "webhookUrl" in cc || "to" in cc || "key" in cc) {
+            normalizedConnectorConfig = {
+              connectorType: typeof cc.connectorType === "string" ? cc.connectorType : rawConnectorType,
+              connectorConfig: cc as Record<string, unknown>,
+              credentialId: typeof cc.credentialId === "string" ? cc.credentialId : undefined
+            };
+          }
+          // Minimal: only connectorType
+          else {
+            normalizedConnectorConfig = {
+              connectorType: typeof cc.connectorType === "string" ? cc.connectorType : rawConnectorType,
+              connectorConfig: undefined,
+              credentialId: typeof cc.credentialId === "string" ? cc.credentialId : undefined
+            };
+          }
+        }
+
         return {
           ...node,
           expressionLanguage: expressionLanguage === "feel" || expressionLanguage === "javascript" ? expressionLanguage : undefined,
           data: {
             ...node.data,
-            connectorConfig: connectorConfig && typeof connectorConfig === "object"
-              ? {
-                  connectorType: typeof connectorConfig.connectorType === "string" ? connectorConfig.connectorType : undefined,
-                  connectorConfig: connectorConfig.connectorConfig && typeof connectorConfig.connectorConfig === "object"
-                    ? connectorConfig.connectorConfig as Record<string, unknown>
-                    : undefined,
-                  credentialId: typeof connectorConfig.credentialId === "string" ? connectorConfig.credentialId : undefined
-                }
-              : undefined
+            connectorConfig: normalizedConnectorConfig
           }
         };
       });
