@@ -4,7 +4,7 @@
  * and shadow DOM rendering via the `root` option.
  */
 import React, { useEffect, useRef, useCallback } from "react";
-import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection, crosshairCursor, rectangularSelection } from "@codemirror/view";
+import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection, crosshairCursor, rectangularSelection, placeholder } from "@codemirror/view";
 import { EditorState, Compartment, type Extension } from "@codemirror/state";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { bracketMatching, syntaxHighlighting } from "@codemirror/language";
@@ -29,6 +29,10 @@ export interface MExpressionEditorProps {
   minHeight?: number;
   /** Shadow root or document for CodeMirror style injection */
   root?: Document | ShadowRoot;
+  /** Single-line inline mode — no line numbers, no gutter, compact height (default false) */
+  singleLine?: boolean;
+  /** Placeholder text shown when editor is empty */
+  placeholderText?: string;
 }
 
 const mReadOnlyCompartment = new Compartment();
@@ -43,9 +47,12 @@ export function MExpressionEditor({
   onChange,
   onInsertToken,
   extensions: extraExtensions,
-  minHeight = 180,
-  root
+  minHeight: minHeightProp,
+  root,
+  singleLine = false,
+  placeholderText
 }: MExpressionEditorProps) {
+  const minHeight = minHeightProp ?? (singleLine ? 36 : 180);
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -60,8 +67,7 @@ export function MExpressionEditor({
     if (!containerRef.current) return;
 
     const baseExtensions: Extension[] = [
-      lineNumbers(),
-      highlightActiveLine(),
+      ...(singleLine ? [] : [lineNumbers(), highlightActiveLine()]),
       drawSelection(),
       rectangularSelection(),
       crosshairCursor(),
@@ -80,7 +86,17 @@ export function MExpressionEditor({
       ]),
       mLanguageCompartment.of(mGetLanguageExtension(language)),
       mThemeCompartment.of([]),
-      mExtraCompartment.of(extraExtensions ?? [])
+      mExtraCompartment.of(extraExtensions ?? []),
+      ...(singleLine ? [
+        EditorView.theme({
+          "&": { maxHeight: `${minHeight}px` },
+          ".cm-scroller": { overflow: "hidden" },
+          ".cm-content": { padding: "4px 8px" },
+          ".cm-gutters": { display: "none" }
+        }),
+        EditorState.transactionFilter.of(tr => tr.newDoc.lines > 1 ? [] : tr)
+      ] : []),
+      ...(placeholderText ? [placeholder(placeholderText)] : [])
     ];
 
     const state = EditorState.create({
@@ -162,8 +178,9 @@ export function MExpressionEditor({
   const containerStyle: React.CSSProperties = {
     minHeight: `${minHeight}px`,
     border: "1px solid rgba(148, 163, 184, 0.24)",
-    borderRadius: "14px",
-    overflow: "hidden"
+    borderRadius: singleLine ? "6px" : "14px",
+    overflow: "hidden",
+    ...(singleLine ? { marginBottom: 0 } : {})
   };
 
   return <div ref={containerRef} style={containerStyle} />;
