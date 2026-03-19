@@ -35,6 +35,7 @@ import { MRuleCatalogService } from "../../services/rule-catalog-service.js";
 import { MRuleEngineApi } from "../../services/rule-engine-api.js";
 import { MConnectorService, type MConnectorMetadata } from "../../services/connector-service.js";
 import { MBuildRuleComponentHeaders } from "../../runtime/request-context.js";
+import { MVersionDropdown } from "./version-selector/MVersionDropdown.js";
 import { useRuleFlowHistory } from "../../hooks/useRuleFlowHistory.js";
 import {
   MActionButtonStyle,
@@ -408,28 +409,47 @@ export function MuRuleFlowEditor({
   const toolbarRef = useRef<HTMLDivElement>(null);
   const kebabContainerRef = useRef<HTMLDivElement>(null);
   const [versions, setVersions] = useState<MVersionItem[]>([]);
+  const [versionOffset, setVersionOffset] = useState(0);
+  const [hasMoreVersions, setHasMoreVersions] = useState(false);
+  const [loadingMoreVersions, setLoadingMoreVersions] = useState(false);
   const activeVersion = useMemo(() => versions.find((v) => v.isActive) ?? null, [versions]);
   const isViewingNonActive = version != null && activeVersion != null && version !== activeVersion.version;
   const effectiveReadOnly = readOnly || isViewingNonActive;
 
-  useEffect(() => {
+  const fetchVersionsPage = useCallback((offset: number, append: boolean) => {
     if (!apiBaseUrl || !workflowCode) {
-      setVersions([]);
+      if (!append) setVersions([]);
       return;
     }
     const baseUrl = apiBaseUrl.replace(/\/$/, "");
     const headers = MBuildRuleComponentHeaders(undefined, { tenantId });
-    let cancelled = false;
-    fetch(`${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/versions`, { headers })
+    if (append) setLoadingMoreVersions(true);
+    fetch(`${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/versions?limit=10&offset=${offset}`, { headers })
       .then((res) => (res.ok ? res.json() : []))
       .then((data: MVersionItem[] | { items?: MVersionItem[] }) => {
-        if (cancelled) return;
         const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
-        setVersions(items.sort((a, b) => b.version - a.version));
+        setHasMoreVersions(items.length === 10);
+        if (append) {
+          setVersions((prev) => [...prev, ...items].sort((a, b) => b.version - a.version));
+        } else {
+          setVersions(items.sort((a, b) => b.version - a.version));
+        }
       })
-      .catch(() => { if (!cancelled) setVersions([]); });
-    return () => { cancelled = true; };
+      .catch(() => { if (!append) setVersions([]); })
+      .finally(() => { if (append) setLoadingMoreVersions(false); });
   }, [apiBaseUrl, workflowCode, tenantId]);
+
+  useEffect(() => {
+    setVersionOffset(0);
+    setHasMoreVersions(false);
+    fetchVersionsPage(0, false);
+  }, [fetchVersionsPage]);
+
+  const handleLoadMoreVersions = useCallback(() => {
+    const nextOffset = versionOffset + 10;
+    setVersionOffset(nextOffset);
+    fetchVersionsPage(nextOffset, true);
+  }, [versionOffset, fetchVersionsPage]);
 
   useEffect(() => {
     nodesRef.current = nodes;
@@ -1502,21 +1522,16 @@ export function MuRuleFlowEditor({
             <strong style={{ fontSize: 14 }}>Rule Studio</strong>
             {workflowCode ? <span style={{ ...MHeaderBadgeStyle, background: tokens.actionPrimaryBg, border: tokens.actionPrimaryBorder, color: tokens.textPrimary }}>{workflowCode}</span> : null}
             {versions.length > 0 ? (
-              <select
-                value={version != null ? String(version) : ""}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  onVersionChange?.(val === "" ? null : Number(val));
-                }}
-                style={{ ...MHeaderBadgeStyle, cursor: "pointer", background: tokens.actionPrimaryBg, border: tokens.actionPrimaryBorder, color: tokens.textPrimary, fontSize: 11, fontWeight: 600, outline: "none", appearance: "auto" }}
-              >
-                <option value="">Active{activeVersion ? ` (v${activeVersion.version})` : ""}</option>
-                {versions.map((v) => (
-                  <option key={v.version} value={String(v.version)}>
-                    v{v.version} ({v.status}){v.isActive ? " \u2605" : ""}
-                  </option>
-                ))}
-              </select>
+              <MVersionDropdown
+                versions={versions}
+                activeVersion={activeVersion}
+                selectedVersion={version ?? null}
+                onSelect={(v) => onVersionChange?.(v)}
+                onLoadMore={handleLoadMoreVersions}
+                hasMore={hasMoreVersions}
+                loadingMore={loadingMoreVersions}
+                tokens={tokens}
+              />
             ) : version != null ? (
               <span style={{ ...MHeaderBadgeStyle, background: tokens.actionPrimaryBg, border: tokens.actionPrimaryBorder, color: tokens.textPrimary, fontSize: 11 }}>v{version}</span>
             ) : (
