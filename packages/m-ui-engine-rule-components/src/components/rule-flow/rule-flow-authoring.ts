@@ -278,13 +278,27 @@ function MBuildNodeContractLayers(
       : undefined;
 
     const overrideFields = node.data.contractOverride?.responseFields ?? [];
+    const rawResponseFields =
+      flowContract?.responseContract?.fields ??
+      node.data.responseContract?.fields ??
+      nodeContract?.responseDelta?.fields ??
+      [];
+    // Include node.data.outputFields as additional output declarations.
+    // Code-first rules declare their FactBag outputs here (e.g. barge.isBarge).
+    const nodeOutputFields = Array.isArray(node.data.outputFields) ? node.data.outputFields : [];
+    const declaredOutputFields: MRuleFlowContractField[] = nodeOutputFields.map(
+      (field) => ({
+        path: field.path,
+        label: field.path,
+        dataType: field.dataType ?? "string",
+        valueExpression: field.valueExpression,
+      })
+    );
+    const combinedResponse = MDeduplicateFields([...MCloneFields(rawResponseFields), ...declaredOutputFields]);
     const baseFields =
       overrideFields.length > 0
-        ? MMergeFields(
-            flowContract?.responseContract?.fields ?? node.data.responseContract?.fields ?? nodeContract?.responseDelta?.fields ?? [],
-            overrideFields
-          )
-        : MCloneFields(flowContract?.responseContract?.fields ?? node.data.responseContract?.fields ?? nodeContract?.responseDelta?.fields ?? []);
+        ? MMergeFields(combinedResponse, overrideFields)
+        : combinedResponse;
 
     const annotatedBase = baseFields.map((field) =>
       MAnnotateField(field, {
@@ -293,9 +307,11 @@ function MBuildNodeContractLayers(
         sourceNodeType: node.type,
         sourceKind: node.type === "sub-flow" ? "sub-flow-output" : "node-output",
         runtimeWritten:
-          node.type === "condition"
-            ? Boolean(field.runtimeWritten ?? field.valueExpression?.trim())
-            : (field.runtimeWritten ?? true)
+          node.ruleCode
+            ? true
+            : node.type === "condition"
+              ? Boolean(field.runtimeWritten ?? field.valueExpression?.trim())
+              : (field.runtimeWritten ?? true)
       })
     );
 

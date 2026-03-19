@@ -152,6 +152,7 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
               nodeType={selectedNode.data.nodeType}
               expression={props.selectedExpression}
               upstreamScope={layer?.upstreamScope}
+              outputContract={layer?.outputContract}
               liquidOutput={selectedNode.data.liquidConfig?.outputFormat}
               readOnly={readOnly}
               apiBaseUrl={props.apiBaseUrl}
@@ -318,6 +319,7 @@ function MExpressionTab({
   nodeType,
   expression,
   upstreamScope,
+  outputContract,
   liquidOutput,
   readOnly,
   apiBaseUrl,
@@ -327,6 +329,7 @@ function MExpressionTab({
   nodeType: MRuleFlowNodeType;
   expression: { language: MRuleFlowExpressionLanguage; body: string };
   upstreamScope?: MRuleFlowContractSchema;
+  outputContract?: MRuleFlowContractSchema;
   liquidOutput?: NonNullable<MRuleFlowLiquidConfig["outputFormat"]>;
   readOnly: boolean;
   apiBaseUrl?: string;
@@ -337,33 +340,81 @@ function MExpressionTab({
     ? MRenderLiquidPreview(expression.body, upstreamScope?.fields ?? [], liquidOutput ?? "json")
     : "";
 
+  // Action and connector nodes use per-field value expressions (outputFields[].valueExpression)
+  // instead of a single expression body. Show a read-only summary and direct users to Output Data tab.
+  const outputFields = MFlattenContractFields(outputContract?.fields ?? []);
+  const fieldsWithExpressions = outputFields.filter((field) => field.valueExpression?.trim());
+  const hasPerFieldExpressions = fieldsWithExpressions.length > 0;
+  const isPerFieldLogicNode = nodeType === "action" || nodeType === "connector";
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <label style={MLabelStyle}>
-        Expression Language
-        <select style={MInputStyle} value={expression.language} disabled={readOnly} onChange={(event) => onChangeLanguage(event.target.value as MRuleFlowExpressionLanguage)}>
-          <option value="feel">FEEL</option>
-          <option value="javascript">JavaScript</option>
-          <option value="scriban">Scriban</option>
-          <option value="liquid">Liquid</option>
-          <option value="plain-text">Plain Text</option>
-        </select>
-      </label>
-      <label style={MLabelStyle}>
-        {expression.language === "liquid" ? "Liquid Template" : "Expression"}
-        <textarea style={{ ...MTextareaStyle, minHeight: 180 }} value={expression.body} disabled={readOnly} onChange={(event) => onChangeBody(event.target.value)} />
-      </label>
-      <div style={MExpressionHintStyle}>
-        <strong>Authoring hints</strong>
-        <span>Click any field in Input Scope or Output Contract to insert its path into the current FEEL/Liquid expression.</span>
-        {apiBaseUrl ? <span>Contract API: {apiBaseUrl}</span> : null}
-      </div>
-      {(nodeType === "liquid" || expression.language === "liquid") ? (
-        <div style={MExpressionHintStyle}>
-          <strong>Liquid Preview</strong>
-          <pre style={MPreviewStyle}>{preview || "Preview is empty."}</pre>
-        </div>
-      ) : null}
+      {isPerFieldLogicNode && (hasPerFieldExpressions || !expression.body.trim()) ? (
+        <>
+          <div style={MSectionTitleStyle}>
+            <strong>Per-Field Value Expressions</strong>
+            <span>
+              {hasPerFieldExpressions
+                ? "This node computes output fields using individual FEEL expressions. Edit them in the Output Data tab."
+                : "No value expressions configured yet. Add output fields with expressions in the Output Data tab."}
+            </span>
+          </div>
+          {hasPerFieldExpressions ? (
+            <div style={MTableShellStyle}>
+              <table style={MTableStyle}>
+                <thead>
+                  <tr>
+                    <th style={MTableHeaderStyle}>Output Field</th>
+                    <th style={MTableHeaderStyle}>Type</th>
+                    <th style={MTableHeaderStyle}>Expression</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fieldsWithExpressions.map((field) => (
+                    <tr key={field.path}>
+                      <td style={MTableCellStyle}>{field.path}</td>
+                      <td style={MTableCellStyle}>{field.dataType}</td>
+                      <td style={{ ...MTableCellStyle, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: 12 }}>{field.valueExpression}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+          <div style={MExpressionHintStyle}>
+            <strong>Tip</strong>
+            <span>Switch to the <strong>Output Data</strong> tab to add or edit value expressions for each output field.</span>
+          </div>
+        </>
+      ) : (
+        <>
+          <label style={MLabelStyle}>
+            Expression Language
+            <select style={MInputStyle} value={expression.language} disabled={readOnly} onChange={(event) => onChangeLanguage(event.target.value as MRuleFlowExpressionLanguage)}>
+              <option value="feel">FEEL</option>
+              <option value="javascript">JavaScript</option>
+              <option value="scriban">Scriban</option>
+              <option value="liquid">Liquid</option>
+              <option value="plain-text">Plain Text</option>
+            </select>
+          </label>
+          <label style={MLabelStyle}>
+            {expression.language === "liquid" ? "Liquid Template" : "Expression"}
+            <textarea style={{ ...MTextareaStyle, minHeight: 180 }} value={expression.body} disabled={readOnly} onChange={(event) => onChangeBody(event.target.value)} />
+          </label>
+          <div style={MExpressionHintStyle}>
+            <strong>Authoring hints</strong>
+            <span>Click any field in Input Scope or Output Contract to insert its path into the current FEEL/Liquid expression.</span>
+            {apiBaseUrl ? <span>Contract API: {apiBaseUrl}</span> : null}
+          </div>
+          {(nodeType === "liquid" || expression.language === "liquid") ? (
+            <div style={MExpressionHintStyle}>
+              <strong>Liquid Preview</strong>
+              <pre style={MPreviewStyle}>{preview || "Preview is empty."}</pre>
+            </div>
+          ) : null}
+        </>
+      )}
     </div>
   );
 }
@@ -787,6 +838,8 @@ function MOutputContractTab({
   const editable = nodeType === "condition" || nodeType === "action";
   const fields = MFlattenContractFields(contract?.fields ?? []);
   const isCondition = nodeType === "condition";
+  const isAction = nodeType === "action";
+  const showValueExpression = isCondition || isAction;
   const sectionTitle = isCondition ? "Output Facts (on pass)" : "Output Contract";
   const sectionSubtitle = isCondition
     ? "These facts are written only when the condition passes."
@@ -835,7 +888,7 @@ function MOutputContractTab({
               <tr>
                 <th style={MTableHeaderStyle}>Path</th>
                 <th style={MTableHeaderStyle}>Type</th>
-                {isCondition ? <th style={MTableHeaderStyle}>Value Expression</th> : null}
+                {showValueExpression ? <th style={MTableHeaderStyle}>Value Expression</th> : null}
                 <th style={MTableHeaderStyle}>Use</th>
                 <th style={MTableHeaderStyle}>Expose</th>
               </tr>
@@ -865,7 +918,7 @@ function MOutputContractTab({
                       />
                     ) : field.dataType}
                   </td>
-                  {isCondition ? (
+                  {showValueExpression ? (
                     <td style={MTableCellStyle}>
                       {field.isResultPayload ? (
                         <span style={{ color: "#64748b" }}>Auto</span>
@@ -874,6 +927,7 @@ function MOutputContractTab({
                           style={MInputStyle}
                           value={field.valueExpression ?? ""}
                           disabled={readOnly}
+                          placeholder={isAction ? "FEEL expression" : ""}
                           onChange={(event) =>
                             updateFieldAt(index, (current) => ({
                               ...current,
@@ -883,7 +937,7 @@ function MOutputContractTab({
                           }
                         />
                       ) : (
-                        field.valueExpression ?? "â€”"
+                        field.valueExpression ?? "\u2014"
                       )}
                     </td>
                   ) : null}
@@ -894,7 +948,11 @@ function MOutputContractTab({
                         ? field.runtimeWritten
                           ? "runtime fact"
                           : "metadata only"
-                        : field.required ? "required" : "optional"}
+                        : isAction
+                          ? field.valueExpression?.trim()
+                            ? "computed"
+                            : field.required ? "required" : "optional"
+                          : field.required ? "required" : "optional"}
                   </td>
                   <td style={MTableCellStyle}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>

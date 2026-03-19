@@ -246,14 +246,31 @@ function MNormalizeGraph(graph: MRuleFlowGraph): MRuleFlowGraph {
         ...(node.data ?? {}),
         outputFields:
           node.type === "condition"
-            ? (node.data?.contractOverride?.responseFields ?? [])
-                .filter((field) => !field.isResultPayload && typeof field.valueExpression === "string" && field.valueExpression.trim().length > 0)
-                .map((field) => ({
-                  path: field.path,
-                  valueExpression: field.valueExpression,
-                  dataType: field.dataType,
-                  runtimeWritten: true
-                }))
+            ? (() => {
+                // Fields from contractOverride.responseFields that have value expressions (UI-authored conditions)
+                const expressionFields = (node.data?.contractOverride?.responseFields ?? [])
+                  .filter((field) => !field.isResultPayload && typeof field.valueExpression === "string" && field.valueExpression.trim().length > 0)
+                  .map((field) => ({
+                    path: field.path,
+                    valueExpression: field.valueExpression,
+                    dataType: field.dataType,
+                    runtimeWritten: true
+                  }));
+                // Code-first output declarations (empty valueExpression — runtime provides values).
+                // These are stored directly in data.outputFields and must be preserved for
+                // static contract propagation so downstream nodes see them in upstream scope.
+                const codeFirstFields = (Array.isArray((node.data as any)?.outputFields) ? (node.data as any).outputFields : [])
+                  .filter((field: any) => typeof field?.path === "string" && field.path.trim().length > 0 && (!field.valueExpression || !field.valueExpression.trim()))
+                  .map((field: any) => ({
+                    path: field.path,
+                    valueExpression: field.valueExpression ?? "",
+                    dataType: field.dataType ?? "string",
+                    runtimeWritten: true
+                  }));
+                // Deduplicate by path — expression fields take priority
+                const seen = new Set(expressionFields.map((f) => f.path));
+                return [...expressionFields, ...codeFirstFields.filter((f: any) => !seen.has(f.path))];
+              })()
             : (node.data as any)?.outputFields,
         connectorConfig: node.data?.connectorConfig,
         contractRef:
