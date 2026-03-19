@@ -1,6 +1,7 @@
 /**
  * Theme tokens, SVG node icons, and edge color maps for the Rule Flow Designer.
- * Provides full light/dark theme support with a single token lookup.
+ * All color values now reference CSS custom properties (var(--mu-*)) so the CSS
+ * layer handles actual values — both light and dark themes use the same token set.
  */
 import type { MRuleFlowNodeType, MRuleFlowEdgeType } from "../../models.js";
 
@@ -92,150 +93,88 @@ export interface MFlowThemeTokens {
   edgeLabelBg: string;
 }
 
-export const M_LIGHT_TOKENS: MFlowThemeTokens = {
-  canvasGradient: "radial-gradient(circle at top left, rgba(37,99,235,0.12), transparent 38%), linear-gradient(180deg, rgba(248,250,252,0.96), rgba(241,245,249,0.92))",
-  sidebarBg: "rgba(248,250,252,0.92)",
-  sidebarBorder: "1px solid rgba(148,163,184,0.18)",
-  sidebarOpenBg: "rgba(255,255,255,0.94)",
-  sidebarOpenBorder: "1px solid rgba(148,163,184,0.28)",
-  sidebarOpenShadow: "0 12px 30px rgba(15,23,42,0.06)",
-  sidebarHeaderColor: "#0f172a",
-  nodeBg: "#ffffff",
-  nodeBorder: "1px solid rgba(15,23,42,0.12)",
-  nodeShadow: "0 14px 30px rgba(15,23,42,0.10)",
-  nodeText: "#0f172a",
-  nodeSubtext: "#475569",
-  nodeMutedText: "#64748b",
-  inspectorBg: "rgba(248,250,252,0.9)",
-  inspectorBorder: "1px solid rgba(148,163,184,0.18)",
-  inputBg: "#ffffff",
-  inputBorder: "1px solid rgba(148,163,184,0.35)",
-  inputText: "#0f172a",
-  labelColor: "#334155",
-  overlayBg: "rgba(255,255,255,0.95)",
-  overlayBorder: "1px solid rgba(148,163,184,0.28)",
-  overlayShadow: "0 18px 40px rgba(15,23,42,0.12)",
-  overlayItemBg: "rgba(248,250,252,0.94)",
-  overlayItemBorder: "1px solid rgba(148,163,184,0.2)",
-  overlayItemSelectedBg: "rgba(219,234,254,0.92)",
-  overlayItemSelectedBorder: "1px solid rgba(37,99,235,0.26)",
-  backdropBg: "rgba(15,23,42,0.38)",
-  dialogBg: "#ffffff",
-  dialogBorder: "1px solid rgba(148,163,184,0.28)",
-  dialogShadow: "0 24px 60px rgba(15,23,42,0.22)",
-  textPrimary: "#0f172a",
-  textSecondary: "#475569",
-  textMuted: "#64748b",
+/**
+ * Shared token set — CSS custom properties resolve at runtime based on [data-theme] attribute.
+ * Both light and dark themes use the same var() references; the CSS layer supplies the values.
+ */
+export const SHARED_TOKENS: MFlowThemeTokens = {
+  canvasGradient: `radial-gradient(circle at top left, color-mix(in oklch, var(--mu-color-interactive) 12%, transparent), transparent 38%), linear-gradient(180deg, var(--mu-surface-canvas), var(--mu-surface-base))`,
+  sidebarBg: "var(--mu-surface-sidebar)",
+  sidebarBorder: "1px solid var(--mu-border-subtle)",
+  sidebarOpenBg: "var(--mu-surface-raised)",
+  sidebarOpenBorder: "1px solid var(--mu-border-default)",
+  sidebarOpenShadow: "var(--mu-shadow-sidebar)",
+  sidebarHeaderColor: "var(--mu-text-primary)",
+  nodeBg: "var(--mu-surface-base)",
+  nodeBorder: "1px solid var(--mu-border-subtle)",
+  nodeShadow: "var(--mu-shadow-node)",
+  nodeText: "var(--mu-text-primary)",
+  nodeSubtext: "var(--mu-text-secondary)",
+  nodeMutedText: "var(--mu-text-muted)",
+  inspectorBg: "var(--mu-surface-sidebar)",
+  inspectorBorder: "1px solid var(--mu-border-subtle)",
+  inputBg: "var(--mu-surface-input)",
+  inputBorder: "1px solid var(--mu-border-input)",
+  inputText: "var(--mu-text-primary)",
+  labelColor: "var(--mu-text-label)",
+  overlayBg: "var(--mu-surface-overlay)",
+  overlayBorder: "1px solid var(--mu-border-default)",
+  overlayShadow: "var(--mu-shadow-overlay)",
+  overlayItemBg: "var(--mu-surface-raised)",
+  overlayItemBorder: "1px solid var(--mu-border-subtle)",
+  overlayItemSelectedBg: "var(--mu-color-selected-bg)",
+  overlayItemSelectedBorder: "1px solid var(--mu-color-selected-border)",
+  backdropBg: "var(--mu-surface-backdrop)",
+  dialogBg: "var(--mu-surface-dialog)",
+  dialogBorder: "1px solid var(--mu-border-default)",
+  dialogShadow: "var(--mu-shadow-dialog)",
+  textPrimary: "var(--mu-text-primary)",
+  textSecondary: "var(--mu-text-secondary)",
+  textMuted: "var(--mu-text-muted)",
   paletteBtnBorderAlpha: "22",
   paletteBtnBgAlpha: "10",
-  chevronBg: "rgba(148,163,184,0.12)",
-  chevronColor: "#475569",
-  sectionDescColor: "#64748b",
+  chevronBg: "var(--mu-border-subtle)",
+  chevronColor: "var(--mu-text-secondary)",
+  sectionDescColor: "var(--mu-text-muted)",
   tabActiveAlphaBorder: "40",
   tabActiveAlphaBg: "14",
-  tabInactiveBorder: "1px solid rgba(148,163,184,0.24)",
-  tabInactiveBg: "#ffffff",
-  hintBg: "rgba(248,250,252,0.96)",
-  hintBorder: "1px solid rgba(148,163,184,0.24)",
-  hintText: "#334155",
-  errorBg: "rgba(254,242,242,0.9)",
-  errorBorder: "1px solid rgba(220,38,38,0.18)",
-  errorText: "#b91c1c",
-  warningBg: "rgba(255,251,235,0.9)",
-  warningBorder: "1px solid rgba(245,158,11,0.18)",
-  warningText: "#92400e",
-  deleteBg: "rgba(254,242,242,0.96)",
-  deleteBorder: "1px solid rgba(220,38,38,0.2)",
-  deleteText: "#b91c1c",
-  actionPrimaryBorder: "1px solid rgba(37,99,235,0.28)",
-  actionPrimaryBg: "rgba(37,99,235,0.14)",
-  actionSecondaryBorder: "1px solid rgba(148,163,184,0.35)",
-  actionSecondaryBg: "rgba(255,255,255,0.9)",
-  validationErrorBg: "rgba(254,242,242,0.95)",
-  validationErrorBorder: "1px solid rgba(220,38,38,0.24)",
-  validationErrorText: "#b91c1c",
-  validationWarnBg: "rgba(255,251,235,0.95)",
-  validationWarnBorder: "1px solid rgba(245,158,11,0.24)",
-  validationWarnText: "#92400e",
-  licenseBg: "rgba(255,251,235,0.95)",
-  licenseBorder: "1px solid rgba(245,158,11,0.35)",
-  licenseText: "#92400e",
-  edgeLabelBg: "#ffffff"
+  tabInactiveBorder: "1px solid var(--mu-border-subtle)",
+  tabInactiveBg: "var(--mu-surface-base)",
+  hintBg: "var(--mu-surface-raised)",
+  hintBorder: "1px solid var(--mu-border-subtle)",
+  hintText: "var(--mu-text-label)",
+  errorBg: "var(--mu-color-error-bg)",
+  errorBorder: "1px solid var(--mu-color-error-border)",
+  errorText: "var(--mu-color-error-text)",
+  warningBg: "var(--mu-color-warning-bg)",
+  warningBorder: "1px solid var(--mu-color-warning-border)",
+  warningText: "var(--mu-color-warning-text)",
+  deleteBg: "var(--mu-color-error-bg)",
+  deleteBorder: "1px solid var(--mu-color-error-border)",
+  deleteText: "var(--mu-color-error-text)",
+  actionPrimaryBorder: "1px solid var(--mu-color-interactive-border)",
+  actionPrimaryBg: "var(--mu-color-interactive-subtle)",
+  actionSecondaryBorder: "1px solid var(--mu-border-input)",
+  actionSecondaryBg: "var(--mu-surface-raised)",
+  validationErrorBg: "var(--mu-color-error-bg)",
+  validationErrorBorder: "1px solid var(--mu-color-error-border)",
+  validationErrorText: "var(--mu-color-error-text)",
+  validationWarnBg: "var(--mu-color-warning-bg)",
+  validationWarnBorder: "1px solid var(--mu-color-warning-border)",
+  validationWarnText: "var(--mu-color-warning-text)",
+  licenseBg: "var(--mu-color-warning-bg)",
+  licenseBorder: "1px solid var(--mu-color-warning-border)",
+  licenseText: "var(--mu-color-warning-text)",
+  edgeLabelBg: "var(--mu-edge-label-bg)"
 };
 
-export const M_DARK_TOKENS: MFlowThemeTokens = {
-  canvasGradient: "radial-gradient(circle at top left, rgba(37,99,235,0.16), transparent 38%), linear-gradient(180deg, #1e293b, #0f172a)",
-  sidebarBg: "rgba(30,41,59,0.92)",
-  sidebarBorder: "1px solid rgba(71,85,105,0.32)",
-  sidebarOpenBg: "rgba(30,41,59,0.96)",
-  sidebarOpenBorder: "1px solid rgba(71,85,105,0.45)",
-  sidebarOpenShadow: "0 12px 30px rgba(0,0,0,0.25)",
-  sidebarHeaderColor: "#e2e8f0",
-  nodeBg: "#1e293b",
-  nodeBorder: "1px solid rgba(71,85,105,0.38)",
-  nodeShadow: "0 14px 30px rgba(0,0,0,0.25)",
-  nodeText: "#e2e8f0",
-  nodeSubtext: "#94a3b8",
-  nodeMutedText: "#64748b",
-  inspectorBg: "rgba(15,23,42,0.9)",
-  inspectorBorder: "1px solid rgba(71,85,105,0.32)",
-  inputBg: "#0f172a",
-  inputBorder: "1px solid rgba(71,85,105,0.45)",
-  inputText: "#e2e8f0",
-  labelColor: "#cbd5e1",
-  overlayBg: "rgba(30,41,59,0.95)",
-  overlayBorder: "1px solid rgba(71,85,105,0.38)",
-  overlayShadow: "0 18px 40px rgba(0,0,0,0.30)",
-  overlayItemBg: "rgba(15,23,42,0.7)",
-  overlayItemBorder: "1px solid rgba(71,85,105,0.3)",
-  overlayItemSelectedBg: "rgba(37,99,235,0.2)",
-  overlayItemSelectedBorder: "1px solid rgba(37,99,235,0.45)",
-  backdropBg: "rgba(0,0,0,0.55)",
-  dialogBg: "#1e293b",
-  dialogBorder: "1px solid rgba(71,85,105,0.45)",
-  dialogShadow: "0 24px 60px rgba(0,0,0,0.40)",
-  textPrimary: "#e2e8f0",
-  textSecondary: "#94a3b8",
-  textMuted: "#64748b",
-  paletteBtnBorderAlpha: "30",
-  paletteBtnBgAlpha: "18",
-  chevronBg: "rgba(71,85,105,0.24)",
-  chevronColor: "#94a3b8",
-  sectionDescColor: "#94a3b8",
-  tabActiveAlphaBorder: "55",
-  tabActiveAlphaBg: "22",
-  tabInactiveBorder: "1px solid rgba(71,85,105,0.32)",
-  tabInactiveBg: "#1e293b",
-  hintBg: "rgba(15,23,42,0.85)",
-  hintBorder: "1px solid rgba(71,85,105,0.32)",
-  hintText: "#94a3b8",
-  errorBg: "rgba(127,29,29,0.25)",
-  errorBorder: "1px solid rgba(220,38,38,0.35)",
-  errorText: "#fca5a5",
-  warningBg: "rgba(120,53,15,0.25)",
-  warningBorder: "1px solid rgba(245,158,11,0.35)",
-  warningText: "#fcd34d",
-  deleteBg: "rgba(127,29,29,0.3)",
-  deleteBorder: "1px solid rgba(220,38,38,0.35)",
-  deleteText: "#fca5a5",
-  actionPrimaryBorder: "1px solid rgba(59,130,246,0.45)",
-  actionPrimaryBg: "rgba(59,130,246,0.2)",
-  actionSecondaryBorder: "1px solid rgba(71,85,105,0.45)",
-  actionSecondaryBg: "rgba(30,41,59,0.8)",
-  validationErrorBg: "rgba(127,29,29,0.25)",
-  validationErrorBorder: "1px solid rgba(220,38,38,0.35)",
-  validationErrorText: "#fca5a5",
-  validationWarnBg: "rgba(120,53,15,0.25)",
-  validationWarnBorder: "1px solid rgba(245,158,11,0.35)",
-  validationWarnText: "#fcd34d",
-  licenseBg: "rgba(120,53,15,0.25)",
-  licenseBorder: "1px solid rgba(245,158,11,0.35)",
-  licenseText: "#fcd34d",
-  edgeLabelBg: "#1e293b"
-};
+// Keep M_LIGHT_TOKENS and M_DARK_TOKENS as aliases for backward compat —
+// both point to SHARED_TOKENS since the CSS layer handles actual values.
+export const M_LIGHT_TOKENS: MFlowThemeTokens = SHARED_TOKENS;
+export const M_DARK_TOKENS: MFlowThemeTokens = SHARED_TOKENS;
 
-export function MGetThemeTokens(theme: MFlowTheme): MFlowThemeTokens {
-  return theme === "dark" ? M_DARK_TOKENS : M_LIGHT_TOKENS;
+export function MGetThemeTokens(_theme: MFlowTheme): MFlowThemeTokens {
+  return SHARED_TOKENS;
 }
 
 /** SVG path data for node type icons (16x16 viewBox). */
@@ -262,18 +201,13 @@ export const M_NODE_DESCRIPTIONS: Record<MRuleFlowNodeType, string> = {
   end: "Terminal node — flow completes here"
 };
 
-/** Edge routing colors — light mode. */
+/** Edge routing colors — CSS vars resolve via [data-theme] at runtime. */
 export const M_EDGE_COLORS: Record<MRuleFlowEdgeType, string> = {
-  always: "#64748b",
-  "on-true": "#16a34a",
-  "on-false": "#dc2626",
-  "on-error": "#d97706"
+  always: "var(--mu-edge-always)",
+  "on-true": "var(--mu-edge-on-true)",
+  "on-false": "var(--mu-edge-on-false)",
+  "on-error": "var(--mu-edge-on-error)"
 };
 
-/** Edge routing colors — dark mode. */
-export const M_EDGE_COLORS_DARK: Record<MRuleFlowEdgeType, string> = {
-  always: "#94a3b8",
-  "on-true": "#4ade80",
-  "on-false": "#f87171",
-  "on-error": "#fbbf24"
-};
+// Dark alias — same vars, CSS layer handles the actual color values.
+export const M_EDGE_COLORS_DARK: Record<MRuleFlowEdgeType, string> = M_EDGE_COLORS;
