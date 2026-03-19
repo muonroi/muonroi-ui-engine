@@ -36,6 +36,7 @@ import { MRuleEngineApi } from "../../services/rule-engine-api.js";
 import { MConnectorService, type MConnectorMetadata } from "../../services/connector-service.js";
 import { MBuildRuleComponentHeaders } from "../../runtime/request-context.js";
 import { MVersionDropdown } from "./version-selector/MVersionDropdown.js";
+import { MVersionDiffModal } from "./version-selector/MVersionDiffModal.js";
 import { useRuleFlowHistory } from "../../hooks/useRuleFlowHistory.js";
 import {
   MActionButtonStyle,
@@ -1513,6 +1514,7 @@ export function MuRuleFlowEditor({
 
   const envLabel = apiBaseUrl ? (apiBaseUrl.includes("localhost") || apiBaseUrl.includes("127.0.0.1") ? "DEV" : "PROD") : null;
   const [headerInfoOpen, setHeaderInfoOpen] = useState(false);
+  const [diffModalOpen, setDiffModalOpen] = useState(false);
 
   return (
     <ReactFlowProvider>
@@ -1537,6 +1539,17 @@ export function MuRuleFlowEditor({
             ) : (
               <span style={{ ...MHeaderBadgeStyle, background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.3)", color: "#16a34a", fontSize: 11, fontWeight: 700 }}>Active</span>
             )}
+            {versions.length > 1 ? (
+              <span
+                role="button"
+                tabIndex={0}
+                style={{ ...MHeaderBadgeStyle, cursor: "pointer", background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", color: "#6366f1", fontSize: 11, fontWeight: 600, padding: "3px 10px" }}
+                onClick={() => setDiffModalOpen(true)}
+                onKeyDown={(e) => { if (e.key === "Enter") setDiffModalOpen(true); }}
+              >
+                Compare
+              </span>
+            ) : null}
             {envLabel ? <span style={{ ...MHeaderBadgeStyle, background: envLabel === "DEV" ? "rgba(245,158,11,0.15)" : "rgba(22,163,74,0.15)", border: envLabel === "DEV" ? "1px solid rgba(245,158,11,0.3)" : "1px solid rgba(22,163,74,0.3)", color: envLabel === "DEV" ? tokens.warningText : "#16a34a", fontSize: 10, fontWeight: 700 }}>{envLabel}</span> : null}
             {effectiveReadOnly ? <span style={{ ...MHeaderBadgeStyle, background: tokens.errorBg, border: tokens.errorBorder, color: tokens.errorText, fontSize: 10, fontWeight: 700 }}>READ-ONLY</span> : null}
           </div>
@@ -1812,6 +1825,18 @@ export function MuRuleFlowEditor({
           }}
         />
       ) : null}
+      <MVersionDiffModal
+        open={diffModalOpen}
+        onClose={() => setDiffModalOpen(false)}
+        versions={versions}
+        activeVersion={activeVersion}
+        initialLeftVersion={activeVersion?.version ?? null}
+        initialRightVersion={version ?? null}
+        apiBaseUrl={apiBaseUrl ?? ""}
+        workflowCode={workflowCode ?? ""}
+        tenantId={tenantId}
+        tokens={tokens}
+      />
     </ReactFlowProvider>
   );
 
