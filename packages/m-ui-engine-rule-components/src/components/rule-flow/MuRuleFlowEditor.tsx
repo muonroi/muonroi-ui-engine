@@ -427,7 +427,7 @@ export function MuRuleFlowEditor({
     const baseUrl = apiBaseUrl.replace(/\/$/, "");
     const headers = MBuildRuleComponentHeaders(undefined, { tenantId });
     if (append) setLoadingMoreVersions(true);
-    fetch(`${baseUrl}/api/v1/rule-engine/rulesets/${encodeURIComponent(workflowCode)}/versions?limit=10&offset=${offset}`, { headers })
+    fetch(`${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/versions?limit=10&offset=${offset}`, { headers })
       .then((res) => (res.ok ? res.json() : []))
       .then((data: MVersionItem[] | { items?: MVersionItem[] }) => {
         const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
@@ -1561,7 +1561,7 @@ export function MuRuleFlowEditor({
       const headers = MBuildRuleComponentHeaders(undefined, { tenantId });
       headers.set("Content-Type", "application/json");
       const versionParam = version != null ? `?version=${version}` : "";
-      const res = await fetch(`${baseUrl}/api/v1/rule-engine/execute/${encodeURIComponent(workflowCode)}${versionParam}`, {
+      const res = await fetch(`${baseUrl}/execute/${encodeURIComponent(workflowCode)}${versionParam}`, {
         method: "POST",
         headers,
         body: dryRunInput
@@ -1761,7 +1761,7 @@ export function MuRuleFlowEditor({
                 const baseUrl = apiBaseUrl.replace(/\/$/, "");
                 const headers = MBuildRuleComponentHeaders(undefined, { tenantId });
                 headers.set("Content-Type", "application/json");
-                fetch(`${baseUrl}/api/v1/rule-engine/rulesets/${encodeURIComponent(workflowCode)}/versions`, {
+                fetch(`${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/versions`, {
                   method: "POST",
                   headers,
                   body: JSON.stringify({ sourceVersion: version })
