@@ -300,7 +300,15 @@ function MBuildNodeContractLayers(
         ? MMergeFields(combinedResponse, overrideFields)
         : combinedResponse;
 
-    const annotatedBase = baseFields.map((field) =>
+    // For FEEL condition nodes (no ruleCode), only include fields that are
+    // explicitly authored (have valueExpression or runtimeWritten from source).
+    // Upstream-inherited fields without these markers are pass-through scope
+    // and should not appear in the condition's own output contract.
+    const effectiveBase = (node.type === "condition" && !node.ruleCode)
+      ? baseFields.filter((field) => field.runtimeWritten || field.valueExpression?.trim())
+      : baseFields;
+
+    const annotatedBase = effectiveBase.map((field) =>
       MAnnotateField(field, {
         sourceNodeId: node.id,
         sourceNodeLabel: node.label,
@@ -314,6 +322,22 @@ function MBuildNodeContractLayers(
               : (field.runtimeWritten ?? true)
       })
     );
+
+    if (node.type === "trigger") {
+      // Trigger passes through flow input as its output contract
+      const triggerOutput = currentFlowInput.map((field) => MAnnotateField(field, {
+        sourceNodeId: node.id,
+        sourceNodeLabel: node.label,
+        sourceNodeType: node.type,
+        sourceKind: "flow-input",
+        runtimeWritten: true
+      }));
+      return {
+        contractName: `${node.id}_output_contract`,
+        title: "Output Contract",
+        fields: MDeduplicateFields(triggerOutput)
+      };
+    }
 
     if (node.type !== "condition") {
       return {
@@ -548,7 +572,9 @@ function MBuildNodeContractLayers(
     }
 
     if (node.type === "condition" && !node.ruleCode) {
-      for (const field of MFlattenContractFields(outputContract.fields).filter((candidate) => !candidate.isResultPayload)) {
+      for (const field of MFlattenContractFields(outputContract.fields).filter(
+        (candidate) => !candidate.isResultPayload && !candidate.runtimeWritten
+      )) {
         if (!field.valueExpression?.trim()) {
           issues.push({
             code: "MRF009",

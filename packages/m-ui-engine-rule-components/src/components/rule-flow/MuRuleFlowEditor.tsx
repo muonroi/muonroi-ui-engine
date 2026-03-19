@@ -457,7 +457,12 @@ export function MuRuleFlowEditor({
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement;
-      const isInput = target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable;
+      // Check composedPath to detect inputs inside shadow DOM (inspector textarea, etc.)
+      const isInput = event.composedPath().some((el) => {
+        if (!(el instanceof HTMLElement)) return false;
+        const tag = el.tagName;
+        return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el.isContentEditable;
+      });
 
       if ((event.ctrlKey || event.metaKey) && event.key === "z" && !event.shiftKey) {
         event.preventDefault();
