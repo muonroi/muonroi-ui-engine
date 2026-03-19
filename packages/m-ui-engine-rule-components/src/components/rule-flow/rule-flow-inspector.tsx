@@ -967,6 +967,9 @@ function MOutputContractTab({
   onInsert: (path: string) => void;
   onChange: (fields: MRuleFlowContractField[]) => void;
 }): React.JSX.Element {
+  const [autoExpanded, setAutoExpanded] = useState(false);
+
+  // End node special case — Final Scope (unchanged)
   if (nodeType === "end") {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -980,29 +983,34 @@ function MOutputContractTab({
   }
 
   const editable = nodeType === "condition" || nodeType === "action";
-  const fields = MFlattenContractFields(contract?.fields ?? []);
+  const allFields = MFlattenContractFields(contract?.fields ?? []);
+  const customFields = allFields.filter(f => !f.isResultPayload);
+  const autoFields = allFields.filter(f => f.isResultPayload);
   const isCondition = nodeType === "condition";
   const isAction = nodeType === "action";
   const showValueExpression = isCondition || isAction;
-  const sectionTitle = isCondition ? "Output Facts (on pass)" : "Output Contract";
-  const sectionSubtitle = isCondition
-    ? "These facts are written only when the condition passes."
-    : editable
-      ? "Edit the fields this node guarantees for downstream nodes."
-      : "Auto-composed contract for downstream validation.";
 
   function updateFieldAt(index: number, updater: (field: MRuleFlowContractField) => MRuleFlowContractField): void {
-    onChange(fields.map((field, fieldIndex) => fieldIndex === index ? updater(field) : field));
+    // Map index back to allFields: custom fields come first in the onChange array
+    const updatedAll = allFields.map((field) => {
+      if (!field.isResultPayload) {
+        const customIdx = customFields.indexOf(field);
+        if (customIdx === index) return updater(field);
+      }
+      return field;
+    });
+    onChange(updatedAll);
   }
 
   function removeFieldAt(index: number): void {
-    onChange(fields.filter((_, fieldIndex) => fieldIndex !== index));
+    const fieldToRemove = customFields[index];
+    onChange(allFields.filter((f) => f !== fieldToRemove));
   }
 
   function addField(): void {
-    const nextPath = `custom.${fields.length + 1}`;
+    const nextPath = `custom.${customFields.length + 1}`;
     onChange([
-      ...fields,
+      ...allFields,
       {
         path: nextPath,
         label: nextPath,
@@ -1012,116 +1020,190 @@ function MOutputContractTab({
     ]);
   }
 
+  // Build upstream autocomplete extensions for inline FEEL editors
+  const upstreamAutocompleteExts: Extension[] = (() => {
+    const exts: Extension[] = [];
+    if (upstreamScope) exts.push(mCreateFeelAutocomplete(MFlattenContractFields(upstreamScope.fields)));
+    return exts;
+  })();
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
-        <div style={MSectionTitleStyle}>
-          <strong>{sectionTitle}</strong>
-          <span>{sectionSubtitle}</span>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* ── Section 1: Custom Output Fields ── */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+          <div style={MSectionTitleStyle}>
+            <strong>Custom Output Fields</strong>
+            <span>User-defined fields with expressions</span>
+          </div>
+          {!readOnly && editable ? (
+            <button type="button" style={MActionButtonStyle(false)} onClick={addField}>Add Field</button>
+          ) : null}
         </div>
-        {!readOnly && editable ? (
-          <button type="button" style={MActionButtonStyle(false)} onClick={addField}>Add Field</button>
-        ) : null}
-      </div>
-      {fields.length === 0 ? (
-        <div style={{ color: "#64748b", fontSize: 13 }}>This node currently produces no downstream fields.</div>
-      ) : (
-        <div style={MTableShellStyle}>
-          <table style={MTableStyle}>
-            <thead>
-              <tr>
-                <th style={MTableHeaderStyle}>Path</th>
-                <th style={MTableHeaderStyle}>Type</th>
-                {showValueExpression ? <th style={MTableHeaderStyle}>Value Expression</th> : null}
-                <th style={MTableHeaderStyle}>Use</th>
-                <th style={MTableHeaderStyle}>Expose</th>
-              </tr>
-            </thead>
-            <tbody>
-              {fields.map((field, index) => (
-                <tr key={`output-contract-${index}`}>
-                  <td style={MTableCellStyle}>
-                    {editable && !field.isResultPayload ? (
-                      <input
-                        style={MInputStyle}
-                        value={field.path}
-                        disabled={readOnly}
-                        onChange={(event) => updateFieldAt(index, (current) => ({ ...current, path: event.target.value, label: event.target.value }))}
-                      />
-                    ) : (
-                      <button type="button" style={MInlinePathButtonStyle} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
-                    )}
-                  </td>
-                  <td style={MTableCellStyle}>
-                    {editable && !field.isResultPayload ? (
-                      <input
-                        style={MInputStyle}
-                        value={field.dataType}
-                        disabled={readOnly}
-                        onChange={(event) => updateFieldAt(index, (current) => ({ ...current, dataType: event.target.value }))}
-                      />
-                    ) : field.dataType}
-                  </td>
-                  {showValueExpression ? (
+        {customFields.length === 0 ? (
+          <MEmptyStateBox
+            message="No custom output fields defined."
+            actionHint={editable && !readOnly ? "Add a field to compute values for downstream nodes." : undefined}
+            onAction={editable && !readOnly ? addField : undefined}
+          />
+        ) : (
+          <div style={MTableShellStyle}>
+            <table style={MTableStyle}>
+              <thead>
+                <tr>
+                  <th style={MTableHeaderStyle} title="Dotted path where this value is stored in the FactBag">Path</th>
+                  <th style={MTableHeaderStyle} title="Data type of the output value">Type</th>
+                  {showValueExpression ? <th style={MTableHeaderStyle} title="FEEL/Liquid expression that computes this value at runtime">Value Expression</th> : null}
+                  <th style={MTableHeaderStyle} title="How downstream nodes consume this field">Use</th>
+                  <th style={MTableHeaderStyle} title="When checked, passes this field to parent flow scope (only relevant for Sub Flow nodes)">Expose</th>
+                  {editable && !readOnly ? <th style={MTableHeaderStyle}>Actions</th> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {customFields.map((field, index) => (
+                  <tr key={`output-custom-${index}`}>
                     <td style={MTableCellStyle}>
-                      {field.isResultPayload ? (
-                        <span style={{ color: "#64748b" }}>Auto</span>
-                      ) : editable ? (
+                      {editable ? (
                         <input
                           style={MInputStyle}
-                          value={field.valueExpression ?? ""}
+                          value={field.path}
                           disabled={readOnly}
-                          placeholder={isAction ? "FEEL expression" : ""}
-                          onChange={(event) =>
-                            updateFieldAt(index, (current) => ({
-                              ...current,
-                              valueExpression: event.target.value,
-                              runtimeWritten: event.target.value.trim().length > 0 ? true : false
-                            }))
-                          }
+                          onChange={(event) => updateFieldAt(index, (current) => ({ ...current, path: event.target.value, label: event.target.value }))}
                         />
                       ) : (
-                        field.valueExpression ?? "\u2014"
+                        <button type="button" style={MInlinePathButtonStyle} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
                       )}
                     </td>
-                  ) : null}
-                  <td style={MTableCellStyle}>
-                    {field.isResultPayload
-                      ? "result payload"
-                      : isCondition
-                        ? field.runtimeWritten
-                          ? "runtime fact"
-                          : "metadata only"
+                    <td style={MTableCellStyle}>
+                      {editable ? (
+                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                          <MTypeBadge dataType={field.dataType} />
+                          {!readOnly ? (
+                            <input
+                              style={{ ...MInputStyle, width: 60 }}
+                              value={field.dataType}
+                              onChange={(event) => updateFieldAt(index, (current) => ({ ...current, dataType: event.target.value }))}
+                            />
+                          ) : null}
+                        </span>
+                      ) : <MTypeBadge dataType={field.dataType} />}
+                    </td>
+                    {showValueExpression ? (
+                      <td style={{ ...MTableCellStyle, minWidth: 200 }}>
+                        {editable ? (
+                          <MExpressionEditor
+                            value={field.valueExpression ?? ""}
+                            language="feel"
+                            readOnly={readOnly}
+                            singleLine={true}
+                            placeholderText="e.g. command.details.length"
+                            onChange={(val) => updateFieldAt(index, (current) => ({
+                              ...current,
+                              valueExpression: val,
+                              runtimeWritten: val.trim().length > 0
+                            }))}
+                            extensions={upstreamAutocompleteExts}
+                            root={undefined}
+                          />
+                        ) : (
+                          <span style={{ fontFamily: "monospace", fontSize: 12 }}>{field.valueExpression ?? "\u2014"}</span>
+                        )}
+                      </td>
+                    ) : null}
+                    <td style={MTableCellStyle}>
+                      {isCondition
+                        ? field.runtimeWritten ? "runtime fact" : "metadata only"
                         : isAction
-                          ? field.valueExpression?.trim()
-                            ? "computed"
-                            : field.required ? "required" : "optional"
+                          ? field.valueExpression?.trim() ? "computed" : field.required ? "required" : "optional"
                           : field.required ? "required" : "optional"}
-                  </td>
-                  <td style={MTableCellStyle}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                    </td>
+                    <td style={MTableCellStyle}>
                       <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <input
                           type="checkbox"
                           checked={field.exposeToParent !== false}
-                          disabled={readOnly || field.isResultPayload}
+                          disabled={readOnly}
                           onChange={(event) => updateFieldAt(index, (current) => ({ ...current, exposeToParent: event.target.checked }))}
                         />
                         parent
                       </label>
-                      {!readOnly && editable && !field.isResultPayload ? (
+                    </td>
+                    {editable && !readOnly ? (
+                      <td style={MTableCellStyle}>
                         <button type="button" style={MInlinePathButtonStyle} onClick={() => removeFieldAt(index)}>
                           delete
                         </button>
-                      ) : null}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                      </td>
+                    ) : null}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* ── Section 2: Auto-Generated Results (collapsed by default) ── */}
+      {autoFields.length > 0 ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => setAutoExpanded(!autoExpanded)}
+            onKeyDown={(e) => { if (e.key === "Enter") setAutoExpanded(!autoExpanded); }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              cursor: "pointer",
+              padding: "6px 8px",
+              borderRadius: 6,
+              userSelect: "none",
+              transition: "background-color 0.1s",
+            }}
+          >
+            <span style={{ fontSize: 10, color: "#64748b", width: 16, textAlign: "center" }}>
+              {autoExpanded ? "\u25BC" : "\u25B6"}
+            </span>
+            <strong style={{ fontSize: 13, color: "#334155" }}>Auto-Generated Results</strong>
+            <span style={{
+              background: "#e2e8f0",
+              padding: "2px 8px",
+              borderRadius: 10,
+              fontSize: 11,
+              color: "#475569",
+              fontWeight: 600,
+            }}>
+              {autoFields.length} field{autoFields.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          {autoExpanded ? (
+            <div style={{ ...MTableShellStyle, opacity: 0.85 }}>
+              <table style={MTableStyle}>
+                <thead>
+                  <tr>
+                    <th style={MTableHeaderStyle} title="Dotted path where this value is stored in the FactBag">Path</th>
+                    <th style={MTableHeaderStyle} title="Data type of the output value">Type</th>
+                    <th style={MTableHeaderStyle} title="How downstream nodes consume this field">Use</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {autoFields.map((field, index) => (
+                    <tr key={`output-auto-${index}`}>
+                      <td style={MTableCellStyle}>
+                        <button type="button" style={MInlinePathButtonStyle} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
+                      </td>
+                      <td style={MTableCellStyle}><MTypeBadge dataType={field.dataType} /></td>
+                      <td style={MTableCellStyle}>result payload</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
         </div>
-      )}
+      ) : null}
+
       {issues.length ? <MIssueList issues={issues.filter((issue) => issue.severity !== "info")} /> : null}
     </div>
   );
