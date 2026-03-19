@@ -106,7 +106,7 @@ const M_CONTRACT_SOURCE_DESCRIPTIONS: Record<string, string> = {
 
 function MInfoIcon({ tooltip }: { tooltip: string }): React.JSX.Element {
   return (
-    <span title={tooltip} style={{ display: "inline-flex", alignItems: "center", marginLeft: 4, cursor: "help", color: "#94a3b8" }}>
+    <span title={tooltip} style={{ display: "inline-flex", alignItems: "center", marginLeft: 4, cursor: "help", color: "var(--mu-text-secondary)" }}>
       <svg width={14} height={14} viewBox="0 0 16 16" fill="currentColor">
         <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 2.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zM6.5 7h2v5h-2V7h1z" />
       </svg>
@@ -119,10 +119,9 @@ const MInfoCardStyle: React.CSSProperties = {
   flexDirection: "column",
   gap: 8,
   padding: "10px 14px",
-  background: "rgba(241, 245, 249, 0.7)",
-  border: "1px solid rgba(148, 163, 184, 0.2)",
-  borderRadius: 12,
-  boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
+  background: "var(--mu-surface-raised)",
+  border: "1px solid var(--mu-border-subtle)",
+  borderRadius: 12
 };
 
 export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.Element {
@@ -211,7 +210,7 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
           ) : null}
         </div>
       ) : (
-        <div style={{ color: "#64748b", fontSize: 13, lineHeight: 1.5 }}>
+        <div style={{ color: "var(--mu-text-muted)", fontSize: 13, lineHeight: 1.5 }}>
           Use the palette to add a node, then inspect available input scope, effective mappings, and output contract before publishing.
         </div>
       )}
@@ -262,7 +261,7 @@ function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
             <option value="api">api</option>
             <option value="inline">inline</option>
           </select>
-          <span style={{ fontSize: 11, color: "#64748b", fontStyle: "italic", marginTop: 2, lineHeight: 1.4 }}>
+          <span style={{ fontSize: 11, color: "var(--mu-text-muted)", fontStyle: "italic", marginTop: 2, lineHeight: 1.4 }}>
             {M_CONTRACT_SOURCE_DESCRIPTIONS[selectedNode.data.contractRef?.sourceType ?? MDefaultContractSourceType(selectedNode.data.nodeType)] ?? ""}
           </span>
         </label>
@@ -734,12 +733,12 @@ function MScopeTable({
                 type="button"
                 onClick={() => setAllExpanded(!allExpanded)}
                 style={{
-                  border: "1px solid #e2e8f0",
+                  border: "1px solid var(--mu-border-subtle)",
                   background: "transparent",
                   borderRadius: 6,
                   padding: "3px 8px",
                   fontSize: 11,
-                  color: "#64748b",
+                  color: "var(--mu-text-muted)",
                   cursor: "pointer",
                   whiteSpace: "nowrap",
                 }}
@@ -748,7 +747,7 @@ function MScopeTable({
               </button>
             ) : null}
             {/* View mode pill tabs */}
-            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid var(--mu-border-subtle)" }}>
               <button
                 type="button"
                 onClick={() => setViewMode("tree")}
@@ -758,8 +757,8 @@ function MScopeTable({
                   fontSize: 11,
                   cursor: "pointer",
                   fontWeight: 600,
-                  backgroundColor: viewMode === "tree" ? "#3b82f6" : "transparent",
-                  color: viewMode === "tree" ? "#ffffff" : "#64748b",
+                  backgroundColor: viewMode === "tree" ? "var(--mu-color-interactive)" : "transparent",
+                  color: viewMode === "tree" ? "var(--mu-text-on-accent)" : "var(--mu-text-muted)",
                 }}
               >
                 Schema Tree
@@ -769,13 +768,13 @@ function MScopeTable({
                 onClick={() => setViewMode("table")}
                 style={{
                   border: "none",
-                  borderLeft: "1px solid #e2e8f0",
+                  borderLeft: "1px solid var(--mu-border-subtle)",
                   padding: "3px 10px",
                   fontSize: 11,
                   cursor: "pointer",
                   fontWeight: 600,
-                  backgroundColor: viewMode === "table" ? "#3b82f6" : "transparent",
-                  color: viewMode === "table" ? "#ffffff" : "#64748b",
+                  backgroundColor: viewMode === "table" ? "var(--mu-color-interactive)" : "transparent",
+                  color: viewMode === "table" ? "var(--mu-text-on-accent)" : "var(--mu-text-muted)",
                 }}
               >
                 Flat Table
@@ -798,7 +797,7 @@ function MScopeTable({
         >
           {[...treeGroups.entries()].map(([groupName, groupFields]) => (
             <div key={groupName} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-              {groupBySource ? <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", padding: "4px 8px" }}>{groupName}</div> : null}
+              {groupBySource ? <div style={{ fontSize: 12, fontWeight: 700, color: "var(--mu-text-secondary)", padding: "4px 8px" }}>{groupName}</div> : null}
               {groupFields.map((field) => (
                 <MTreeNode
                   key={field.path}
@@ -816,7 +815,7 @@ function MScopeTable({
         /* Flat table view */
         [...flatGroups.entries()].map(([groupName, groupFields]) => (
           <div key={groupName} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {groupBySource ? <div style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>{groupName}</div> : null}
+            {groupBySource ? <div style={{ fontSize: 12, fontWeight: 700, color: "var(--mu-text-secondary)" }}>{groupName}</div> : null}
             <MFieldTable fields={groupFields} readOnly={readOnly} onInsert={onInsert} />
           </div>
         ))
@@ -827,10 +826,10 @@ function MScopeTable({
 
 function MStatusBadge({ status }: { status?: string }): React.JSX.Element {
   const config: Record<string, { icon: string; label: string; bg: string; text: string }> = {
-    "mapped":        { icon: "\u2705", label: "Mapped",        bg: "#dcfce7", text: "#15803d" },
-    "suggested":     { icon: "\u26a0\ufe0f", label: "Suggested",    bg: "#fef9c3", text: "#a16207" },
-    "missing":       { icon: "\u274c", label: "Missing",       bg: "#fee2e2", text: "#dc2626" },
-    "type-mismatch": { icon: "\ud83d\udd04", label: "Type Mismatch", bg: "#ffedd5", text: "#c2410c" },
+    "mapped":        { icon: "\u2705", label: "Mapped",        bg: "var(--mu-color-success-bg)", text: "var(--mu-color-success-text)" },
+    "suggested":     { icon: "\u26a0\ufe0f", label: "Suggested",    bg: "var(--mu-color-warning-bg)", text: "var(--mu-color-warning-text)" },
+    "missing":       { icon: "\u274c", label: "Missing",       bg: "var(--mu-color-error-bg)", text: "var(--mu-color-error-text)" },
+    "type-mismatch": { icon: "\ud83d\udd04", label: "Type Mismatch", bg: "var(--mu-color-warning-bg)", text: "var(--mu-color-warning-text)" },
   };
   const c = config[status ?? "mapped"] ?? config["mapped"];
   return (
@@ -1030,7 +1029,7 @@ function MEffectiveInputTab({
                 </td>
                 <td style={MTableCellStyle}>
                   <MStatusBadge status={row.status} />
-                  {row.required ? <span style={{ fontSize: 10, color: "#dc2626", marginLeft: 4, fontWeight: 600 }}>required</span> : null}
+                  {row.required ? <span style={{ fontSize: 10, color: "var(--mu-color-error)", marginLeft: 4, fontWeight: 600 }}>required</span> : null}
                 </td>
                 <td style={MTableCellStyle}>
                   {manualEdit ? (
@@ -1189,7 +1188,7 @@ function MOutputContractTab({
                     <td style={MTableCellStyle}>
                       {editable && !readOnly ? (
                         <select
-                          style={{ fontSize: 11, padding: "2px 4px", borderRadius: 6, border: "1px solid #cbd5e1", background: "#f8fafc", width: "100%", cursor: "pointer" }}
+                          style={{ fontSize: 11, padding: "2px 4px", borderRadius: 6, border: "1px solid var(--mu-border-input)", background: "var(--mu-surface-raised)", width: "100%", cursor: "pointer" }}
                           value={field.dataType}
                           onChange={(event) => updateFieldAt(index, (current) => ({ ...current, dataType: event.target.value }))}
                         >
@@ -1255,16 +1254,16 @@ function MOutputContractTab({
               transition: "background-color 0.1s",
             }}
           >
-            <span style={{ fontSize: 10, color: "#64748b", width: 16, textAlign: "center" }}>
+            <span style={{ fontSize: 10, color: "var(--mu-text-muted)", width: 16, textAlign: "center" }}>
               {autoExpanded ? "\u25BC" : "\u25B6"}
             </span>
-            <strong style={{ fontSize: 13, color: "#334155" }}>Auto-Generated Results</strong>
+            <strong style={{ fontSize: 13, color: "var(--mu-text-label)" }}>Auto-Generated Results</strong>
             <span style={{
-              background: "#e2e8f0",
+              background: "var(--mu-border-subtle)",
               padding: "2px 8px",
               borderRadius: 10,
               fontSize: 11,
-              color: "#475569",
+              color: "var(--mu-text-secondary)",
               fontWeight: 600,
             }}>
               {autoFields.length} field{autoFields.length !== 1 ? "s" : ""}
@@ -1340,7 +1339,7 @@ export const MSectionTitleStyle: React.CSSProperties = {
   flexDirection: "column",
   gap: 4,
   fontSize: 13,
-  color: "#64748b"
+  color: "var(--mu-text-muted)"
 };
 
 export const MInspectorShellStyle: React.CSSProperties = {
@@ -1351,8 +1350,8 @@ export const MInspectorShellStyle: React.CSSProperties = {
   width: "100%",
   minWidth: 0,
   borderRadius: 18,
-  background: "rgba(248, 250, 252, 0.9)",
-  border: "1px solid rgba(148, 163, 184, 0.18)"
+  background: "var(--mu-surface-sidebar)",
+  border: "1px solid var(--mu-border-subtle)"
 };
 
 export const MInspectorTabsStyle: React.CSSProperties = {
@@ -1360,7 +1359,7 @@ export const MInspectorTabsStyle: React.CSSProperties = {
   flexWrap: "wrap",
   gap: 6,
   paddingBottom: 8,
-  borderBottom: "1px solid rgba(148, 163, 184, 0.2)"
+  borderBottom: "1px solid var(--mu-border-subtle)"
 };
 
 export const MLabelStyle: React.CSSProperties = {
@@ -1368,12 +1367,12 @@ export const MLabelStyle: React.CSSProperties = {
   flexDirection: "column",
   gap: 6,
   fontSize: 13,
-  color: "#334155"
+  color: "var(--mu-text-label)"
 };
 
 export const MInputStyle: React.CSSProperties = {
   borderRadius: 8,
-  border: "1px solid rgba(148, 163, 184, 0.35)",
+  border: "1px solid var(--mu-border-input)",
   padding: "6px 8px",
   fontSize: 12,
   width: "100%"
@@ -1387,11 +1386,11 @@ export const MTextareaStyle: React.CSSProperties = {
 
 export const MTableShellStyle: React.CSSProperties = {
   borderRadius: 12,
-  border: "1px solid rgba(148, 163, 184, 0.18)",
+  border: "1px solid var(--mu-border-subtle)",
   overflow: "hidden",
   maxHeight: 420,
   minWidth: 0,
-  background: "#ffffff"
+  background: "var(--mu-surface-base)"
 };
 
 export const MTableStyle: React.CSSProperties = {
@@ -1404,12 +1403,12 @@ export const MTableStyle: React.CSSProperties = {
 export const MTableHeaderStyle: React.CSSProperties = {
   position: "sticky",
   top: 0,
-  background: "#f8fafc",
+  background: "var(--mu-surface-raised)",
   textAlign: "left",
   padding: "6px 4px",
   fontSize: 11,
-  color: "#475569",
-  borderBottom: "1px solid rgba(148, 163, 184, 0.18)",
+  color: "var(--mu-text-secondary)",
+  borderBottom: "1px solid var(--mu-border-subtle)",
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap"
@@ -1418,8 +1417,8 @@ export const MTableHeaderStyle: React.CSSProperties = {
 export const MTableCellStyle: React.CSSProperties = {
   padding: "6px 4px",
   fontSize: 12,
-  color: "#0f172a",
-  borderBottom: "1px solid #e2e8f0",
+  color: "var(--mu-text-primary)",
+  borderBottom: "1px solid var(--mu-border-subtle)",
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
@@ -1429,7 +1428,7 @@ export const MTableCellStyle: React.CSSProperties = {
 export const MInlinePathButtonStyle: React.CSSProperties = {
   border: "none",
   background: "transparent",
-  color: "#2563eb",
+  color: "var(--mu-color-interactive)",
   padding: 0,
   cursor: "pointer",
   fontFamily: "inherit",
@@ -1445,9 +1444,9 @@ export const MContractGridStyle: React.CSSProperties = {
 
 export const MDeleteButtonStyle: React.CSSProperties = {
   borderRadius: 12,
-  border: "1px solid rgba(220, 38, 38, 0.24)",
-  background: "rgba(254, 242, 242, 0.95)",
-  color: "#b91c1c",
+  border: "1px solid var(--mu-color-error-border)",
+  background: "var(--mu-color-error-bg)",
+  color: "var(--mu-color-error-text)",
   padding: "12px 14px",
   fontWeight: 600
 };
@@ -1458,47 +1457,47 @@ export const MExpressionHintStyle: React.CSSProperties = {
   gap: 4,
   padding: 12,
   borderRadius: 14,
-  background: "rgba(241, 245, 249, 0.9)",
-  color: "#475569",
+  background: "var(--mu-surface-raised)",
+  color: "var(--mu-text-secondary)",
   fontSize: 12,
   lineHeight: 1.5
 };
 
 export const MErrorBannerStyle: React.CSSProperties = {
   borderRadius: 12,
-  border: "1px solid rgba(220, 38, 38, 0.18)",
-  background: "rgba(254, 242, 242, 0.9)",
-  color: "#b91c1c",
+  border: "1px solid var(--mu-color-error-border)",
+  background: "var(--mu-color-error-bg)",
+  color: "var(--mu-color-error-text)",
   padding: "10px 12px",
   fontSize: 12
 };
 
 export const MWarningBannerStyle: React.CSSProperties = {
   borderRadius: 12,
-  border: "1px solid rgba(245, 158, 11, 0.18)",
-  background: "rgba(255, 251, 235, 0.9)",
-  color: "#92400e",
+  border: "1px solid var(--mu-color-warning-border)",
+  background: "var(--mu-color-warning-bg)",
+  color: "var(--mu-color-warning-text)",
   padding: "10px 12px",
   fontSize: 12
 };
 
 export const MMetadataCardStyle: React.CSSProperties = {
   borderRadius: 14,
-  border: "1px solid rgba(148, 163, 184, 0.18)",
-  background: "rgba(255,255,255,0.9)",
+  border: "1px solid var(--mu-border-subtle)",
+  background: "var(--mu-surface-base)",
   padding: 12,
   display: "flex",
   flexDirection: "column",
   gap: 8,
   fontSize: 12,
-  color: "#334155"
+  color: "var(--mu-text-label)"
 };
 
 export const MDependencyChipStyle: React.CSSProperties = {
   borderRadius: 999,
   padding: "4px 8px",
-  background: "rgba(15, 23, 42, 0.08)",
-  color: "#0f172a",
+  background: "var(--mu-color-interactive-subtle)",
+  color: "var(--mu-text-primary)",
   fontSize: 11,
   fontWeight: 600
 };
@@ -1531,9 +1530,9 @@ function MRenderLiquidPreview(template: string, fields: MRuleFlowContractField[]
 export function MActionButtonStyle(primary: boolean): React.CSSProperties {
   return {
     borderRadius: 12,
-    border: primary ? "1px solid rgba(37, 99, 235, 0.28)" : "1px solid rgba(148, 163, 184, 0.35)",
-    background: primary ? "rgba(37, 99, 235, 0.14)" : "rgba(255, 255, 255, 0.9)",
-    color: "#0f172a",
+    border: primary ? "1px solid var(--mu-color-interactive-border)" : "1px solid var(--mu-border-input)",
+    background: primary ? "var(--mu-color-interactive-subtle)" : "var(--mu-surface-raised)",
+    color: "var(--mu-text-primary)",
     padding: "10px 12px",
     fontWeight: 600
   };
@@ -1542,9 +1541,9 @@ export function MActionButtonStyle(primary: boolean): React.CSSProperties {
 export function MInspectorTabButtonStyle(active: boolean): React.CSSProperties {
   return {
     borderRadius: 999,
-    border: active ? `1px solid ${M_NODE_ACCENTS.condition}40` : "1px solid rgba(148, 163, 184, 0.24)",
-    background: active ? `${M_NODE_ACCENTS.condition}14` : "#ffffff",
-    color: "#0f172a",
+    border: active ? "1px solid var(--mu-color-interactive-border)" : "1px solid var(--mu-border-subtle)",
+    background: active ? "var(--mu-color-interactive-subtle)" : "var(--mu-surface-base)",
+    color: "var(--mu-text-primary)",
     fontSize: 13,
     padding: "10px 14px",
     fontWeight: 600

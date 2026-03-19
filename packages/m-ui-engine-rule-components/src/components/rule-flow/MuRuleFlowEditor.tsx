@@ -1273,7 +1273,7 @@ export function MuRuleFlowEditor({
               {validationErrors.slice(0, 20).map((issue, idx) => (
                 <li key={idx} style={{ marginBottom: 2 }}>
                   <code style={{ fontSize: 11, fontWeight: 600 }}>{issue.code}</code>
-                  {issue.nodeId ? <span style={{ color: "#6b7280" }}> [{issue.nodeId}]</span> : null}
+                  {issue.nodeId ? <span style={{ color: "var(--mu-text-muted)" }}> [{issue.nodeId}]</span> : null}
                   {" "}{issue.message}
                 </li>
               ))}
@@ -1605,9 +1605,9 @@ export function MuRuleFlowEditor({
             style: {
               ...node.style,
               opacity: 1,
-              border: "2px solid #3b82f6",
+              border: "2px solid var(--mu-color-interactive)",
               borderRadius: 12,
-              boxShadow: "0 0 12px rgba(59,130,246,0.5), 0 0 24px rgba(59,130,246,0.25)",
+              boxShadow: "0 0 12px var(--mu-color-interactive-border), 0 0 24px var(--mu-color-interactive-subtle)",
               transition: "all 300ms ease"
             },
             className: "mu-node-running"
@@ -1622,8 +1622,8 @@ export function MuRuleFlowEditor({
         prev.map((node) => {
           const isMatch = node.data.ruleCode === entry.ruleName || node.data.label === entry.ruleName;
           if (!isMatch) return node;
-          const color = entry.isSuccess ? "#16a34a" : "#ef4444";
-          const bgColor = entry.isSuccess ? "rgba(22,163,74,0.12)" : "rgba(239,68,68,0.12)";
+          const color = entry.isSuccess ? "var(--mu-color-success)" : "var(--mu-color-error)";
+          const bgColor = entry.isSuccess ? "var(--mu-color-success-bg)" : "var(--mu-color-error-bg)";
           return {
             ...node,
             style: {
@@ -1632,7 +1632,7 @@ export function MuRuleFlowEditor({
               background: bgColor,
               border: `2px solid ${color}`,
               borderRadius: 12,
-              boxShadow: `0 0 8px ${entry.isSuccess ? "rgba(22,163,74,0.3)" : "rgba(239,68,68,0.3)"}`,
+              boxShadow: `0 0 8px ${entry.isSuccess ? "var(--mu-color-success-bg)" : "var(--mu-color-error-bg)"}`,
               transition: "all 300ms ease"
             },
             className: ""
@@ -1719,20 +1719,20 @@ export function MuRuleFlowEditor({
             ) : version != null ? (
               <span style={{ ...MHeaderBadgeStyle, background: tokens.actionPrimaryBg, border: tokens.actionPrimaryBorder, color: tokens.textPrimary, fontSize: 11 }}>v{version}</span>
             ) : (
-              <span style={{ ...MHeaderBadgeStyle, background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.3)", color: "#16a34a", fontSize: 11, fontWeight: 700 }}>Active</span>
+              <span style={{ ...MHeaderBadgeStyle, background: "var(--mu-color-success-bg)", border: "1px solid var(--mu-color-success-border)", color: "var(--mu-color-success-text)", fontSize: 11, fontWeight: 700 }}>Active</span>
             )}
             {versions.length > 1 ? (
               <span
                 role="button"
                 tabIndex={0}
-                style={{ ...MHeaderBadgeStyle, cursor: "pointer", background: "rgba(99,102,241,0.12)", border: "1px solid rgba(99,102,241,0.25)", color: "#6366f1", fontSize: 11, fontWeight: 600, padding: "3px 10px" }}
+                style={{ ...MHeaderBadgeStyle, cursor: "pointer", background: "var(--mu-color-interactive-subtle)", border: "1px solid var(--mu-color-interactive-border)", color: "var(--mu-color-interactive)", fontSize: 11, fontWeight: 600, padding: "3px 10px" }}
                 onClick={() => setDiffModalOpen(true)}
                 onKeyDown={(e) => { if (e.key === "Enter") setDiffModalOpen(true); }}
               >
                 Compare
               </span>
             ) : null}
-            {envLabel ? <span style={{ ...MHeaderBadgeStyle, background: envLabel === "DEV" ? "rgba(245,158,11,0.15)" : "rgba(22,163,74,0.15)", border: envLabel === "DEV" ? "1px solid rgba(245,158,11,0.3)" : "1px solid rgba(22,163,74,0.3)", color: envLabel === "DEV" ? tokens.warningText : "#16a34a", fontSize: 10, fontWeight: 700 }}>{envLabel}</span> : null}
+            {envLabel ? <span style={{ ...MHeaderBadgeStyle, background: envLabel === "DEV" ? "var(--mu-color-warning-bg)" : "var(--mu-color-success-bg)", border: envLabel === "DEV" ? "1px solid var(--mu-color-warning-border)" : "1px solid var(--mu-color-success-border)", color: envLabel === "DEV" ? tokens.warningText : "var(--mu-color-success-text)", fontSize: 10, fontWeight: 700 }}>{envLabel}</span> : null}
             {effectiveReadOnly ? <span style={{ ...MHeaderBadgeStyle, background: tokens.errorBg, border: tokens.errorBorder, color: tokens.errorText, fontSize: 10, fontWeight: 700 }}>READ-ONLY</span> : null}
           </div>
           <div style={{ position: "relative" }}>
@@ -1750,7 +1750,7 @@ export function MuRuleFlowEditor({
         </header>
       ) : null}
       {isViewingNonActive ? (
-        <div style={{ padding: "8px 16px", background: "rgba(245,158,11,0.12)", borderBottom: "1px solid rgba(245,158,11,0.25)", color: tokens.warningText, fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ padding: "8px 16px", background: "var(--mu-color-warning-bg)", borderBottom: "1px solid var(--mu-color-warning-border)", color: tokens.warningText, fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
           <svg width={14} height={14} viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l7 14H1L8 1zm-.5 5v4h1V6h-1zm0 5v1h1v-1h-1z" /></svg>
           <span>Viewing version v{version} (read-only)</span>
           <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
@@ -1775,7 +1775,7 @@ export function MuRuleFlowEditor({
                   })
                   .catch(() => { /* silent fail */ });
               }}
-              style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, fontWeight: 600, cursor: "pointer", background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.3)", color: "#16a34a" }}
+              style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, fontWeight: 600, cursor: "pointer", background: "var(--mu-color-success-bg)", border: "1px solid var(--mu-color-success-border)", color: "var(--mu-color-success-text)" }}
             >
               Restore as New Version
             </button>
@@ -1864,7 +1864,7 @@ export function MuRuleFlowEditor({
                   background: tokens.sidebarBorder.replace("1px solid ", ""),
                   transition: "background 150ms"
                 }}
-                onPointerEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#3b82f6"; }}
+                onPointerEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--mu-color-interactive)"; }}
                 onPointerLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = tokens.sidebarBorder.replace("1px solid ", ""); }}
               />
             </div>
@@ -1887,8 +1887,8 @@ export function MuRuleFlowEditor({
               animation: muNodePulse 0.8s ease-in-out infinite;
             }
             @keyframes muNodePulse {
-              0%, 100% { box-shadow: 0 0 8px rgba(59,130,246,0.4); }
-              50% { box-shadow: 0 0 20px rgba(59,130,246,0.7), 0 0 40px rgba(59,130,246,0.3); }
+              0%, 100% { box-shadow: 0 0 8px var(--mu-color-interactive-subtle); }
+              50% { box-shadow: 0 0 20px var(--mu-color-interactive-border), 0 0 40px var(--mu-color-interactive-subtle); }
             }
           `}</style>
           {/* Top: ReactFlow canvas area */}
@@ -1997,7 +1997,7 @@ export function MuRuleFlowEditor({
                   transition: "background 150ms",
                   flexShrink: 0
                 }}
-                onPointerEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#3b82f6"; }}
+                onPointerEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--mu-color-interactive)"; }}
                 onPointerLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = tokens.sidebarBorder.replace("1px solid ", ""); }}
               />
               <div style={{ flex: `0 0 ${dryRunPanelHeight}%`, overflow: "auto", background: tokens.sidebarBg }}>
@@ -2015,7 +2015,7 @@ export function MuRuleFlowEditor({
                     disabled={dryRunLoading || !apiBaseUrl || !workflowCode}
                     style={{
                       padding: "6px 16px", borderRadius: 6, border: "none", cursor: "pointer",
-                      background: "#16a34a", color: "#fff", fontWeight: 600, fontSize: 12,
+                      background: "var(--mu-color-success)", color: "var(--mu-text-on-accent)", fontWeight: 600, fontSize: 12,
                       opacity: dryRunLoading ? 0.6 : 1
                     }}
                   >
@@ -2499,7 +2499,7 @@ function MRuleFlowEdgeInspector({
 }): React.JSX.Element {
   if (!selectedEdge) {
     return (
-      <div style={{ color: "#64748b", fontSize: 13, lineHeight: 1.5 }}>
+      <div style={{ color: "var(--mu-text-muted)", fontSize: 13, lineHeight: 1.5 }}>
         Select a node or edge to edit it. Use edge routing to decide whether downstream nodes run `always`, `on pass`, `on fail`, or `on error`.
       </div>
     );
@@ -2553,7 +2553,7 @@ const MSidebarStyle: React.CSSProperties = {
   gap: 12,
   padding: 16,
   borderRadius: 22,
-  border: "1px solid rgba(148, 163, 184, 0.25)",
+  border: "1px solid var(--mu-border-subtle)",
   minHeight: 0,
   overflow: "hidden"
 };
@@ -2578,15 +2578,14 @@ const MCanvasPanelStyle: React.CSSProperties = {
   minWidth: 0,
   borderRadius: 24,
   overflow: "hidden",
-  border: "1px solid rgba(148, 163, 184, 0.25)",
-  background: "radial-gradient(circle at top left, rgba(37,99,235,0.12), transparent 38%), linear-gradient(180deg, rgba(248,250,252,0.96), rgba(241,245,249,0.92))"
+  border: "1px solid var(--mu-border-subtle)"
 };
 const MSectionTitleStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: 4,
   fontSize: 13,
-  color: "#64748b"
+  color: "var(--mu-text-muted)"
 };
 /* Theme styles are now computed via MGetThemeTokens — see tokens variable. */
 const MLicenseFallbackStyle: React.CSSProperties = {
@@ -2595,9 +2594,9 @@ const MLicenseFallbackStyle: React.CSSProperties = {
   gap: 6,
   padding: 20,
   borderRadius: 18,
-  border: "1px solid rgba(245, 158, 11, 0.35)",
-  background: "rgba(255, 251, 235, 0.95)",
-  color: "#92400e"
+  border: "1px solid var(--mu-color-warning-border)",
+  background: "var(--mu-color-warning-bg)",
+  color: "var(--mu-color-warning-text)"
 };
 const MValidationSummaryStyle = (hasErrors: boolean): React.CSSProperties => ({
   display: "flex",
@@ -2605,9 +2604,9 @@ const MValidationSummaryStyle = (hasErrors: boolean): React.CSSProperties => ({
   gap: 4,
   padding: "10px 12px",
   borderRadius: 14,
-  border: hasErrors ? "1px solid rgba(220, 38, 38, 0.24)" : "1px solid rgba(245, 158, 11, 0.24)",
-  background: hasErrors ? "rgba(254, 242, 242, 0.95)" : "rgba(255, 251, 235, 0.95)",
-  color: hasErrors ? "#b91c1c" : "#92400e",
+  border: hasErrors ? "1px solid var(--mu-color-error-border)" : "1px solid var(--mu-color-warning-border)",
+  background: hasErrors ? "var(--mu-color-error-bg)" : "var(--mu-color-warning-bg)",
+  color: hasErrors ? "var(--mu-color-error-text)" : "var(--mu-color-warning-text)",
   fontSize: 12
 });
 
@@ -2629,9 +2628,9 @@ function MSidebarSectionStyle(isOpen: boolean): React.CSSProperties {
     minHeight: 0,
     flex: isOpen ? "1 1 auto" : "0 0 auto",
     borderRadius: 20,
-    border: isOpen ? "1px solid rgba(148, 163, 184, 0.28)" : "1px solid rgba(148, 163, 184, 0.18)",
-    background: isOpen ? "rgba(255, 255, 255, 0.94)" : "rgba(248, 250, 252, 0.92)",
-    boxShadow: isOpen ? "0 12px 30px rgba(15, 23, 42, 0.06)" : "none",
+    border: isOpen ? "1px solid var(--mu-border-default)" : "1px solid var(--mu-border-subtle)",
+    background: isOpen ? "var(--mu-surface-raised)" : "var(--mu-surface-sidebar)",
+    boxShadow: isOpen ? "var(--mu-shadow-sidebar)" : "none",
     overflow: "hidden"
   };
 }
@@ -2646,7 +2645,7 @@ function MSidebarSectionHeaderStyle(isOpen: boolean): React.CSSProperties {
     border: "none",
     background: "transparent",
     padding: isOpen ? "14px 16px 0" : "14px 16px",
-    color: "#0f172a",
+    color: "var(--mu-text-primary)",
     cursor: "pointer"
   };
 }
@@ -2666,8 +2665,8 @@ function MSidebarChevronStyle(isOpen: boolean): React.CSSProperties {
     width: 28,
     height: 28,
     borderRadius: 999,
-    background: "rgba(148, 163, 184, 0.12)",
-    color: "#475569",
+    background: "var(--mu-border-subtle)",
+    color: "var(--mu-text-secondary)",
     fontSize: 14,
     transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
     transition: "transform 160ms ease"
@@ -2684,7 +2683,7 @@ function MPaletteButtonStyle(nodeType: MRuleFlowNodeType, t?: MFlowThemeTokens):
     borderRadius: 14,
     border: `1px solid ${M_NODE_ACCENTS[nodeType]}${alphaB}`,
     background: `${M_NODE_ACCENTS[nodeType]}${alphaG}`,
-    color: t?.textPrimary ?? "#0f172a",
+    color: t?.textPrimary ?? "var(--mu-text-primary)",
     padding: "11px 12px",
     textAlign: "left",
     fontWeight: 600,
@@ -2795,16 +2794,16 @@ const MInspectorLabelStyle: React.CSSProperties = {
   flexDirection: "column",
   gap: 6,
   fontSize: 12,
-  color: "#475569",
+  color: "var(--mu-text-secondary)",
   fontWeight: 600
 };
 
 const MInspectorInputStyle: React.CSSProperties = {
   width: "100%",
   borderRadius: 12,
-  border: "1px solid rgba(148, 163, 184, 0.32)",
-  background: "#ffffff",
-  color: "#0f172a",
+  border: "1px solid var(--mu-border-input)",
+  background: "var(--mu-surface-input)",
+  color: "var(--mu-text-primary)",
   minHeight: 42,
   padding: "10px 12px",
   fontSize: 14
@@ -2816,18 +2815,18 @@ const MEdgeHintCardStyle: React.CSSProperties = {
   gap: 6,
   padding: "12px 14px",
   borderRadius: 14,
-  border: "1px solid rgba(148, 163, 184, 0.24)",
-  background: "rgba(248, 250, 252, 0.96)",
-  color: "#334155",
+  border: "1px solid var(--mu-border-subtle)",
+  background: "var(--mu-surface-raised)",
+  color: "var(--mu-text-label)",
   fontSize: 12,
   lineHeight: 1.5
 };
 
 const MDeleteButtonStyle: React.CSSProperties = {
   borderRadius: 14,
-  border: "1px solid rgba(220, 38, 38, 0.2)",
-  background: "rgba(254, 242, 242, 0.96)",
-  color: "#b91c1c",
+  border: "1px solid var(--mu-color-error-border)",
+  background: "var(--mu-color-error-bg)",
+  color: "var(--mu-color-error-text)",
   padding: "11px 14px",
   fontWeight: 700
 };
@@ -2844,9 +2843,6 @@ const MDependencyOverlayStyle: React.CSSProperties = {
   maxHeight: "calc(100% - 32px)",
   padding: 14,
   borderRadius: 18,
-  border: "1px solid rgba(148, 163, 184, 0.28)",
-  background: "rgba(255, 255, 255, 0.95)",
-  boxShadow: "0 18px 40px rgba(15, 23, 42, 0.12)",
   overflow: "auto"
 };
 
@@ -2855,7 +2851,7 @@ const MDependencyOverlayHeaderStyle: React.CSSProperties = {
   flexDirection: "column",
   gap: 4,
   fontSize: 12,
-  color: "#64748b"
+  color: "var(--mu-text-muted)"
 };
 
 const MDependencyOverlayBodyStyle: React.CSSProperties = {
@@ -2873,9 +2869,9 @@ function MDependencyOverlayItemStyle(selected: boolean, t?: MFlowThemeTokens): R
     textAlign: "left",
     padding: "10px 12px",
     borderRadius: 14,
-    border: selected ? (t?.overlayItemSelectedBorder ?? "1px solid rgba(37, 99, 235, 0.26)") : (t?.overlayItemBorder ?? "1px solid rgba(148, 163, 184, 0.2)"),
-    background: selected ? (t?.overlayItemSelectedBg ?? "rgba(219, 234, 254, 0.92)") : (t?.overlayItemBg ?? "rgba(248, 250, 252, 0.94)"),
-    color: t?.textPrimary ?? "#0f172a",
+    border: selected ? (t?.overlayItemSelectedBorder ?? "1px solid var(--mu-color-interactive-border)") : (t?.overlayItemBorder ?? "1px solid var(--mu-border-subtle)"),
+    background: selected ? (t?.overlayItemSelectedBg ?? "var(--mu-color-selected-bg)") : (t?.overlayItemBg ?? "var(--mu-surface-raised)"),
+    color: t?.textPrimary ?? "var(--mu-text-primary)",
     cursor: "pointer"
   };
 }
@@ -2888,7 +2884,7 @@ const MPublishDialogBackdropStyle: React.CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   padding: 24,
-  background: "rgba(15, 23, 42, 0.38)"
+  background: "var(--mu-surface-backdrop)"
 };
 
 const MPublishDialogStyle: React.CSSProperties = {
@@ -2898,9 +2894,9 @@ const MPublishDialogStyle: React.CSSProperties = {
   width: "min(560px, 100%)",
   padding: 20,
   borderRadius: 22,
-  border: "1px solid rgba(148, 163, 184, 0.28)",
-  background: "#ffffff",
-  boxShadow: "0 24px 60px rgba(15, 23, 42, 0.22)"
+  border: "1px solid var(--mu-border-default)",
+  background: "var(--mu-surface-dialog)",
+  boxShadow: "var(--mu-shadow-dialog)"
 };
 
 const MHeaderBarStyle: React.CSSProperties = {
