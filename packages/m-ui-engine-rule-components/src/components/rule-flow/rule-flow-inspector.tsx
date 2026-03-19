@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useState } from "react";
 import type { Extension } from "@codemirror/state";
 import type {
   MContractValidationIssue,
@@ -27,6 +27,7 @@ import {
   type MInspectorTab
 } from "./rule-flow-helpers.js";
 import { MExpressionEditor, mCreateFeelAutocomplete, mCreateFeelLinter, MFeelFunctionBrowser } from "./expression-editor/index.js";
+import { MTypeBadge, MTreeNode, MEmptyStateBox } from "./inspector-ui-utils.js";
 
 export type MContractLoadState =
   | { status: "idle" }
@@ -648,25 +649,132 @@ function MScopeTable({
   onInsert: (path: string) => void;
   groupBySource?: boolean;
 }): React.JSX.Element {
-  const fields = MFlattenContractFields(contract?.fields ?? []);
-  const groups = new Map<string, MRuleFlowContractField[]>();
-  for (const field of fields) {
-    const key = groupBySource ? field.sourceNodeLabel ?? (field.sourceKind === "flow-input" ? "Flow Input" : "Current Scope") : "All Fields";
-    const bucket = groups.get(key) ?? [];
+  const [viewMode, setViewMode] = useState<"tree" | "table">("tree");
+  const [allExpanded, setAllExpanded] = useState(true);
+
+  const rootFields = contract?.fields ?? [];
+  const flatFields = MFlattenContractFields(rootFields);
+  const hasFields = rootFields.length > 0;
+
+  // Group root-level fields by source (for tree mode)
+  const treeGroups = new Map<string, MRuleFlowContractField[]>();
+  for (const field of rootFields) {
+    const key = groupBySource
+      ? field.sourceNodeLabel ?? (field.sourceKind === "flow-input" ? "Flow Input" : "Current Scope")
+      : "All Fields";
+    const bucket = treeGroups.get(key) ?? [];
     bucket.push(field);
-    groups.set(key, bucket);
+    treeGroups.set(key, bucket);
+  }
+
+  // Group flat fields by source (for table mode)
+  const flatGroups = new Map<string, MRuleFlowContractField[]>();
+  for (const field of flatFields) {
+    const key = groupBySource
+      ? field.sourceNodeLabel ?? (field.sourceKind === "flow-input" ? "Flow Input" : "Current Scope")
+      : "All Fields";
+    const bucket = flatGroups.get(key) ?? [];
+    bucket.push(field);
+    flatGroups.set(key, bucket);
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={MSectionTitleStyle}>
-        <strong>{title}</strong>
-        <span>{loadState.status === "loading" ? "Loading contract..." : subtitle}</span>
+      {/* Header row with title + view toggle */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={MSectionTitleStyle}>
+          <strong>{title}</strong>
+          <span>{loadState.status === "loading" ? "Loading contract..." : subtitle}</span>
+        </div>
+        {hasFields ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+            {/* Expand/Collapse All — only in tree mode */}
+            {viewMode === "tree" ? (
+              <button
+                type="button"
+                onClick={() => setAllExpanded(!allExpanded)}
+                style={{
+                  border: "1px solid #e2e8f0",
+                  background: "transparent",
+                  borderRadius: 6,
+                  padding: "3px 8px",
+                  fontSize: 11,
+                  color: "#64748b",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {allExpanded ? "Collapse All" : "Expand All"}
+              </button>
+            ) : null}
+            {/* View mode pill tabs */}
+            <div style={{ display: "flex", borderRadius: 6, overflow: "hidden", border: "1px solid #e2e8f0" }}>
+              <button
+                type="button"
+                onClick={() => setViewMode("tree")}
+                style={{
+                  border: "none",
+                  padding: "3px 10px",
+                  fontSize: 11,
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  backgroundColor: viewMode === "tree" ? "#3b82f6" : "transparent",
+                  color: viewMode === "tree" ? "#ffffff" : "#64748b",
+                }}
+              >
+                Schema Tree
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("table")}
+                style={{
+                  border: "none",
+                  borderLeft: "1px solid #e2e8f0",
+                  padding: "3px 10px",
+                  fontSize: 11,
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  backgroundColor: viewMode === "table" ? "#3b82f6" : "transparent",
+                  color: viewMode === "table" ? "#ffffff" : "#64748b",
+                }}
+              >
+                Flat Table
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
-      {fields.length === 0 ? (
-        <div style={{ color: "#64748b", fontSize: 13 }}>{loadState.status === "loading" ? "Fetching contract metadata..." : "No scope metadata available for this node."}</div>
+
+      {/* Content */}
+      {!hasFields ? (
+        loadState.status === "loading"
+          ? <MEmptyStateBox icon="\u231B" message="Fetching contract metadata..." />
+          : <MEmptyStateBox message="No scope metadata available for this node." />
+      ) : viewMode === "tree" ? (
+        /* Tree view */
+        <div
+          key={allExpanded ? "expanded" : "collapsed"}
+          style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 420, overflow: "auto" }}
+        >
+          {[...treeGroups.entries()].map(([groupName, groupFields]) => (
+            <div key={groupName} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {groupBySource ? <div style={{ fontSize: 12, fontWeight: 700, color: "#475569", padding: "4px 8px" }}>{groupName}</div> : null}
+              {groupFields.map((field) => (
+                <MTreeNode
+                  key={field.path}
+                  field={field}
+                  depth={0}
+                  readOnly={readOnly}
+                  onInsert={onInsert}
+                  defaultExpanded={allExpanded}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
       ) : (
-        [...groups.entries()].map(([groupName, groupFields]) => (
+        /* Flat table view */
+        [...flatGroups.entries()].map(([groupName, groupFields]) => (
           <div key={groupName} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {groupBySource ? <div style={{ fontSize: 12, fontWeight: 700, color: "#475569" }}>{groupName}</div> : null}
             <MFieldTable fields={groupFields} readOnly={readOnly} onInsert={onInsert} />
@@ -1045,7 +1153,7 @@ function MFieldTable({
               <td style={MTableCellStyle}>
                 <button type="button" style={MInlinePathButtonStyle} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
               </td>
-              <td style={MTableCellStyle}>{field.dataType}</td>
+              <td style={MTableCellStyle}><MTypeBadge dataType={field.dataType} /></td>
               <td style={MTableCellStyle}>{field.description ?? field.label}</td>
               <td style={MTableCellStyle}>{field.required ? "required" : "optional"}</td>
             </tr>
