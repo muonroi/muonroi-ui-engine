@@ -1561,7 +1561,7 @@ export function MuRuleFlowEditor({
       const headers = MBuildRuleComponentHeaders(undefined, { tenantId });
       headers.set("Content-Type", "application/json");
       const versionParam = version != null ? `?version=${version}` : "";
-      const res = await fetch(`${baseUrl}/execute/${encodeURIComponent(workflowCode)}${versionParam}`, {
+      const res = await fetch(`${baseUrl}/api/v1/rule-engine/execute/${encodeURIComponent(workflowCode)}${versionParam}`, {
         method: "POST",
         headers,
         body: dryRunInput
@@ -1572,8 +1572,8 @@ export function MuRuleFlowEditor({
       }
       const data: MDryRunResult = await res.json();
       setDryRunResult(data);
-      // Apply node highlights
-      applyDryRunHighlights(data);
+      // Apply node highlights (fire-and-forget animation)
+      void applyDryRunHighlights(data);
     } catch (err: unknown) {
       setDryRunError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -1581,22 +1581,78 @@ export function MuRuleFlowEditor({
     }
   }
 
-  function applyDryRunHighlights(result: MDryRunResult): void {
+  async function applyDryRunHighlights(result: MDryRunResult): Promise<void> {
+    // First, dim all nodes
+    setNodes((prev) =>
+      prev.map((node) => ({
+        ...node,
+        style: { ...node.style, opacity: 0.4, transition: "all 300ms ease" },
+        className: ""
+      }))
+    );
+
+    // Animate each executed node sequentially
+    for (let i = 0; i < result.results.length; i++) {
+      const entry = result.results[i];
+
+      // Phase 1: Show "running" state — blue pulse
+      setNodes((prev) =>
+        prev.map((node) => {
+          const isMatch = node.data.ruleCode === entry.ruleName || node.data.label === entry.ruleName;
+          if (!isMatch) return node;
+          return {
+            ...node,
+            style: {
+              ...node.style,
+              opacity: 1,
+              border: "2px solid #3b82f6",
+              borderRadius: 12,
+              boxShadow: "0 0 12px rgba(59,130,246,0.5), 0 0 24px rgba(59,130,246,0.25)",
+              transition: "all 300ms ease"
+            },
+            className: "mu-node-running"
+          };
+        })
+      );
+
+      await new Promise((r) => setTimeout(r, 300));
+
+      // Phase 2: Show final state — green (pass) or red (fail)
+      setNodes((prev) =>
+        prev.map((node) => {
+          const isMatch = node.data.ruleCode === entry.ruleName || node.data.label === entry.ruleName;
+          if (!isMatch) return node;
+          const color = entry.isSuccess ? "#16a34a" : "#ef4444";
+          const bgColor = entry.isSuccess ? "rgba(22,163,74,0.12)" : "rgba(239,68,68,0.12)";
+          return {
+            ...node,
+            style: {
+              ...node.style,
+              opacity: 1,
+              background: bgColor,
+              border: `2px solid ${color}`,
+              borderRadius: 12,
+              boxShadow: `0 0 8px ${entry.isSuccess ? "rgba(22,163,74,0.3)" : "rgba(239,68,68,0.3)"}`,
+              transition: "all 300ms ease"
+            },
+            className: ""
+          };
+        })
+      );
+
+      if (i < result.results.length - 1) {
+        await new Promise((r) => setTimeout(r, 200));
+      }
+    }
+
+    // Restore non-executed nodes to slightly dimmed
     setNodes((prev) =>
       prev.map((node) => {
-        const entry = result.results.find(
+        const wasExecuted = result.results.some(
           (r) => r.ruleName === node.data.ruleCode || r.ruleName === node.data.label
         );
-        if (!entry) return node;
-        return {
-          ...node,
-          style: {
-            ...node.style,
-            background: entry.isSuccess ? "rgba(22,163,74,0.15)" : "rgba(239,68,68,0.15)",
-            border: entry.isSuccess ? "2px solid #16a34a" : "2px solid #ef4444",
-            borderRadius: 12
-          }
-        };
+        if (wasExecuted) return node;
+        return { ...node, style: { ...node.style, opacity: 0.5, transition: "all 300ms ease" } };
       })
     );
   }
@@ -1605,7 +1661,8 @@ export function MuRuleFlowEditor({
     setNodes((prev) =>
       prev.map((node) => ({
         ...node,
-        style: undefined
+        style: undefined,
+        className: ""
       }))
     );
   }
