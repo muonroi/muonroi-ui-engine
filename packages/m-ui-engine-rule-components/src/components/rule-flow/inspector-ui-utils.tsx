@@ -10,14 +10,14 @@ import type { MRuleFlowContractField } from "../../models.js";
 /* ------------------------------------------------------------------ */
 
 export const M_TYPE_BADGE_COLORS: Record<string, { bg: string; text: string }> = {
-  string:  { bg: "#dbeafe", text: "#1d4ed8" },
-  number:  { bg: "#f3e8ff", text: "#7c3aed" },
-  boolean: { bg: "#ffedd5", text: "#c2410c" },
-  array:   { bg: "#dcfce7", text: "#15803d" },
-  object:  { bg: "#f1f5f9", text: "#475569" },
+  string:  { bg: "var(--mu-color-info-bg)", text: "var(--mu-color-interactive)" },
+  number:  { bg: "var(--mu-color-info-bg)", text: "var(--mu-node-condition)" },
+  boolean: { bg: "var(--mu-color-warning-bg)", text: "var(--mu-color-warning-text)" },
+  array:   { bg: "var(--mu-color-success-bg)", text: "var(--mu-color-success-text)" },
+  object:  { bg: "var(--mu-surface-raised)", text: "var(--mu-text-secondary)" },
 };
 
-const M_TYPE_BADGE_FALLBACK = { bg: "#f1f5f9", text: "#475569" };
+const M_TYPE_BADGE_FALLBACK = { bg: "var(--mu-surface-raised)", text: "var(--mu-text-secondary)" };
 
 /* ------------------------------------------------------------------ */
 /*  MTypeBadge                                                         */
@@ -62,8 +62,8 @@ export function MEmptyStateBox({
   return (
     <div
       style={{
-        background: "#f8fafc",
-        border: "1px solid #e2e8f0",
+        background: "var(--mu-surface-raised)",
+        border: "1px solid var(--mu-border-subtle)",
         borderRadius: 8,
         padding: "16px 20px",
         display: "flex",
@@ -74,7 +74,7 @@ export function MEmptyStateBox({
       }}
     >
       <span style={{ fontSize: 16 }}>{icon ?? "\u24D8"}</span>
-      <span style={{ color: "#64748b", fontSize: 13 }}>{message}</span>
+      <span style={{ color: "var(--mu-text-muted)", fontSize: 13 }}>{message}</span>
       {actionHint && onAction ? (
         <span
           role="button"
@@ -82,7 +82,7 @@ export function MEmptyStateBox({
           onClick={onAction}
           onKeyDown={(e) => { if (e.key === "Enter") onAction(); }}
           style={{
-            color: "#3b82f6",
+            color: "var(--mu-color-interactive)",
             cursor: "pointer",
             textDecoration: "underline",
             fontSize: 13,
@@ -107,7 +107,7 @@ const MTreeRowStyle: React.CSSProperties = {
   borderRadius: 4,
   cursor: "pointer",
   fontSize: 12,
-  color: "#0f172a",
+  color: "var(--mu-text-primary)",
   transition: "background-color 0.1s",
 };
 
@@ -139,7 +139,7 @@ export function MTreeNode({
         style={{
           ...MTreeRowStyle,
           paddingLeft: depth * 20 + 8,
-          backgroundColor: hovered ? "#f1f5f9" : "transparent",
+          backgroundColor: hovered ? "var(--mu-surface-raised)" : "transparent",
         }}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -159,7 +159,7 @@ export function MTreeNode({
               justifyContent: "center",
               cursor: "pointer",
               fontSize: 10,
-              color: "#64748b",
+              color: "var(--mu-text-muted)",
               flexShrink: 0,
               userSelect: "none",
             }}
@@ -181,12 +181,12 @@ export function MTreeNode({
             padding: 0,
             cursor: readOnly ? "default" : "pointer",
             fontSize: 12,
-            color: "#0f172a",
+            color: "var(--mu-text-primary)",
             textAlign: "left",
             fontFamily: "inherit",
           }}
         >
-          {prefix ? <span style={{ color: "#94a3b8" }}>{prefix}</span> : null}
+          {prefix ? <span style={{ color: "var(--mu-text-secondary)" }}>{prefix}</span> : null}
           <strong>{lastSegment}</strong>
         </button>
 
@@ -195,7 +195,7 @@ export function MTreeNode({
 
         {/* Source label */}
         {field.sourceNodeLabel ? (
-          <span style={{ fontSize: 11, color: "#94a3b8", marginLeft: "auto" }}>
+          <span style={{ fontSize: 11, color: "var(--mu-text-secondary)", marginLeft: "auto" }}>
             {field.sourceNodeLabel}
           </span>
         ) : null}
