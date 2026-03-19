@@ -40,7 +40,7 @@ const headerStyle: React.CSSProperties = {
   cursor: "pointer",
   fontSize: 12,
   fontWeight: 600,
-  color: "#475569",
+  color: "var(--mu-color-text-secondary)",
   display: "flex",
   alignItems: "center",
   gap: 6,
@@ -50,8 +50,8 @@ const headerStyle: React.CSSProperties = {
 const badgeStyle: React.CSSProperties = {
   fontSize: 10,
   fontWeight: 600,
-  color: "#64748b",
-  background: "rgba(148, 163, 184, 0.18)",
+  color: "var(--mu-color-text-muted)",
+  background: "color-mix(in oklch, var(--mu-color-border-subtle) 18%, transparent)",
   borderRadius: 8,
   padding: "1px 6px",
   marginLeft: "auto"
@@ -61,7 +61,7 @@ const groupHeaderStyle: React.CSSProperties = {
   padding: "8px 12px 4px",
   fontSize: 11,
   fontWeight: 700,
-  color: "#64748b",
+  color: "var(--mu-color-text-muted)",
   textTransform: "uppercase" as const,
   letterSpacing: "0.04em"
 };
@@ -78,12 +78,12 @@ const functionRowStyle: React.CSSProperties = {
 
 const functionNameStyle: React.CSSProperties = {
   fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
-  color: "#2563eb",
+  color: "var(--mu-color-interactive)",
   fontWeight: 600
 };
 
 const signatureStyle: React.CSSProperties = {
-  color: "#94a3b8",
+  color: "var(--mu-color-text-muted)",
   marginLeft: 6,
   fontSize: 11
 };
@@ -127,7 +127,7 @@ export function MFeelFunctionBrowser({ onInsert, visible }: MFeelFunctionBrowser
                     key={key}
                     style={{
                       ...functionRowStyle,
-                      background: isHovered ? "rgba(37, 99, 235, 0.06)" : "transparent"
+                      background: isHovered ? "color-mix(in oklch, var(--mu-color-interactive) 6%, transparent)" : "transparent"
                     }}
                     onClick={() => onInsert(func.template)}
                     onMouseEnter={() => setHoveredIdx(key)}
