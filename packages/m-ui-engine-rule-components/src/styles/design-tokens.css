@@ -1,0 +1,199 @@
+/*
+ * Design Token Foundation — Semantic Layer
+ *
+ * Layer 1 (primitives): defined in tailwind.css @theme as --mu-color-{hue}-{shade}
+ * Layer 2 (semantic):   this file — :root light theme + dark-theme overrides (data-theme="dark")
+ * Layer 3 (component):  individual component CSS consuming var(--mu-*)
+ *
+ * To switch to dark mode: set data-theme="dark" on the host element.
+ * All semantic tokens flip automatically — no component changes required.
+ */
+
+/* ============================================================
+   LIGHT THEME (default)
+   ============================================================ */
+:root {
+  /* === Surfaces === */
+  --mu-surface-canvas: oklch(97% 0.005 255);
+  --mu-surface-base: oklch(100% 0 0);
+  --mu-surface-raised: oklch(98% 0.003 255);
+  --mu-surface-overlay: oklch(100% 0 0 / 0.95);
+  --mu-surface-sidebar: oklch(98% 0.003 255 / 0.92);
+  --mu-surface-input: oklch(100% 0 0);
+  --mu-surface-dialog: oklch(100% 0 0);
+  --mu-surface-backdrop: oklch(20% 0.015 255 / 0.38);
+
+  /* === Text === */
+  --mu-text-primary: oklch(20% 0.015 255);
+  --mu-text-secondary: oklch(40% 0.014 255);
+  --mu-text-muted: oklch(50% 0.014 255);
+  --mu-text-label: oklch(32% 0.014 255);
+  --mu-text-placeholder: oklch(62% 0.01 255);
+  --mu-text-on-accent: oklch(100% 0 0);
+  --mu-text-inverted: oklch(100% 0 0);
+
+  /* === Borders === */
+  --mu-border-subtle: oklch(79% 0.01 255 / 0.18);
+  --mu-border-default: oklch(68% 0.012 255 / 0.28);
+  --mu-border-strong: oklch(57% 0.014 255 / 0.45);
+  --mu-border-input: oklch(68% 0.012 255 / 0.35);
+  --mu-border-focus: oklch(52% 0.23 255 / 0.6);
+
+  /* === Interactive (accent blue) === */
+  --mu-color-interactive: oklch(52% 0.23 255);
+  --mu-color-interactive-hover: oklch(44% 0.22 255);
+  --mu-color-interactive-subtle: oklch(52% 0.23 255 / 0.14);
+  --mu-color-interactive-border: oklch(52% 0.23 255 / 0.28);
+  --mu-color-selected-bg: oklch(87% 0.09 255 / 0.92);
+  --mu-color-selected-border: oklch(52% 0.23 255 / 0.26);
+
+  /* === Status: Error === */
+  --mu-color-error: oklch(51% 0.23 25);
+  --mu-color-error-bg: oklch(97% 0.02 25 / 0.9);
+  --mu-color-error-border: oklch(51% 0.23 25 / 0.18);
+  --mu-color-error-text: oklch(38% 0.18 25);
+
+  /* === Status: Warning === */
+  --mu-color-warning: oklch(62% 0.17 70);
+  --mu-color-warning-bg: oklch(98% 0.02 80 / 0.9);
+  --mu-color-warning-border: oklch(62% 0.17 70 / 0.18);
+  --mu-color-warning-text: oklch(33% 0.1 65);
+
+  /* === Status: Success === */
+  --mu-color-success: oklch(55% 0.18 150);
+  --mu-color-success-bg: oklch(97% 0.02 150 / 0.9);
+  --mu-color-success-border: oklch(55% 0.18 150 / 0.18);
+  --mu-color-success-text: oklch(35% 0.14 150);
+
+  /* === Status: Info === */
+  --mu-color-info: oklch(55% 0.16 215);
+  --mu-color-info-bg: oklch(97% 0.02 210 / 0.9);
+  --mu-color-info-border: oklch(55% 0.16 215 / 0.18);
+  --mu-color-info-text: oklch(38% 0.14 215);
+
+  /* === Node type accents === */
+  --mu-node-trigger: oklch(55% 0.18 150);
+  --mu-node-condition: oklch(52% 0.26 285);
+  --mu-node-action: oklch(52% 0.23 255);
+  --mu-node-decision-table: oklch(59% 0.19 50);
+  --mu-node-sub-flow: oklch(55% 0.16 215);
+  --mu-node-liquid: oklch(52% 0.15 185);
+  --mu-node-connector: oklch(52% 0.24 305);
+  --mu-node-end: oklch(51% 0.23 25);
+
+  /* === Edge routing === */
+  --mu-edge-always: oklch(50% 0.014 255);
+  --mu-edge-on-true: oklch(50% 0.16 150);
+  --mu-edge-on-false: oklch(51% 0.23 25);
+  --mu-edge-on-error: oklch(60% 0.17 70);
+  --mu-edge-label-bg: oklch(100% 0 0);
+
+  /* === Shadows === */
+  --mu-shadow-node: 0 14px 30px oklch(20% 0.015 255 / 0.10);
+  --mu-shadow-overlay: 0 18px 40px oklch(20% 0.015 255 / 0.12);
+  --mu-shadow-dialog: 0 24px 60px oklch(20% 0.015 255 / 0.22);
+  --mu-shadow-sidebar: 0 12px 30px oklch(20% 0.015 255 / 0.06);
+}
+
+/* ============================================================
+   DARK THEME OVERRIDES
+   Usage: set data-theme="dark" on the host element.
+   All tokens below override the :root light values above.
+   ============================================================ */
+[data-theme="dark"] {
+  /* === Surfaces === */
+  --mu-surface-canvas: oklch(13% 0.012 255);
+  --mu-surface-base: oklch(20% 0.015 255);
+  --mu-surface-raised: oklch(25% 0.016 255);
+  --mu-surface-overlay: oklch(25% 0.016 255 / 0.95);
+  --mu-surface-sidebar: oklch(25% 0.016 255 / 0.92);
+  --mu-surface-input: oklch(13% 0.012 255);
+  --mu-surface-dialog: oklch(25% 0.016 255);
+  --mu-surface-backdrop: oklch(0% 0 0 / 0.55);
+
+  /* === Text === */
+  --mu-text-primary: oklch(91% 0.007 255);
+  --mu-text-secondary: oklch(68% 0.012 255);
+  --mu-text-muted: oklch(50% 0.014 255);
+  --mu-text-label: oklch(82% 0.01 255);
+  --mu-text-placeholder: oklch(55% 0.012 255);
+  --mu-text-on-accent: oklch(100% 0 0);
+  --mu-text-inverted: oklch(20% 0.015 255);
+
+  /* === Borders === */
+  --mu-border-subtle: oklch(40% 0.015 255 / 0.32);
+  --mu-border-default: oklch(40% 0.015 255 / 0.38);
+  --mu-border-strong: oklch(40% 0.015 255 / 0.55);
+  --mu-border-input: oklch(40% 0.015 255 / 0.45);
+  --mu-border-focus: oklch(60% 0.2 255 / 0.7);
+
+  /* === Interactive === */
+  --mu-color-interactive: oklch(60% 0.2 255);
+  --mu-color-interactive-hover: oklch(68% 0.17 255);
+  --mu-color-interactive-subtle: oklch(52% 0.23 255 / 0.2);
+  --mu-color-interactive-border: oklch(52% 0.23 255 / 0.45);
+  --mu-color-selected-bg: oklch(52% 0.23 255 / 0.2);
+  --mu-color-selected-border: oklch(52% 0.23 255 / 0.45);
+
+  /* === Status: Error === */
+  --mu-color-error: oklch(67% 0.2 25);
+  --mu-color-error-bg: oklch(27% 0.14 25 / 0.25);
+  --mu-color-error-border: oklch(51% 0.23 25 / 0.35);
+  --mu-color-error-text: oklch(75% 0.15 25);
+
+  /* === Status: Warning === */
+  --mu-color-warning: oklch(69% 0.18 72);
+  --mu-color-warning-bg: oklch(33% 0.1 65 / 0.25);
+  --mu-color-warning-border: oklch(62% 0.17 70 / 0.35);
+  --mu-color-warning-text: oklch(76% 0.17 75);
+
+  /* === Status: Success === */
+  --mu-color-success: oklch(63% 0.18 150);
+  --mu-color-success-bg: oklch(28% 0.1 150 / 0.25);
+  --mu-color-success-border: oklch(55% 0.18 150 / 0.35);
+  --mu-color-success-text: oklch(70% 0.17 150);
+
+  /* === Status: Info === */
+  --mu-color-info: oklch(63% 0.15 215);
+  --mu-color-info-bg: oklch(28% 0.1 215 / 0.25);
+  --mu-color-info-border: oklch(55% 0.16 215 / 0.35);
+  --mu-color-info-text: oklch(70% 0.14 215);
+
+  /* === Node type accents (remain vibrant in dark mode) === */
+  --mu-node-trigger: oklch(63% 0.18 150);
+  --mu-node-condition: oklch(60% 0.24 285);
+  --mu-node-action: oklch(60% 0.2 255);
+  --mu-node-decision-table: oklch(67% 0.2 50);
+  --mu-node-sub-flow: oklch(63% 0.15 215);
+  --mu-node-liquid: oklch(60% 0.14 185);
+  --mu-node-connector: oklch(62% 0.24 305);
+  --mu-node-end: oklch(67% 0.2 25);
+
+  /* === Edge routing === */
+  --mu-edge-always: oklch(68% 0.012 255);
+  --mu-edge-on-true: oklch(63% 0.18 150);
+  --mu-edge-on-false: oklch(67% 0.2 25);
+  --mu-edge-on-error: oklch(76% 0.17 75);
+  --mu-edge-label-bg: oklch(25% 0.016 255);
+
+  /* === Shadows === */
+  --mu-shadow-node: 0 14px 30px oklch(0% 0 0 / 0.25);
+  --mu-shadow-overlay: 0 18px 40px oklch(0% 0 0 / 0.30);
+  --mu-shadow-dialog: 0 24px 60px oklch(0% 0 0 / 0.40);
+  --mu-shadow-sidebar: 0 12px 30px oklch(0% 0 0 / 0.25);
+}
+
+/* ============================================================
+   BACKWARD COMPATIBILITY ALIASES
+   Maps legacy --color-mu-* tokens to new semantic equivalents.
+   These come AFTER the main :root block so the tailwind.css @theme
+   hardcoded oklch values take precedence for Tailwind utilities,
+   while CSS var() references use these semantic aliases.
+   ============================================================ */
+:root {
+  --color-mu-primary: var(--mu-color-interactive);
+  --color-mu-surface: var(--mu-surface-base);
+  --color-mu-border: var(--mu-border-default);
+  --color-mu-danger: var(--mu-color-error);
+  --color-mu-success: var(--mu-color-success);
+}
