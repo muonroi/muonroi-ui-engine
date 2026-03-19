@@ -37,6 +37,8 @@ import { MConnectorService, type MConnectorMetadata } from "../../services/conne
 import { MBuildRuleComponentHeaders } from "../../runtime/request-context.js";
 import { MVersionDropdown } from "./version-selector/MVersionDropdown.js";
 import { MVersionDiffModal } from "./version-selector/MVersionDiffModal.js";
+import { MDryRunInputEditor } from "./dry-run/MDryRunInputEditor.js";
+import { MDryRunPanel, type MDryRunResult } from "./dry-run/MDryRunPanel.js";
 import { useRuleFlowHistory } from "../../hooks/useRuleFlowHistory.js";
 import {
   MActionButtonStyle,
@@ -1312,6 +1314,7 @@ export function MuRuleFlowEditor({
                 Auto Layout
               </button>
               <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 80, display: isViewingNonActive ? "none" : undefined }} onClick={handleValidateClick} disabled={effectiveReadOnly} title="Validate">Validate</button>
+              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 72 }} onClick={handleDryRunOpen} disabled={!apiBaseUrl || !workflowCode} title="Dry Run">Dry Run</button>
             </>
           ) : null}
         </div>
@@ -1515,6 +1518,102 @@ export function MuRuleFlowEditor({
   const envLabel = apiBaseUrl ? (apiBaseUrl.includes("localhost") || apiBaseUrl.includes("127.0.0.1") ? "DEV" : "PROD") : null;
   const [headerInfoOpen, setHeaderInfoOpen] = useState(false);
   const [diffModalOpen, setDiffModalOpen] = useState(false);
+
+  // Dry-run state
+  const [dryRunOpen, setDryRunOpen] = useState(false);
+  const [dryRunInput, setDryRunInput] = useState("{}");
+  const [dryRunResult, setDryRunResult] = useState<MDryRunResult | null>(null);
+  const [dryRunLoading, setDryRunLoading] = useState(false);
+  const [dryRunError, setDryRunError] = useState<string | null>(null);
+
+  function generateDefaultInputJson(): string {
+    const triggerNode = currentGraph.nodes.find((n) => n.type === "trigger");
+    const fields = triggerNode?.data.requestContract?.fields ?? triggerNode?.data.contractOverride?.requestFields;
+    if (!fields || fields.length === 0) return "{}";
+    const obj: Record<string, unknown> = {};
+    for (const field of fields) {
+      const dt = (field.dataType ?? "").toLowerCase();
+      if (dt.includes("int") || dt.includes("number") || dt.includes("decimal") || dt.includes("float") || dt.includes("double")) obj[field.path] = 0;
+      else if (dt.includes("bool")) obj[field.path] = false;
+      else if (dt.includes("array") || dt.includes("list")) obj[field.path] = [];
+      else if (dt.includes("object") || dt.includes("map") || dt.includes("dict")) obj[field.path] = {};
+      else obj[field.path] = "";
+    }
+    return JSON.stringify(obj, null, 2);
+  }
+
+  function handleDryRunOpen(): void {
+    setDryRunOpen(true);
+    setDryRunResult(null);
+    setDryRunError(null);
+    setDryRunInput(generateDefaultInputJson());
+  }
+
+  async function executeDryRun(): Promise<void> {
+    if (!apiBaseUrl || !workflowCode) return;
+    setDryRunLoading(true);
+    setDryRunError(null);
+    setDryRunResult(null);
+    try {
+      const baseUrl = apiBaseUrl.replace(/\/$/, "");
+      const headers = MBuildRuleComponentHeaders(undefined, { tenantId });
+      headers.set("Content-Type", "application/json");
+      const versionParam = version != null ? `?version=${version}` : "";
+      const res = await fetch(`${baseUrl}/execute/${encodeURIComponent(workflowCode)}${versionParam}`, {
+        method: "POST",
+        headers,
+        body: dryRunInput
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Execution failed (${res.status}): ${text}`);
+      }
+      const data: MDryRunResult = await res.json();
+      setDryRunResult(data);
+      // Apply node highlights
+      applyDryRunHighlights(data);
+    } catch (err: unknown) {
+      setDryRunError(err instanceof Error ? err.message : "Unknown error");
+    } finally {
+      setDryRunLoading(false);
+    }
+  }
+
+  function applyDryRunHighlights(result: MDryRunResult): void {
+    setNodes((prev) =>
+      prev.map((node) => {
+        const entry = result.results.find(
+          (r) => r.ruleName === node.data.ruleCode || r.ruleName === node.data.label
+        );
+        if (!entry) return node;
+        return {
+          ...node,
+          style: {
+            ...node.style,
+            background: entry.isSuccess ? "rgba(22,163,74,0.15)" : "rgba(239,68,68,0.15)",
+            border: entry.isSuccess ? "2px solid #16a34a" : "2px solid #ef4444",
+            borderRadius: 12
+          }
+        };
+      })
+    );
+  }
+
+  function clearDryRunHighlights(): void {
+    setNodes((prev) =>
+      prev.map((node) => ({
+        ...node,
+        style: undefined
+      }))
+    );
+  }
+
+  function closeDryRun(): void {
+    setDryRunOpen(false);
+    setDryRunResult(null);
+    setDryRunError(null);
+    clearDryRunHighlights();
+  }
 
   return (
     <ReactFlowProvider>
@@ -1803,6 +1902,56 @@ export function MuRuleFlowEditor({
           </aside>
         ) : null}
       </section>
+      {/* Dry-run bottom panel */}
+      {dryRunOpen ? (
+        <div style={{ borderTop: `1px solid ${tokens.sidebarBorder.replace("1px solid ", "")}` }}>
+          <MDryRunInputEditor
+            value={dryRunInput}
+            onChange={setDryRunInput}
+            onReset={() => setDryRunInput(generateDefaultInputJson())}
+            tokens={tokens}
+            editorRoot={editorRoot}
+          />
+          <div style={{ display: "flex", gap: 8, padding: "8px 12px", background: tokens.sidebarBg }}>
+            <button
+              type="button"
+              onClick={() => { void executeDryRun(); }}
+              disabled={dryRunLoading || !apiBaseUrl || !workflowCode}
+              style={{
+                padding: "6px 16px", borderRadius: 6, border: "none", cursor: "pointer",
+                background: "#16a34a", color: "#fff", fontWeight: 600, fontSize: 12,
+                opacity: dryRunLoading ? 0.6 : 1
+              }}
+            >
+              {dryRunLoading ? "Executing..." : "Execute"}
+            </button>
+            <button
+              type="button"
+              onClick={closeDryRun}
+              style={{
+                padding: "6px 16px", borderRadius: 6, cursor: "pointer",
+                background: "transparent", border: tokens.actionSecondaryBorder,
+                color: tokens.textSecondary, fontWeight: 500, fontSize: 12
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+          {(dryRunResult || dryRunLoading || dryRunError) ? (
+            <MDryRunPanel
+              result={dryRunResult}
+              loading={dryRunLoading}
+              error={dryRunError}
+              onClose={closeDryRun}
+              onSelectNode={(ruleName) => {
+                const match = nodesRef.current.find((n) => n.data.ruleCode === ruleName || n.data.label === ruleName);
+                if (match) selectNodeById(match.id);
+              }}
+              tokens={tokens}
+            />
+          ) : null}
+        </div>
+      ) : null}
       {publishConfirmState ? (
         <MPublishConfirmDialog
           warnings={publishConfirmState.warnings}
