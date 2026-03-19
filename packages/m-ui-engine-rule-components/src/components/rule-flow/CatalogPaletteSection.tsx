@@ -123,7 +123,7 @@ const MCatalogHeaderStyle: React.CSSProperties = {
   flexDirection: "column",
   gap: 4,
   fontSize: 13,
-  color: "#64748b"
+  color: "var(--mu-color-text-muted)"
 };
 
 const MCatalogSearchLabelStyle: React.CSSProperties = {
@@ -131,15 +131,15 @@ const MCatalogSearchLabelStyle: React.CSSProperties = {
   flexDirection: "column",
   gap: 6,
   fontSize: 12,
-  color: "#475569",
+  color: "var(--mu-color-text-secondary)",
   fontWeight: 600
 };
 
 const MCatalogSearchInputStyle: React.CSSProperties = {
   borderRadius: 12,
   border: "1px solid rgba(148, 163, 184, 0.32)",
-  background: "#ffffff",
-  color: "#0f172a",
+  background: "var(--mu-color-surface-base)",
+  color: "var(--mu-color-text-primary)",
   minHeight: 40,
   padding: "10px 12px",
   fontSize: 13
@@ -149,7 +149,7 @@ const MCatalogPlaceholderStyle: React.CSSProperties = {
   borderRadius: 14,
   border: "1px dashed rgba(148, 163, 184, 0.35)",
   background: "rgba(248, 250, 252, 0.9)",
-  color: "#64748b",
+  color: "var(--mu-color-text-muted)",
   padding: "12px 14px",
   fontSize: 13,
   lineHeight: 1.5
@@ -166,14 +166,14 @@ const MCatalogGroupTitleStyle: React.CSSProperties = {
   fontWeight: 700,
   letterSpacing: "0.04em",
   textTransform: "uppercase",
-  color: "#475569"
+  color: "var(--mu-color-text-secondary)"
 };
 
 const MCatalogItemButtonStyle: React.CSSProperties = {
   borderRadius: 14,
-  border: "1px solid rgba(124, 58, 237, 0.14)",
-  background: "rgba(124, 58, 237, 0.08)",
-  color: "#0f172a",
+  border: "1px solid color-mix(in oklch, var(--mu-color-interactive) 14%, transparent)",
+  background: "color-mix(in oklch, var(--mu-color-interactive) 8%, transparent)",
+  color: "var(--mu-color-text-primary)",
   padding: "11px 12px",
   textAlign: "left",
   fontWeight: 600
@@ -188,16 +188,16 @@ const MCatalogItemContentStyle: React.CSSProperties = {
 const MCatalogCodeStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 500,
-  color: "#475569"
+  color: "var(--mu-color-text-secondary)"
 };
 
 const MCatalogDescriptionStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 500,
-  color: "#64748b"
+  color: "var(--mu-color-text-muted)"
 };
 
 const MCatalogTagsStyle: React.CSSProperties = {
   fontSize: 11,
-  color: "#7c3aed"
+  color: "var(--mu-color-interactive)"
 };
