@@ -394,6 +394,19 @@ export function MuRuleFlowEditor({
     try { return localStorage.getItem("muonroi-rule-studio-sidebar-collapsed") === "true"; } catch { return false; }
   });
   const isDraggingSidebarRef = useRef(false);
+  const [toolbarCollapsed, setToolbarCollapsed] = useState<Record<string, boolean>>(() => {
+    try { const v = localStorage.getItem("muonroi-rule-studio-toolbar-groups"); return v ? JSON.parse(v) : {}; } catch { return {}; }
+  });
+  const isGroupCollapsed = (group: string) => toolbarCollapsed[group] === true;
+  const toggleGroup = (group: string) => setToolbarCollapsed(prev => {
+    const next = { ...prev, [group]: !prev[group] };
+    try { localStorage.setItem("muonroi-rule-studio-toolbar-groups", JSON.stringify(next)); } catch { /* noop */ }
+    return next;
+  });
+  const [toolbarOverflow, setToolbarOverflow] = useState(false);
+  const [kebabOpen, setKebabOpen] = useState(false);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const kebabContainerRef = useRef<HTMLDivElement>(null);
   const [versions, setVersions] = useState<MVersionItem[]>([]);
   const activeVersion = useMemo(() => versions.find((v) => v.isActive) ?? null, [versions]);
   const isViewingNonActive = version != null && activeVersion != null && version !== activeVersion.version;
@@ -431,6 +444,34 @@ export function MuRuleFlowEditor({
   useEffect(() => {
     try { localStorage.setItem("muonroi-rule-studio-sidebar-collapsed", String(sidebarCollapsed)); } catch { /* noop */ }
   }, [sidebarCollapsed]);
+
+  // ResizeObserver for toolbar overflow detection
+  useEffect(() => {
+    const el = toolbarRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        const overflow = w < M_COMPACT_LAYOUT_BREAKPOINT;
+        setToolbarOverflow(overflow);
+        if (!overflow) setKebabOpen(false);
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Click-outside to close kebab menu
+  useEffect(() => {
+    if (!kebabOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (kebabContainerRef.current && !kebabContainerRef.current.contains(e.target as unknown as globalThis.Node)) {
+        setKebabOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [kebabOpen]);
 
   useEffect(() => () => {
     flushPendingCommit();
@@ -1090,8 +1131,116 @@ export function MuRuleFlowEditor({
       ) : null}
     </div>
   );
+  const handleImportClick = () => {
+    // Create input in document.body (outside any Shadow DOM) and click it
+    // synchronously to preserve user gesture / transient activation.
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "application/json,.json";
+    input.style.position = "fixed";
+    input.style.top = "-9999px";
+    document.body.appendChild(input);
+    input.addEventListener("change", () => {
+      const file = input.files?.[0];
+      document.body.removeChild(input);
+      if (!file) return;
+      void (async () => {
+        try {
+          const payload = await file.text();
+          const importedGraph = MOrderRuleFlowGraph(MImportRuleFlowGraph(payload), {
+            flowCode: workflowCode,
+            currentFlowContract: workflowCode ? flowContractCacheRef.current.get(workflowCode) : undefined,
+            flowContractsByCode: flowContractCacheRef.current,
+            nodeContractsById: nodeContractCacheRef.current
+          }).graph;
+          metadataRef.current = importedGraph.metadata;
+          lastGraphSignatureRef.current = MCreateRuleFlowGraphSignature(importedGraph);
+          history.reset(importedGraph);
+          restoreCanvasState(importedGraph);
+          setSelectedNodeId("");
+          setSelectedEdgeId("");
+          setInspectorTab("basic-info");
+          allowAutoFitRef.current = true;
+          setViewportSyncToken((current) => current + 1);
+          onGraphChange?.(importedGraph);
+          setContractLoadState({ status: "ready", title: importedGraph.metadata.ruleSetCode ?? "Imported flow" });
+        } catch (error) {
+          setContractLoadState({ status: "error", message: (error as Error).message });
+        }
+      })();
+    });
+    // Synchronous click — preserves user gesture for file picker
+    input.click();
+  };
+  const handleExportClick = () => exportGraph(buildGraph(nodesRef.current, edgesRef.current), metadataRef.current.ruleSetCode);
+  const handleValidateClick = () => {
+    const validation = MValidateGraphForPublish(buildGraph(nodesRef.current, edgesRef.current), {
+      flowCode: workflowCode,
+      currentFlowContract: workflowCode ? flowContractCacheRef.current.get(workflowCode) : undefined,
+      flowContractsByCode: flowContractCacheRef.current,
+      nodeContractsById: nodeContractCacheRef.current
+    });
+    setAuthoringVersion((current) => current + 1);
+    if (validation.isValid) {
+      setContractLoadState({ status: "ready", title: `Valid — ${validation.issues.filter((i) => i.severity === "warning").length} warning(s)` });
+    } else {
+      setContractLoadState({ status: "error", message: `${validation.issues.filter((i) => i.severity === "error").length} error(s) found.` });
+    }
+  };
+  const handlePublishClick = () => {
+    const validation = MValidateGraphForPublish(buildGraph(nodesRef.current, edgesRef.current), {
+      flowCode: workflowCode,
+      currentFlowContract: workflowCode ? flowContractCacheRef.current.get(workflowCode) : undefined,
+      flowContractsByCode: flowContractCacheRef.current,
+      nodeContractsById: nodeContractCacheRef.current
+    });
+    setAuthoringVersion((current) => current + 1);
+    if (!validation.isValid) {
+      setContractLoadState({ status: "error", message: "Publish blocked because one or more nodes still have contract validation errors." });
+      return;
+    }
+    setPublishConfirmState({
+      graph: validation.graph,
+      warnings: validation.issues.filter((issue) => issue.severity === "warning")
+    });
+  };
+
+  const publishButton = (asDropdown?: boolean) => (
+    <button
+      type="button"
+      style={asDropdown ? MKebabDropdownItemStyle : { ...MActionButtonStyle(true), flex: "1 1 auto", minWidth: 80, display: isViewingNonActive ? "none" : undefined }}
+      onClick={() => { handlePublishClick(); if (asDropdown) setKebabOpen(false); }}
+      disabled={!canPublish}
+      title={!onPublish ? "No publish handler configured." : validationErrors.length > 0 ? "Fix validation errors before publishing." : "Publish"}
+      aria-disabled={!canPublish}
+    >
+      Publish
+    </button>
+  );
+  const importButton = (asDropdown?: boolean) => (
+    <button
+      type="button"
+      style={asDropdown ? MKebabDropdownItemStyle : { ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }}
+      disabled={readOnly}
+      onClick={() => { handleImportClick(); if (asDropdown) setKebabOpen(false); }}
+      title="Import"
+    >
+      Import
+    </button>
+  );
+  const exportButton = (asDropdown?: boolean) => (
+    <button
+      type="button"
+      style={asDropdown ? MKebabDropdownItemStyle : { ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }}
+      onClick={() => { handleExportClick(); if (asDropdown) setKebabOpen(false); }}
+      title="Export"
+    >
+      Export
+    </button>
+  );
+
   const actionsPanel = (
-    <div data-testid="rule-flow-sidebar-actions" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div data-testid="rule-flow-sidebar-actions" style={{ display: "flex", flexDirection: "column", gap: 8 }} ref={toolbarRef}>
       {currentValidation.issues.length > 0 ? (
         <div style={MValidationSummaryStyle(validationErrors.length > 0)}>
           <strong>{validationErrors.length > 0 ? "Publish blocked" : "Publish warnings"}</strong>
@@ -1110,94 +1259,77 @@ export function MuRuleFlowEditor({
           ) : null}
         </div>
       ) : null}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-        <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.undo(); }} disabled={!history.canUndo}>Undo</button>
-        <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.redo(); }} disabled={!history.canRedo}>Redo</button>
-        <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 96 }} onClick={applyAutoLayout} disabled={readOnly}>
-          Auto Layout
-        </button>
-        <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 80, display: isViewingNonActive ? "none" : undefined }} onClick={() => {
-          const validation = MValidateGraphForPublish(buildGraph(nodesRef.current, edgesRef.current), {
-            flowCode: workflowCode,
-            currentFlowContract: workflowCode ? flowContractCacheRef.current.get(workflowCode) : undefined,
-            flowContractsByCode: flowContractCacheRef.current,
-            nodeContractsById: nodeContractCacheRef.current
-          });
-          setAuthoringVersion((current) => current + 1);
-          if (validation.isValid) {
-            setContractLoadState({ status: "ready", title: `Valid — ${validation.issues.filter((i) => i.severity === "warning").length} warning(s)` });
-          } else {
-            setContractLoadState({ status: "error", message: `${validation.issues.filter((i) => i.severity === "error").length} error(s) found.` });
-          }
-        }} disabled={effectiveReadOnly}>Validate</button>
-        <button
-          type="button"
-          style={{ ...MActionButtonStyle(true), flex: "1 1 auto", minWidth: 80, display: isViewingNonActive ? "none" : undefined }}
-          onClick={() => {
-            const validation = MValidateGraphForPublish(buildGraph(nodesRef.current, edgesRef.current), {
-              flowCode: workflowCode,
-              currentFlowContract: workflowCode ? flowContractCacheRef.current.get(workflowCode) : undefined,
-              flowContractsByCode: flowContractCacheRef.current,
-              nodeContractsById: nodeContractCacheRef.current
-            });
-            setAuthoringVersion((current) => current + 1);
-            if (!validation.isValid) {
-              setContractLoadState({ status: "error", message: "Publish blocked because one or more nodes still have contract validation errors." });
-              return;
-            }
-            setPublishConfirmState({
-              graph: validation.graph,
-              warnings: validation.issues.filter((issue) => issue.severity === "warning")
-            });
-          }}
-          disabled={!canPublish}
-          title={!onPublish ? "No publish handler configured." : validationErrors.length > 0 ? "Fix validation errors before publishing." : undefined}
-          aria-disabled={!canPublish}
-        >
-          Publish
-        </button>
-        <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} disabled={readOnly} onClick={() => {
-          // Create input in document.body (outside any Shadow DOM) and click it
-          // synchronously to preserve user gesture / transient activation.
-          const input = document.createElement("input");
-          input.type = "file";
-          input.accept = "application/json,.json";
-          input.style.position = "fixed";
-          input.style.top = "-9999px";
-          document.body.appendChild(input);
-          input.addEventListener("change", () => {
-            const file = input.files?.[0];
-            document.body.removeChild(input);
-            if (!file) return;
-            void (async () => {
-              try {
-                const payload = await file.text();
-                const importedGraph = MOrderRuleFlowGraph(MImportRuleFlowGraph(payload), {
-                  flowCode: workflowCode,
-                  currentFlowContract: workflowCode ? flowContractCacheRef.current.get(workflowCode) : undefined,
-                  flowContractsByCode: flowContractCacheRef.current,
-                  nodeContractsById: nodeContractCacheRef.current
-                }).graph;
-                metadataRef.current = importedGraph.metadata;
-                lastGraphSignatureRef.current = MCreateRuleFlowGraphSignature(importedGraph);
-                history.reset(importedGraph);
-                restoreCanvasState(importedGraph);
-                setSelectedNodeId("");
-                setSelectedEdgeId("");
-                setInspectorTab("basic-info");
-                allowAutoFitRef.current = true;
-                setViewportSyncToken((current) => current + 1);
-                onGraphChange?.(importedGraph);
-                setContractLoadState({ status: "ready", title: importedGraph.metadata.ruleSetCode ?? "Imported flow" });
-              } catch (error) {
-                setContractLoadState({ status: "error", message: (error as Error).message });
-              }
-            })();
-          });
-          // Synchronous click — preserves user gesture for file picker
-          input.click();
-        }}>Import</button>
-        <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => exportGraph(buildGraph(nodesRef.current, edgesRef.current), metadataRef.current.ruleSetCode)}>Export</button>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+        {/* History group */}
+        <div data-testid="toolbar-group-history" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <button type="button" onClick={() => toggleGroup("history")}
+            style={MToolbarGroupToggleStyle(tokens)}
+            title={isGroupCollapsed("history") ? "Expand History" : "Collapse History"}>
+            {isGroupCollapsed("history") ? "History \u25B8" : "History \u25BE"}
+          </button>
+          {!isGroupCollapsed("history") ? (
+            <>
+              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.undo(); }} disabled={!history.canUndo} title="Undo (Ctrl+Z)">Undo</button>
+              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.redo(); }} disabled={!history.canRedo} title="Redo (Ctrl+Shift+Z)">Redo</button>
+            </>
+          ) : null}
+        </div>
+
+        {/* Divider */}
+        <div style={{ width: 1, height: 24, background: tokens.sidebarBorder, margin: "0 8px", flexShrink: 0 }} />
+
+        {/* Canvas group */}
+        <div data-testid="toolbar-group-canvas" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <button type="button" onClick={() => toggleGroup("canvas")}
+            style={MToolbarGroupToggleStyle(tokens)}
+            title={isGroupCollapsed("canvas") ? "Expand Canvas" : "Collapse Canvas"}>
+            {isGroupCollapsed("canvas") ? "Canvas \u25B8" : "Canvas \u25BE"}
+          </button>
+          {!isGroupCollapsed("canvas") ? (
+            <>
+              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 96 }} onClick={applyAutoLayout} disabled={readOnly} title="Auto Layout">
+                Auto Layout
+              </button>
+              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 80, display: isViewingNonActive ? "none" : undefined }} onClick={handleValidateClick} disabled={effectiveReadOnly} title="Validate">Validate</button>
+            </>
+          ) : null}
+        </div>
+
+        {/* Divider */}
+        <div style={{ width: 1, height: 24, background: tokens.sidebarBorder, margin: "0 8px", flexShrink: 0 }} />
+
+        {/* Workflow group — kebab overflow when narrow */}
+        {toolbarOverflow ? (
+          <div style={{ position: "relative" }} ref={kebabContainerRef}>
+            <button type="button" onClick={() => setKebabOpen(prev => !prev)}
+              style={{ ...MActionButtonStyle(false), minWidth: 32, padding: "6px 8px", fontSize: 16 }}
+              title="More actions" aria-label="More actions">
+              &#x22EE;
+            </button>
+            {kebabOpen ? (
+              <div style={{ position: "absolute", top: "100%", right: 0, marginTop: 4, background: tokens.overlayBg, border: tokens.overlayBorder, borderRadius: 10, boxShadow: tokens.overlayShadow, padding: "4px 0", minWidth: 140, zIndex: 10 }}>
+                {publishButton(true)}
+                {importButton(true)}
+                {exportButton(true)}
+              </div>
+            ) : null}
+          </div>
+        ) : (
+          <div data-testid="toolbar-group-workflow" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+            <button type="button" onClick={() => toggleGroup("workflow")}
+              style={MToolbarGroupToggleStyle(tokens)}
+              title={isGroupCollapsed("workflow") ? "Expand Workflow" : "Collapse Workflow"}>
+              {isGroupCollapsed("workflow") ? "Workflow \u25B8" : "Workflow \u25BE"}
+            </button>
+            {!isGroupCollapsed("workflow") ? (
+              <>
+                {publishButton()}
+                {importButton()}
+                {exportButton()}
+              </>
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -2263,6 +2395,31 @@ const MRightPanelStyle: React.CSSProperties = {
   borderRadius: 18,
   minHeight: 0,
   overflow: "auto"
+};
+
+function MToolbarGroupToggleStyle(tokens: MFlowThemeTokens): React.CSSProperties {
+  return {
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+    fontSize: 11,
+    color: tokens.textMuted,
+    padding: "2px 4px",
+    borderRadius: 4,
+    whiteSpace: "nowrap"
+  };
+}
+
+const MKebabDropdownItemStyle: React.CSSProperties = {
+  display: "block",
+  width: "100%",
+  textAlign: "left",
+  padding: "8px 14px",
+  background: "transparent",
+  border: "none",
+  cursor: "pointer",
+  fontSize: 13,
+  borderRadius: 0
 };
 
 const MFloatingToolbarStyle: React.CSSProperties = {
