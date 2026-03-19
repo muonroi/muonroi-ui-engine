@@ -212,6 +212,7 @@ export class MuRuleFlowDesigner extends LitElement {
         height: this.height,
         showHeader: this.showHeader,
         version: this.version,
+        editorRoot: this.renderRoot as ShadowRoot,
         onVersionChange: (nextVersion: number | null) => {
           this.version = nextVersion;
           this.dispatchEvent(

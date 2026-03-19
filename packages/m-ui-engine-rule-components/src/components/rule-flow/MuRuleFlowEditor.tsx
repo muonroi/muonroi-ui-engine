@@ -100,6 +100,8 @@ export interface MuRuleFlowEditorProps {
   showHeader?: boolean;
   version?: number | null;
   onVersionChange?: (version: number | null) => void;
+  /** Shadow root reference for CodeMirror style injection inside Lit shadow DOM */
+  editorRoot?: Document | ShadowRoot;
 }
 
 type MCommitOptions = {
