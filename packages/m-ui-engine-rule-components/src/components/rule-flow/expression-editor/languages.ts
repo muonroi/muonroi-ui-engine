@@ -8,6 +8,7 @@ import { feelLanguage } from "./lang-feel.js";
 import { liquidLanguage } from "./lang-liquid.js";
 import { scribanLanguage } from "./lang-scriban.js";
 import { javascript } from "@codemirror/lang-javascript";
+import { json } from "@codemirror/lang-json";
 
 /**
  * Returns the CodeMirror language extension for the given expression language.
@@ -23,6 +24,8 @@ export function mGetLanguageExtension(language: MRuleFlowExpressionLanguage): Ex
       return scribanLanguage;
     case "javascript":
       return javascript();
+    case "json":
+      return json();
     case "plain-text":
       return [];
   }
