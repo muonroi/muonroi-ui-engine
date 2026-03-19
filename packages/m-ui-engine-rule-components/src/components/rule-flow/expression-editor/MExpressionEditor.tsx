@@ -10,6 +10,7 @@ import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { bracketMatching, syntaxHighlighting } from "@codemirror/language";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import type { MRuleFlowExpressionLanguage } from "../../../models.js";
+import { mGetLanguageExtension } from "./languages.js";
 
 export interface MExpressionEditorProps {
   /** Current expression body */
@@ -77,7 +78,7 @@ export function MExpressionEditor({
         EditorView.editable.of(!readOnly),
         EditorState.readOnly.of(readOnly)
       ]),
-      mLanguageCompartment.of([]),
+      mLanguageCompartment.of(mGetLanguageExtension(language)),
       mThemeCompartment.of([]),
       mExtraCompartment.of(extraExtensions ?? [])
     ];
@@ -127,6 +128,15 @@ export function MExpressionEditor({
       });
     }
   }, [value]);
+
+  // Sync language via compartment — switch highlighting without editor recreation
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: mLanguageCompartment.reconfigure(mGetLanguageExtension(language))
+    });
+  }, [language]);
 
   // Sync readOnly via compartment
   useEffect(() => {
