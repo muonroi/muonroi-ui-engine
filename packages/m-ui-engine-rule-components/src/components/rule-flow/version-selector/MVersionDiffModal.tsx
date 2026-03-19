@@ -106,7 +106,7 @@ export function MVersionDiffModal({
       const baseUrl = apiBaseUrl.replace(/\/$/, "");
       const headers = MBuildRuleComponentHeaders(undefined, { tenantId });
       const res = await fetch(
-        `${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/versions/${versionNumber}`,
+        `${baseUrl}/api/v1/rule-engine/rulesets/${encodeURIComponent(workflowCode)}/versions/${versionNumber}`,
         { headers }
       );
       if (!res.ok) {

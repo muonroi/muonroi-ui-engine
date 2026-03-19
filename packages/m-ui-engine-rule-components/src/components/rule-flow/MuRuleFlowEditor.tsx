@@ -427,7 +427,7 @@ export function MuRuleFlowEditor({
     const baseUrl = apiBaseUrl.replace(/\/$/, "");
     const headers = MBuildRuleComponentHeaders(undefined, { tenantId });
     if (append) setLoadingMoreVersions(true);
-    fetch(`${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/versions?limit=10&offset=${offset}`, { headers })
+    fetch(`${baseUrl}/api/v1/rule-engine/rulesets/${encodeURIComponent(workflowCode)}/versions?limit=10&offset=${offset}`, { headers })
       .then((res) => (res.ok ? res.json() : []))
       .then((data: MVersionItem[] | { items?: MVersionItem[] }) => {
         const items = Array.isArray(data) ? data : Array.isArray(data?.items) ? data.items : [];
@@ -438,7 +438,7 @@ export function MuRuleFlowEditor({
           setVersions(items.sort((a, b) => b.version - a.version));
         }
       })
-      .catch(() => { if (!append) setVersions([]); })
+      .catch((err) => { console.warn("[MVersionDropdown] Failed to fetch versions:", err); if (!append) setVersions([]); })
       .finally(() => { if (append) setLoadingMoreVersions(false); });
   }, [apiBaseUrl, workflowCode, tenantId]);
 
@@ -1761,7 +1761,7 @@ export function MuRuleFlowEditor({
                 const baseUrl = apiBaseUrl.replace(/\/$/, "");
                 const headers = MBuildRuleComponentHeaders(undefined, { tenantId });
                 headers.set("Content-Type", "application/json");
-                fetch(`${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/versions`, {
+                fetch(`${baseUrl}/api/v1/rule-engine/rulesets/${encodeURIComponent(workflowCode)}/versions`, {
                   method: "POST",
                   headers,
                   body: JSON.stringify({ sourceVersion: version })
