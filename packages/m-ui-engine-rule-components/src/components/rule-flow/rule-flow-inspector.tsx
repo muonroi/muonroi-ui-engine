@@ -139,6 +139,8 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
               onInsert={props.onInsertExpressionToken}
               onChangeTargetFields={props.onChangeInputContract}
               onChange={props.onChangeEffectiveMappings}
+              setInspectorTab={setInspectorTab}
+              hasExpression={!!props.selectedExpression?.body?.trim()}
             />
           ) : null}
           {inspectorTab === "output-data" ? (
@@ -785,6 +787,21 @@ function MScopeTable({
   );
 }
 
+function MStatusBadge({ status }: { status?: string }): React.JSX.Element {
+  const config: Record<string, { icon: string; label: string; bg: string; text: string }> = {
+    "mapped":        { icon: "\u2705", label: "Mapped",        bg: "#dcfce7", text: "#15803d" },
+    "suggested":     { icon: "\u26a0\ufe0f", label: "Suggested",    bg: "#fef9c3", text: "#a16207" },
+    "missing":       { icon: "\u274c", label: "Missing",       bg: "#fee2e2", text: "#dc2626" },
+    "type-mismatch": { icon: "\ud83d\udd04", label: "Type Mismatch", bg: "#ffedd5", text: "#c2410c" },
+  };
+  const c = config[status ?? "mapped"] ?? config["mapped"];
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, padding: "2px 8px", borderRadius: 10, background: c.bg, color: c.text, fontWeight: 500 }}>
+      {c.icon} {c.label}
+    </span>
+  );
+}
+
 function MEffectiveInputTab({
   nodeType,
   readOnly,
@@ -793,7 +810,9 @@ function MEffectiveInputTab({
   rows,
   onInsert,
   onChangeTargetFields,
-  onChange
+  onChange,
+  setInspectorTab,
+  hasExpression
 }: {
   nodeType: MRuleFlowNodeType;
   readOnly: boolean;
@@ -803,6 +822,8 @@ function MEffectiveInputTab({
   onInsert: (path: string) => void;
   onChangeTargetFields: (fields: MRuleFlowContractField[]) => void;
   onChange: (rows: MEffectiveInputMapping[]) => void;
+  setInspectorTab: (tab: MInspectorTab) => void;
+  hasExpression?: boolean;
 }): React.JSX.Element {
   const manualEdit = nodeType === "action" || nodeType === "sub-flow";
   const contractEditable = nodeType === "action";
@@ -849,12 +870,68 @@ function MEffectiveInputTab({
     onChange(rows.filter((row) => (row.targetField ?? row.targetPath) !== path));
   }
 
+  // Context-aware empty states
+  if (rows.length === 0) {
+    // Code-first nodes (action with no expression)
+    if (nodeType === "action" && !hasExpression) {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+            <div style={MSectionTitleStyle}>
+              <strong>Data Flow</strong>
+              <span>Where this node gets its data from upstream nodes</span>
+            </div>
+            {!readOnly && contractEditable ? (
+              <button type="button" style={MActionButtonStyle(false)} onClick={addTargetField}>Add Input Slot</button>
+            ) : null}
+          </div>
+          <MEmptyStateBox
+            icon="info"
+            message="This node uses code-first logic — no expression-based mapping needed. Input/output contracts come from the registered rule code."
+          />
+        </div>
+      );
+    }
+    // FEEL/expression nodes with no expression body
+    if ((nodeType === "condition" || nodeType === "liquid") && !hasExpression) {
+      return (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={MSectionTitleStyle}>
+            <strong>Data Flow</strong>
+            <span>Where this node gets its data from upstream nodes</span>
+          </div>
+          <MEmptyStateBox
+            icon="edit"
+            message="Write a FEEL expression in the Logic tab to see data flow here."
+            actionHint="Go to Logic tab"
+            onAction={() => setInspectorTab("logic")}
+          />
+        </div>
+      );
+    }
+    // Has expression but no mappings resolved
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={MSectionTitleStyle}>
+          <strong>Data Flow</strong>
+          <span>Where this node gets its data from upstream nodes</span>
+        </div>
+        <MEmptyStateBox
+          icon="warning"
+          message="Expression references fields not found in upstream scope. Check field names in the Logic tab."
+          actionHint="Go to Logic tab"
+          onAction={() => setInspectorTab("logic")}
+        />
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
         <div style={MSectionTitleStyle}>
-          <strong>Effective Input</strong>
-          <span>{manualEdit ? "Map upstream fields into this node's input slots." : "References inferred from current FEEL/Liquid and available inputs."}</span>
+          <strong>Data Flow</strong>
+          <span>Where this node gets its data from upstream nodes</span>
         </div>
         {!readOnly && contractEditable ? (
           <button type="button" style={MActionButtonStyle(false)} onClick={addTargetField}>Add Input Slot</button>
@@ -873,11 +950,7 @@ function MEffectiveInputTab({
             </tr>
           </thead>
           <tbody>
-            {rows.length === 0 ? (
-              <tr>
-                <td style={MTableCellStyle} colSpan={contractEditable ? 6 : 5}>No effective input mapping available yet.</td>
-              </tr>
-            ) : rows.map((row) => (
+            {rows.map((row) => (
               <tr key={row.id}>
                 <td style={MTableCellStyle}>
                   {manualEdit ? (
@@ -915,14 +988,17 @@ function MEffectiveInputTab({
                         }))
                       }
                     />
-                  ) : <>{row.sourceDataType ?? "unknown"} → {row.targetDataType ?? "unknown"}</>}
+                  ) : <MTypeBadge dataType={`${row.sourceDataType ?? "unknown"} \u2192 ${row.targetDataType ?? "unknown"}`} />}
                 </td>
-                <td style={MTableCellStyle}>{row.status ?? "mapped"}{row.required ? " / required" : ""}</td>
+                <td style={MTableCellStyle}>
+                  <MStatusBadge status={row.status} />
+                  {row.required ? <span style={{ fontSize: 10, color: "#dc2626", marginLeft: 4, fontWeight: 600 }}>required</span> : null}
+                </td>
                 <td style={MTableCellStyle}>
                   {manualEdit ? (
                     <input style={MInputStyle} value={row.transform ?? row.transformSuggestion ?? ""} disabled={readOnly} onChange={(event) => updateRow(row.id, (current) => ({ ...current, transform: event.target.value }))} />
                   ) : (
-                    row.transformSuggestion ?? row.transform ?? "—"
+                    row.transformSuggestion ?? row.transform ?? "\u2014"
                   )}
                 </td>
                 {contractEditable ? (
@@ -942,7 +1018,7 @@ function MEffectiveInputTab({
       </datalist>
       {targetFields.length ? (
         <div style={MExpressionHintStyle}>
-          <strong>Required input slots</strong>
+          <strong title="Fields this node declares it needs — must be provided by upstream nodes or flow input">Required input slots</strong>
           <span>{targetFields.filter((field) => field.required).map((field) => field.path).join(", ") || "No required fields declared."}</span>
         </div>
       ) : null}

@@ -684,7 +684,7 @@ export function MInspectorTabTitle(tab: MInspectorTab): string {
     : tab === "input-data"
       ? "Input Data"
       : tab === "data-mapping"
-        ? "Data Mapping"
+        ? "Data Flow"
         : tab === "output-data"
           ? "Output Data"
           : "Logic";
