@@ -1,14 +1,84 @@
-﻿@import "tailwindcss";
+@import "./design-tokens.css";
+@import "tailwindcss";
 @source "../**/*.{ts,js,html}";
 
 @theme {
+  /* === Backward compatibility — keep exactly as-is === */
   --color-mu-primary: oklch(55% 0.2 250);
   --color-mu-surface: oklch(98% 0 0);
   --color-mu-border: oklch(85% 0 0);
   --color-mu-danger: oklch(55% 0.22 25);
   --color-mu-success: oklch(55% 0.18 145);
+
+  /* === Typography === */
   --font-sans: "Inter Variable", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", "Fira Code", ui-monospace, monospace;
+
+  /* === Layout === */
   --radius-card: 0.5rem;
+
+  /* === Blue scale (interactive accent) === */
+  --mu-color-blue-50: oklch(97% 0.02 255);
+  --mu-color-blue-100: oklch(93% 0.05 255);
+  --mu-color-blue-200: oklch(87% 0.09 255);
+  --mu-color-blue-400: oklch(68% 0.17 255);
+  --mu-color-blue-500: oklch(60% 0.2 255);
+  --mu-color-blue-600: oklch(52% 0.23 255);
+  --mu-color-blue-700: oklch(44% 0.22 255);
+
+  /* === Neutral gray scale === */
+  --mu-color-gray-0: oklch(100% 0 0);
+  --mu-color-gray-50: oklch(98% 0.003 255);
+  --mu-color-gray-100: oklch(95% 0.005 255);
+  --mu-color-gray-150: oklch(91% 0.007 255);
+  --mu-color-gray-200: oklch(87% 0.008 255);
+  --mu-color-gray-300: oklch(79% 0.01 255);
+  --mu-color-gray-400: oklch(68% 0.012 255);
+  --mu-color-gray-500: oklch(57% 0.014 255);
+  --mu-color-gray-600: oklch(47% 0.015 255);
+  --mu-color-gray-700: oklch(38% 0.016 255);
+  --mu-color-gray-800: oklch(28% 0.016 255);
+  --mu-color-gray-900: oklch(20% 0.015 255);
+  --mu-color-gray-950: oklch(13% 0.012 255);
+
+  /* === Red scale (error / danger) === */
+  --mu-color-red-50: oklch(97% 0.02 25);
+  --mu-color-red-100: oklch(93% 0.05 25);
+  --mu-color-red-200: oklch(85% 0.09 25);
+  --mu-color-red-400: oklch(67% 0.2 25);
+  --mu-color-red-500: oklch(59% 0.22 25);
+  --mu-color-red-600: oklch(51% 0.23 25);
+  --mu-color-red-900: oklch(27% 0.14 25);
+
+  /* === Amber scale (warning) === */
+  --mu-color-amber-50: oklch(98% 0.02 80);
+  --mu-color-amber-100: oklch(95% 0.06 80);
+  --mu-color-amber-400: oklch(76% 0.17 75);
+  --mu-color-amber-500: oklch(69% 0.18 72);
+  --mu-color-amber-600: oklch(62% 0.17 70);
+  --mu-color-amber-900: oklch(33% 0.1 65);
+
+  /* === Green scale (success) === */
+  --mu-color-green-50: oklch(97% 0.02 150);
+  --mu-color-green-100: oklch(93% 0.05 150);
+  --mu-color-green-400: oklch(70% 0.17 150);
+  --mu-color-green-500: oklch(63% 0.18 150);
+  --mu-color-green-600: oklch(55% 0.18 150);
+  --mu-color-green-900: oklch(28% 0.1 150);
+
+  /* === Cyan scale (info) === */
+  --mu-color-cyan-50: oklch(97% 0.02 210);
+  --mu-color-cyan-400: oklch(70% 0.14 215);
+  --mu-color-cyan-500: oklch(63% 0.15 215);
+  --mu-color-cyan-600: oklch(55% 0.16 215);
+
+  /* === Node-type accent primitives === */
+  --mu-color-violet-500: oklch(60% 0.24 285);
+  --mu-color-violet-600: oklch(52% 0.26 285);
+  --mu-color-orange-500: oklch(67% 0.2 50);
+  --mu-color-teal-500: oklch(63% 0.14 185);
+  --mu-color-purple-500: oklch(62% 0.24 305);
+  --mu-color-slate-500: oklch(57% 0.014 255);
 }
 
 :host {
