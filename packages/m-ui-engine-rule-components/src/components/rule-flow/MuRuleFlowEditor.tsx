@@ -319,7 +319,8 @@ export function MuRuleFlowEditor({
   licenseStatus = "licensed",
   showHeader = true,
   version = null,
-  onVersionChange
+  onVersionChange,
+  editorRoot
 }: MuRuleFlowEditorProps): React.JSX.Element {
   const initialGraph = useMemo(() => MEnsureRuleFlowGraph(graph), [graph]);
   const history = useRuleFlowHistory(initialGraph);
@@ -365,6 +366,7 @@ export function MuRuleFlowEditor({
   const edgesRef = useRef(edges);
   const nodeContractCacheRef = useRef(new Map<string, Awaited<ReturnType<MRuleFlowContractService["MGetNodeAuthoringContract"]>>>());
   const flowContractCacheRef = useRef(new Map<string, Awaited<ReturnType<MRuleFlowContractService["MGetFlowContract"]>>>());
+  const expressionInsertRef = useRef<{ insert: (text: string) => void } | null>(null);
   const decisionTableCacheRef = useRef(new Map<string, MDecisionTableModel>());
   const contractService = useMemo(
     () => (apiBaseUrl ? new MRuleFlowContractService({ baseUrl: apiBaseUrl, tenantId }) : null),
@@ -1230,7 +1232,13 @@ export function MuRuleFlowEditor({
           onUpdateLiquidOutput={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, liquidConfig: { ...MEnsureLiquidConfig(node.data.liquidConfig), outputFormat: value } } }))}
           onUpdateExpressionLanguage={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), language: value } } }))}
           onUpdateExpressionBody={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), body: value } } }))}
-          onInsertExpressionToken={(value) => updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), body: `${MEnsureExpression(node.data).body}${MEnsureExpression(node.data).body.trim() ? " " : ""}${value}` } } }))}
+          onInsertExpressionToken={(value) => {
+            if (expressionInsertRef.current) {
+              expressionInsertRef.current.insert(value);
+            } else {
+              updateSelectedNode((node) => ({ ...node, data: { ...node.data, expression: { ...MEnsureExpression(node.data), body: `${MEnsureExpression(node.data).body}${MEnsureExpression(node.data).body.trim() ? " " : ""}${value}` } } }));
+            }
+          }}
           onChangeInputContract={(fields) =>
             updateSelectedNode((node) => ({
               ...node,
@@ -1293,6 +1301,8 @@ export function MuRuleFlowEditor({
               data: { ...node.data, connectorConfig: config }
             }))
           }
+          onSetInsertRef={(ref) => { expressionInsertRef.current = ref; }}
+          shadowRoot={editorRoot instanceof ShadowRoot ? editorRoot : undefined}
           showSectionHeader={false}
         />
       ) : (
