@@ -44,14 +44,14 @@ export const M_NODE_TITLES: Record<MRuleFlowNodeType, string> = {
 };
 
 export const M_NODE_ACCENTS: Record<MRuleFlowNodeType, string> = {
-  trigger: "#16a34a",
-  condition: "#7c3aed",
-  action: "#2563eb",
-  "decision-table": "#ea580c",
-  "sub-flow": "#0891b2",
-  liquid: "#0f766e",
-  connector: "#9333ea",
-  end: "#dc2626"
+  trigger: "var(--mu-node-trigger)",
+  condition: "var(--mu-node-condition)",
+  action: "var(--mu-node-action)",
+  "decision-table": "var(--mu-node-decision-table)",
+  "sub-flow": "var(--mu-node-sub-flow)",
+  liquid: "var(--mu-node-liquid)",
+  connector: "var(--mu-node-connector)",
+  end: "var(--mu-node-end)"
 };
 
 export const M_NODE_DEFAULT_LABELS: Record<MRuleFlowNodeType, string> = {
@@ -68,9 +68,9 @@ export const M_NODE_DEFAULT_LABELS: Record<MRuleFlowNodeType, string> = {
 export const M_BASE_NODE_STYLE: React.CSSProperties = {
   minWidth: 188,
   borderRadius: 18,
-  border: "1px solid rgba(15, 23, 42, 0.12)",
-  background: "#ffffff",
-  boxShadow: "0 14px 30px rgba(15, 23, 42, 0.10)",
+  border: "1px solid var(--mu-border-subtle)",
+  background: "var(--mu-surface-base)",
+  boxShadow: "var(--mu-shadow-node)",
   padding: "12px 14px"
 };
 
