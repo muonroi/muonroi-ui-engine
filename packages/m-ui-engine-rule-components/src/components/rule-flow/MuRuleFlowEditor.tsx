@@ -1,5 +1,5 @@
 import "../../styles/xyflow.css";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   addEdge,
   applyEdgeChanges,
@@ -387,6 +387,13 @@ export function MuRuleFlowEditor({
   const [openSection, setOpenSection] = useState<MSidebarSection | null>("inspector");
   const [depOverlayOpen, setDepOverlayOpen] = useState(false);
   const pendingCommitRef = useRef<number | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    try { const v = localStorage.getItem("muonroi-rule-studio-sidebar-width"); return v ? Math.max(240, Math.min(400, Number(v))) : 280; } catch { return 280; }
+  });
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    try { return localStorage.getItem("muonroi-rule-studio-sidebar-collapsed") === "true"; } catch { return false; }
+  });
+  const isDraggingSidebarRef = useRef(false);
   const [versions, setVersions] = useState<MVersionItem[]>([]);
   const activeVersion = useMemo(() => versions.find((v) => v.isActive) ?? null, [versions]);
   const isViewingNonActive = version != null && activeVersion != null && version !== activeVersion.version;
@@ -417,6 +424,13 @@ export function MuRuleFlowEditor({
   useEffect(() => {
     edgesRef.current = edges;
   }, [edges]);
+
+  useEffect(() => {
+    try { localStorage.setItem("muonroi-rule-studio-sidebar-width", String(sidebarWidth)); } catch { /* noop */ }
+  }, [sidebarWidth]);
+  useEffect(() => {
+    try { localStorage.setItem("muonroi-rule-studio-sidebar-collapsed", String(sidebarCollapsed)); } catch { /* noop */ }
+  }, [sidebarCollapsed]);
 
   useEffect(() => () => {
     flushPendingCommit();
@@ -1027,13 +1041,33 @@ export function MuRuleFlowEditor({
     commitNewNode(nextNode);
   }
 
+  /* Sidebar drag-resize handler */
+  const sidebarDragState = useRef<{ startX: number; startW: number } | null>(null);
+  const handleSidebarPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    isDraggingSidebarRef.current = true;
+    sidebarDragState.current = { startX: e.clientX, startW: sidebarWidth };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  }, [sidebarWidth]);
+  const handleSidebarPointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingSidebarRef.current || !sidebarDragState.current) return;
+    const newW = sidebarDragState.current.startW + (e.clientX - sidebarDragState.current.startX);
+    setSidebarWidth(Math.max(240, Math.min(400, newW)));
+  }, []);
+  const handleSidebarPointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingSidebarRef.current) return;
+    isDraggingSidebarRef.current = false;
+    sidebarDragState.current = null;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  }, []);
+
   const computedHeight = typeof height === "number" ? `${height}px` : height;
   const isCompactLayout = shellWidth > 0 && shellWidth < M_COMPACT_LAYOUT_BREAKPOINT;
   const resolvedCanvasHeight = isCompactLayout ? "min(52vh, 520px)" : computedHeight;
   const tokens = MGetThemeTokens(theme as MFlowTheme);
   const themeStyles: React.CSSProperties = { color: tokens.textPrimary };
   const palettePanel = (
-    <div data-testid="rule-flow-sidebar-palette" style={{ ...MSidebarSectionBodyStyle, ...MSidebarTopStyle, ...MSidebarTopLayoutStyle(isCompactLayout) }}>
+    <div data-testid="rule-flow-sidebar-palette" style={{ ...MSidebarSectionBodyStyle, ...MSidebarTopStyle, ...MSidebarTopLayoutStyle(isCompactLayout), gap: 8, padding: 12 }}>
       {(Object.keys(M_NODE_TYPES) as MRuleFlowNodeType[]).map((nodeType) => (
         <button key={nodeType} type="button" style={MPaletteButtonStyle(nodeType, tokens)} data-testid={`palette-${nodeType}`} draggable={!readOnly} onClick={() => addNode(nodeType)} onDragStart={(event) => handlePaletteDragStart(event, nodeType)} disabled={readOnly}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1379,13 +1413,86 @@ export function MuRuleFlowEditor({
           <span>Viewing version {version} (read-only). Switch to the active version to edit.</span>
         </div>
       ) : null}
-      <section ref={shellRef} style={{ ...MEditorShellStyle, ...MEditorShellLayoutStyle3(isCompactLayout, !!(selectedNode || selectedEdge)), ...themeStyles }}>
-        {/* Left panel — Node Library */}
-        <aside data-testid="rule-flow-left-panel" style={{ ...MLeftPanelStyle, background: tokens.sidebarBg, border: tokens.sidebarBorder }}>
-          <div style={{ padding: "12px 14px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <strong style={{ fontSize: 13, color: tokens.textPrimary }}>Node Library</strong>
+      <section ref={shellRef} style={{ ...MEditorShellStyle, ...MEditorShellLayoutStyle3(isCompactLayout, !!(selectedNode || selectedEdge), sidebarWidth, sidebarCollapsed), ...themeStyles }}>
+        {/* Left panel — Node Library (resizable + collapsible) */}
+        <aside data-testid="rule-flow-left-panel" style={{
+          ...MLeftPanelStyle,
+          background: tokens.sidebarBg,
+          border: tokens.sidebarBorder,
+          width: sidebarCollapsed ? 48 : sidebarWidth,
+          transition: isDraggingSidebarRef.current ? "none" : "width 200ms ease",
+          overflow: sidebarCollapsed ? "hidden" : "auto",
+          position: "relative"
+        }}>
+          <div style={{ padding: sidebarCollapsed ? "12px 8px 8px" : "12px 14px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            {!sidebarCollapsed && <strong style={{ fontSize: 13, color: tokens.textPrimary }}>Node Library</strong>}
+            <button
+              type="button"
+              title={sidebarCollapsed ? "Expand Node Library" : "Collapse Node Library"}
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
+              style={{
+                background: "transparent",
+                border: "none",
+                cursor: "pointer",
+                padding: 4,
+                borderRadius: 6,
+                fontSize: 14,
+                color: tokens.textMuted,
+                lineHeight: 1,
+                marginLeft: sidebarCollapsed ? "auto" : undefined,
+                marginRight: sidebarCollapsed ? "auto" : undefined
+              }}
+            >
+              {sidebarCollapsed ? "\u203A" : "\u00AB"}
+            </button>
           </div>
-          {palettePanel}
+          {sidebarCollapsed ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 0" }}>
+              {(Object.keys(M_NODE_TYPES) as MRuleFlowNodeType[]).map((nodeType) => (
+                <div
+                  key={nodeType}
+                  title={M_NODE_TITLES[nodeType]}
+                  style={{ width: 32, height: 32, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", cursor: "default", fontSize: 16 }}
+                >
+                  <svg width={16} height={16} viewBox="0 0 16 16" fill={M_NODE_ACCENTS[nodeType]} style={{ flexShrink: 0 }}>
+                    <path d={M_NODE_ICONS[nodeType]} />
+                  </svg>
+                </div>
+              ))}
+            </div>
+          ) : palettePanel}
+          {/* Drag handle for resizing */}
+          {!sidebarCollapsed && (
+            <div
+              style={{
+                position: "absolute",
+                right: -6,
+                top: 0,
+                bottom: 0,
+                width: 12,
+                cursor: "col-resize",
+                zIndex: 5,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+              onPointerDown={handleSidebarPointerDown}
+              onPointerMove={handleSidebarPointerMove}
+              onPointerUp={handleSidebarPointerUp}
+            >
+              <div
+                style={{
+                  width: 4,
+                  height: 40,
+                  borderRadius: 2,
+                  background: tokens.sidebarBorder.replace("1px solid ", ""),
+                  transition: "background 150ms"
+                }}
+                onPointerEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#3b82f6"; }}
+                onPointerLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = tokens.sidebarBorder.replace("1px solid ", ""); }}
+              />
+            </div>
+          )}
         </aside>
 
         {/* Center — Canvas with floating toolbar */}
@@ -2127,14 +2234,15 @@ function MEditorShellLayoutStyle(isCompactLayout: boolean): React.CSSProperties 
   };
 }
 
-function MEditorShellLayoutStyle3(isCompactLayout: boolean, hasRightPanel: boolean): React.CSSProperties {
+function MEditorShellLayoutStyle3(isCompactLayout: boolean, hasRightPanel: boolean, sidebarWidth = 280, sidebarCollapsed = false): React.CSSProperties {
   if (isCompactLayout) {
     return { gridTemplateColumns: "minmax(0, 1fr)", alignContent: "start" };
   }
+  const leftCol = sidebarCollapsed ? "48px" : `${sidebarWidth}px`;
   return {
     gridTemplateColumns: hasRightPanel
-      ? "minmax(220px, 280px) minmax(0, 1fr) minmax(320px, 420px)"
-      : "minmax(220px, 280px) minmax(0, 1fr)",
+      ? `${leftCol} minmax(0, 1fr) minmax(320px, 420px)`
+      : `${leftCol} minmax(0, 1fr)`,
     alignContent: "stretch"
   };
 }
