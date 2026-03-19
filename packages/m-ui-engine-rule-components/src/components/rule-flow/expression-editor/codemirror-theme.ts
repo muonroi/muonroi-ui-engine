@@ -62,6 +62,33 @@ export const mExpressionEditorTheme = EditorView.theme({
   },
   ".cm-diagnostic-warning": {
     borderLeft: "3px solid #f59e0b"
+  },
+  ".cm-completionIcon-variable::after": {
+    content: "'x'",
+    display: "inline-block",
+    width: "16px",
+    height: "16px",
+    lineHeight: "16px",
+    textAlign: "center",
+    borderRadius: "50%",
+    background: "rgba(37, 99, 235, 0.12)",
+    color: "#2563eb",
+    fontSize: "10px",
+    fontWeight: "700"
+  },
+  ".cm-completionIcon-function::after": {
+    content: "'f'",
+    display: "inline-block",
+    width: "16px",
+    height: "16px",
+    lineHeight: "16px",
+    textAlign: "center",
+    borderRadius: "50%",
+    background: "rgba(124, 58, 237, 0.12)",
+    color: "#7c3aed",
+    fontSize: "10px",
+    fontWeight: "700",
+    fontStyle: "italic"
   }
 });
 
@@ -123,6 +150,33 @@ export const mExpressionEditorDarkTheme = EditorView.theme({
   },
   ".cm-diagnostic-warning": {
     borderLeft: "3px solid #fbbf24"
+  },
+  ".cm-completionIcon-variable::after": {
+    content: "'x'",
+    display: "inline-block",
+    width: "16px",
+    height: "16px",
+    lineHeight: "16px",
+    textAlign: "center",
+    borderRadius: "50%",
+    background: "rgba(96, 165, 250, 0.18)",
+    color: "#60a5fa",
+    fontSize: "10px",
+    fontWeight: "700"
+  },
+  ".cm-completionIcon-function::after": {
+    content: "'f'",
+    display: "inline-block",
+    width: "16px",
+    height: "16px",
+    lineHeight: "16px",
+    textAlign: "center",
+    borderRadius: "50%",
+    background: "rgba(167, 139, 250, 0.18)",
+    color: "#a78bfa",
+    fontSize: "10px",
+    fontWeight: "700",
+    fontStyle: "italic"
   }
 }, { dark: true });
 
