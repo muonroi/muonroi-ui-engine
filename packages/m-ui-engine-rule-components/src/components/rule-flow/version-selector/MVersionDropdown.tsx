@@ -27,13 +27,25 @@ function formatDate(iso: string): string {
   }
 }
 
-/** Status badge color mapping. */
+/** Status badge color mapping using CSS custom properties. */
 function statusBadgeStyle(status: string, isActive: boolean): React.CSSProperties {
-  if (isActive) return { background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.3)", color: "#16a34a" };
+  if (isActive) return {
+    background: "color-mix(in oklch, var(--mu-color-success-text) 15%, transparent)",
+    border: "1px solid color-mix(in oklch, var(--mu-color-success-text) 30%, transparent)",
+    color: "var(--mu-color-success-text)"
+  };
   const s = status.toLowerCase();
-  if (s === "approved") return { background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.25)", color: "#2563eb" };
+  if (s === "approved") return {
+    background: "color-mix(in oklch, var(--mu-color-interactive) 12%, transparent)",
+    border: "1px solid color-mix(in oklch, var(--mu-color-interactive) 25%, transparent)",
+    color: "var(--mu-color-interactive)"
+  };
   // Draft and others
-  return { background: "rgba(148,163,184,0.15)", border: "1px solid rgba(148,163,184,0.3)", color: "#64748b" };
+  return {
+    background: "color-mix(in oklch, var(--mu-border-subtle) 50%, transparent)",
+    border: "1px solid color-mix(in oklch, var(--mu-border-default) 50%, transparent)",
+    color: "var(--mu-text-muted)"
+  };
 }
 
 export function MVersionDropdown({
@@ -101,10 +113,10 @@ export function MVersionDropdown({
           letterSpacing: "0.02em",
           cursor: "pointer",
           background: current?.isActive === false
-            ? "rgba(245,158,11,0.12)"
+            ? "color-mix(in oklch, var(--mu-color-warning) 12%, transparent)"
             : tokens.actionPrimaryBg,
           border: current?.isActive === false
-            ? "1px solid rgba(245,158,11,0.3)"
+            ? "1px solid color-mix(in oklch, var(--mu-color-warning) 30%, transparent)"
             : tokens.actionPrimaryBorder,
           color: current?.isActive === false
             ? tokens.warningText
@@ -153,7 +165,7 @@ export function MVersionDropdown({
               fontSize: 12
             }}
           >
-            <span style={{ color: "#16a34a", fontSize: 13 }}>{"\u2605"}</span>
+            <span style={{ color: "var(--mu-color-success-text)", fontSize: 13 }}>{"\u2605"}</span>
             <span style={{ fontWeight: 600 }}>
               Active{activeVersion ? ` (v${activeVersion.version})` : ""}
             </span>
@@ -186,7 +198,7 @@ export function MVersionDropdown({
                 }}
               >
                 {v.isActive ? (
-                  <span style={{ color: "#16a34a", fontSize: 11 }}>{"\u2605"}</span>
+                  <span style={{ color: "var(--mu-color-success-text)", fontSize: 11 }}>{"\u2605"}</span>
                 ) : (
                   <span style={{ width: 11, display: "inline-block" }} />
                 )}

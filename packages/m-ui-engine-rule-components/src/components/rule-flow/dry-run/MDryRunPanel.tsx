@@ -59,8 +59,10 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
           {result ? (
             <span style={{
               fontSize: 11, padding: "2px 8px", borderRadius: 12,
-              background: result.isSuccess ? "rgba(22,163,74,0.15)" : "rgba(239,68,68,0.15)",
-              color: result.isSuccess ? "#16a34a" : "#ef4444",
+              background: result.isSuccess
+                ? "color-mix(in oklch, var(--mu-color-success-text) 15%, transparent)"
+                : "color-mix(in oklch, var(--mu-color-error) 15%, transparent)",
+              color: result.isSuccess ? "var(--mu-color-success-text)" : "var(--mu-color-error)",
               fontWeight: 600
             }}>
               {result.executionTimeMs}ms
@@ -128,8 +130,10 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
                         <span style={{
                           display: "inline-block", width: 18, height: 18, borderRadius: "50%",
                           lineHeight: "18px", textAlign: "center", fontSize: 11, fontWeight: 700,
-                          background: entry.isSuccess ? "rgba(22,163,74,0.15)" : "rgba(239,68,68,0.15)",
-                          color: entry.isSuccess ? "#16a34a" : "#ef4444"
+                          background: entry.isSuccess
+                            ? "color-mix(in oklch, var(--mu-color-success-text) 15%, transparent)"
+                            : "color-mix(in oklch, var(--mu-color-error) 15%, transparent)",
+                          color: entry.isSuccess ? "var(--mu-color-success-text)" : "var(--mu-color-error)"
                         }}>
                           {entry.isSuccess ? "\u2713" : "\u2717"}
                         </span>
@@ -167,8 +171,8 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
           padding: "6px 12px", borderTop: `1px solid ${tokens.sidebarBorder.replace("1px solid ", "")}`,
           fontSize: 12, flexShrink: 0
         }}>
-          <span style={{ color: "#16a34a", fontWeight: 600 }}>{passCount} passed</span>
-          <span style={{ color: "#ef4444", fontWeight: 600 }}>{failCount} failed</span>
+          <span style={{ color: "var(--mu-color-success-text)", fontWeight: 600 }}>{passCount} passed</span>
+          <span style={{ color: "var(--mu-color-error)", fontWeight: 600 }}>{failCount} failed</span>
           <span style={{ color: tokens.textMuted, marginLeft: "auto" }}>
             Total: {result.executionTimeMs}ms
           </span>
