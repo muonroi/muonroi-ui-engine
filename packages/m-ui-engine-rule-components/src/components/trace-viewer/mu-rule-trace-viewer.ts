@@ -5,7 +5,11 @@ import type { MRuleTraceEntry } from "../../models/trace-models.js";
 import { MRuleTraceApiClient } from "../../services/trace-api.js";
 
 const PHASE_LABELS = ["BeforeEval", "AfterEval", "AfterExec", "Error", "Compensate"];
-const PHASE_COLORS = ["#6366f1", "#3b82f6", "#22c55e", "#ef4444", "#f59e0b"];
+/**
+ * CSS class suffixes for phase badge colors — mapped via .trace-phase--* CSS rules
+ * using design token vars instead of hardcoded hex.
+ */
+const PHASE_CLASS_SUFFIXES = ["before-eval", "after-eval", "after-exec", "error", "compensate"];
 
 @customElement("mu-rule-trace-viewer")
 export class MuRuleTraceViewer extends LitElement {
@@ -75,8 +79,8 @@ export class MuRuleTraceViewer extends LitElement {
     return PHASE_LABELS[phase] ?? "Unknown";
   }
 
-  private _phaseColor(phase: MRuleTracePhase): string {
-    return PHASE_COLORS[phase] ?? "#6b7280";
+  private _phaseClassSuffix(phase: MRuleTracePhase): string {
+    return PHASE_CLASS_SUFFIXES[phase] ?? "before-eval";
   }
 
   private get _filteredTraces(): MRuleTraceEntry[] {
@@ -166,8 +170,7 @@ export class MuRuleTraceViewer extends LitElement {
                 @click=${() => this._toggleExpand(trace.traceId)}
               >
                 <span
-                  class="trace-phase"
-                  style="background:${this._phaseColor(trace.phase)}"
+                  class="trace-phase trace-phase--${this._phaseClassSuffix(trace.phase)}"
                 >
                   ${this._phaseLabel(trace.phase)}
                 </span>
@@ -222,7 +225,7 @@ export class MuRuleTraceViewer extends LitElement {
       font-size: 14px;
     }
     .trace-viewer {
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--mu-border-subtle);
       border-radius: 8px;
       overflow: hidden;
     }
@@ -231,8 +234,8 @@ export class MuRuleTraceViewer extends LitElement {
       align-items: center;
       justify-content: space-between;
       padding: 12px 16px;
-      background: #f8fafc;
-      border-bottom: 1px solid #e2e8f0;
+      background: var(--mu-surface-raised);
+      border-bottom: 1px solid var(--mu-border-subtle);
     }
     .trace-title {
       font-weight: 600;
@@ -242,24 +245,24 @@ export class MuRuleTraceViewer extends LitElement {
       display: flex;
       gap: 8px;
       padding: 8px 16px;
-      border-bottom: 1px solid #e2e8f0;
+      border-bottom: 1px solid var(--mu-border-subtle);
       align-items: center;
     }
     .trace-filters select {
       padding: 4px 8px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--mu-border-default);
       border-radius: 4px;
       font-size: 12px;
     }
     .trace-count {
       margin-left: auto;
       font-size: 12px;
-      color: #64748b;
+      color: var(--mu-text-muted);
     }
     .trace-error {
       padding: 8px 16px;
-      background: #fef2f2;
-      color: #dc2626;
+      background: var(--mu-color-error-bg);
+      color: var(--mu-color-error-text);
       font-size: 12px;
     }
     .trace-list {
@@ -272,13 +275,13 @@ export class MuRuleTraceViewer extends LitElement {
       gap: 8px;
       padding: 8px 16px;
       cursor: pointer;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid var(--mu-border-subtle);
     }
     .trace-row:hover {
-      background: #f8fafc;
+      background: var(--mu-surface-raised);
     }
     .trace-row--fail {
-      background: #fef2f2;
+      background: var(--mu-color-error-bg);
     }
     .trace-phase {
       display: inline-block;
@@ -289,6 +292,22 @@ export class MuRuleTraceViewer extends LitElement {
       font-weight: 600;
       text-transform: uppercase;
     }
+    /* Phase badge colors using semantic tokens */
+    .trace-phase--before-eval {
+      background: var(--mu-node-condition);
+    }
+    .trace-phase--after-eval {
+      background: var(--mu-color-interactive);
+    }
+    .trace-phase--after-exec {
+      background: var(--mu-color-success-text);
+    }
+    .trace-phase--error {
+      background: var(--mu-color-error);
+    }
+    .trace-phase--compensate {
+      background: var(--mu-color-warning);
+    }
     .trace-rule {
       flex: 1;
       font-family: monospace;
@@ -296,7 +315,7 @@ export class MuRuleTraceViewer extends LitElement {
     }
     .trace-elapsed {
       font-size: 12px;
-      color: #64748b;
+      color: var(--mu-text-muted);
       font-family: monospace;
     }
     .trace-icon {
@@ -304,18 +323,18 @@ export class MuRuleTraceViewer extends LitElement {
     }
     .trace-detail {
       padding: 8px 16px 8px 40px;
-      background: #f8fafc;
-      border-bottom: 1px solid #e2e8f0;
+      background: var(--mu-surface-raised);
+      border-bottom: 1px solid var(--mu-border-subtle);
     }
     .trace-detail__error {
-      color: #dc2626;
+      color: var(--mu-color-error-text);
       margin-bottom: 8px;
       font-size: 13px;
     }
     .trace-detail__changed {
       margin-bottom: 8px;
       font-size: 12px;
-      color: #059669;
+      color: var(--mu-color-success-text);
     }
     .trace-detail__facts {
       display: grid;
@@ -324,8 +343,8 @@ export class MuRuleTraceViewer extends LitElement {
     }
     .trace-detail__facts pre {
       font-size: 11px;
-      background: #1e293b;
-      color: #e2e8f0;
+      background: var(--mu-surface-canvas);
+      color: var(--mu-text-primary);
       padding: 8px;
       border-radius: 4px;
       overflow-x: auto;
@@ -333,14 +352,14 @@ export class MuRuleTraceViewer extends LitElement {
     }
     button {
       padding: 6px 12px;
-      border: 1px solid #cbd5e1;
+      border: 1px solid var(--mu-border-default);
       border-radius: 4px;
-      background: white;
+      background: var(--mu-surface-base);
       cursor: pointer;
       font-size: 12px;
     }
     button:hover {
-      background: #f1f5f9;
+      background: var(--mu-surface-raised);
     }
     button:disabled {
       opacity: 0.5;

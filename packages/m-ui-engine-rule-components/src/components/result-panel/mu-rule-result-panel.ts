@@ -148,8 +148,8 @@ export class MuRuleResultPanel extends LitElement {
     .spinner {
       width: 24px;
       height: 24px;
-      border: 3px solid #e2e8f0;
-      border-top-color: #3b82f6;
+      border: 3px solid var(--mu-border-subtle);
+      border-top-color: var(--mu-color-interactive);
       border-radius: 50%;
       animation: spin 0.6s linear infinite;
     }
@@ -170,12 +170,12 @@ export class MuRuleResultPanel extends LitElement {
       margin-bottom: 12px;
     }
     .header--pass {
-      background: #f0fdf4;
-      border-left: 3px solid #22c55e;
+      background: var(--mu-color-success-bg);
+      border-left: 3px solid var(--mu-color-success-border);
     }
     .header--fail {
-      background: #fef2f2;
-      border-left: 3px solid #ef4444;
+      background: var(--mu-color-error-bg);
+      border-left: 3px solid var(--mu-color-error);
     }
     .header-icon {
       font-size: 16px;
@@ -186,41 +186,41 @@ export class MuRuleResultPanel extends LitElement {
       flex: 1;
     }
     .header--pass .header-text {
-      color: #15803d;
+      color: var(--mu-color-success-text);
     }
     .header--fail .header-text {
-      color: #b91c1c;
+      color: var(--mu-color-error-text);
     }
     .header-time {
       font-size: 11px;
       font-family: monospace;
-      color: #64748b;
+      color: var(--mu-text-muted);
     }
     .error-card {
       display: flex;
       gap: 8px;
       padding: 8px 12px;
       margin-bottom: 8px;
-      background: #fef2f2;
-      border-left: 3px solid #fca5a5;
+      background: var(--mu-color-error-bg);
+      border-left: 3px solid var(--mu-color-error-border);
       border-radius: 4px;
     }
     .error-icon {
-      color: #ef4444;
+      color: var(--mu-color-error);
     }
     .error-messages {
       font-size: 13px;
-      color: #374151;
+      color: var(--mu-text-muted);
     }
     .success-card {
       display: flex;
       gap: 8px;
       padding: 8px 12px;
-      background: #f0fdf4;
-      border-left: 3px solid #86efac;
+      background: var(--mu-color-success-bg);
+      border-left: 3px solid var(--mu-color-success-border);
       border-radius: 4px;
       font-size: 13px;
-      color: #15803d;
+      color: var(--mu-color-success-text);
     }
     .toggle-btn {
       display: flex;
@@ -231,16 +231,16 @@ export class MuRuleResultPanel extends LitElement {
       margin-top: 12px;
       border: none;
       background: none;
-      color: #64748b;
+      color: var(--mu-text-muted);
       cursor: pointer;
       font-size: 12px;
     }
     .toggle-btn:hover {
-      color: #3b82f6;
+      color: var(--mu-color-interactive);
     }
     .trace-summary {
       font-size: 12px;
-      color: #64748b;
+      color: var(--mu-text-muted);
       margin-bottom: 8px;
     }
     .rule-row {
@@ -254,10 +254,10 @@ export class MuRuleResultPanel extends LitElement {
       font-size: 13px;
     }
     .rule-row:hover {
-      background: #f8fafc;
+      background: var(--mu-surface-raised);
     }
     .rule-row--fail {
-      background: #fef2f2;
+      background: var(--mu-color-error-bg);
     }
     .rule-icon {
       font-size: 12px;
@@ -269,10 +269,10 @@ export class MuRuleResultPanel extends LitElement {
     .rule-detail {
       margin: 0 0 8px 28px;
       padding: 8px;
-      background: #f8fafc;
+      background: var(--mu-surface-raised);
       border-radius: 4px;
       font-size: 12px;
-      color: #475569;
+      color: var(--mu-text-secondary);
     }
   `;
 }
