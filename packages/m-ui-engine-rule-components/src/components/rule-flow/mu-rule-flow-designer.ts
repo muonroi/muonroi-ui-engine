@@ -302,7 +302,7 @@ export class MuRuleFlowDesigner extends LitElement {
     const workflowCode = this.workflowCode.trim();
     const baseUrl = this.apiBaseUrl.replace(/\/$/, "");
     const actor = "ui-studio";
-    const savePayload = await this.MRequestJson<MSaveRuleSetResponse>(`${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}`, {
+    const savePayload = await this.MRequestJson<MSaveRuleSetResponse>(`${baseUrl}/api/v1/rule-engine/rulesets/${encodeURIComponent(workflowCode)}`, {
       method: "POST",
       body: JSON.stringify({
         ruleSet: detail.ruleSet,
@@ -324,7 +324,7 @@ export class MuRuleFlowDesigner extends LitElement {
 
     if (approvalWorkflowEnabled) {
       const submitResponse = await this.MRequestJson<{ status?: string }>(
-        `${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/${savedVersion}/submit`,
+        `${baseUrl}/api/v1/rule-engine/rulesets/${encodeURIComponent(workflowCode)}/${savedVersion}/submit`,
         {
           method: "POST",
           body: JSON.stringify({ actor })
@@ -334,7 +334,7 @@ export class MuRuleFlowDesigner extends LitElement {
       message = `Saved version ${savedVersion} and submitted for approval.`;
     } else if (!activated || activeVersion !== savedVersion) {
       const activateResponse = await this.MRequestJson<{ activeVersion?: number | null }>(
-        `${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/${savedVersion}/activate`,
+        `${baseUrl}/api/v1/rule-engine/rulesets/${encodeURIComponent(workflowCode)}/${savedVersion}/activate`,
         {
           method: "POST",
           body: JSON.stringify({ actor })
