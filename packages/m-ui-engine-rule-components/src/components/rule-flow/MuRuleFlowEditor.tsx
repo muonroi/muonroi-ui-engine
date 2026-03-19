@@ -1525,6 +1525,8 @@ export function MuRuleFlowEditor({
   const [dryRunResult, setDryRunResult] = useState<MDryRunResult | null>(null);
   const [dryRunLoading, setDryRunLoading] = useState(false);
   const [dryRunError, setDryRunError] = useState<string | null>(null);
+  const [dryRunPanelHeight, setDryRunPanelHeight] = useState(40);
+  const isDraggingDryRunRef = useRef(false);
 
   function generateDefaultInputJson(): string {
     const triggerNode = currentGraph.nodes.find((n) => n.type === "trigger");
@@ -1613,6 +1615,30 @@ export function MuRuleFlowEditor({
     setDryRunResult(null);
     setDryRunError(null);
     clearDryRunHighlights();
+  }
+
+  function startDryRunResize(e: React.PointerEvent): void {
+    e.preventDefault();
+    isDraggingDryRunRef.current = true;
+    const startY = e.clientY;
+    const startHeight = dryRunPanelHeight;
+    const canvasRect = canvasPanelRef.current?.getBoundingClientRect();
+    if (!canvasRect) return;
+
+    const onMove = (ev: PointerEvent) => {
+      if (!isDraggingDryRunRef.current) return;
+      const deltaY = startY - ev.clientY;
+      const deltaPercent = (deltaY / canvasRect.height) * 100;
+      const newHeight = Math.min(70, Math.max(20, startHeight + deltaPercent));
+      setDryRunPanelHeight(newHeight);
+    };
+    const onUp = () => {
+      isDraggingDryRunRef.current = false;
+      document.removeEventListener("pointermove", onMove);
+      document.removeEventListener("pointerup", onUp);
+    };
+    document.addEventListener("pointermove", onMove);
+    document.addEventListener("pointerup", onUp);
   }
 
   return (
@@ -1791,13 +1817,25 @@ export function MuRuleFlowEditor({
         {/* Center — Canvas with floating toolbar */}
         <div
           ref={canvasPanelRef}
-          style={{ ...MCanvasPanelStyle, ...MCanvasPanelLayoutStyle(isCompactLayout), height: resolvedCanvasHeight, background: tokens.canvasGradient }}
+          style={{ ...MCanvasPanelStyle, ...MCanvasPanelLayoutStyle(isCompactLayout), height: resolvedCanvasHeight, background: tokens.canvasGradient, display: "flex", flexDirection: "column" }}
           data-testid="rule-flow-canvas"
           data-node-count={nodes.length}
           data-edge-count={edges.length}
           onDragOver={handleCanvasDragOver}
           onDrop={handleCanvasDrop}
         >
+          {/* CSS keyframes for dry-run node animation */}
+          <style>{`
+            .mu-node-running {
+              animation: muNodePulse 0.8s ease-in-out infinite;
+            }
+            @keyframes muNodePulse {
+              0%, 100% { box-shadow: 0 0 8px rgba(59,130,246,0.4); }
+              50% { box-shadow: 0 0 20px rgba(59,130,246,0.7), 0 0 40px rgba(59,130,246,0.3); }
+            }
+          `}</style>
+          {/* Top: ReactFlow canvas area */}
+          <div style={{ flex: dryRunOpen ? `0 0 ${100 - dryRunPanelHeight}%` : "1 1 auto", position: "relative", overflow: "hidden" }}>
           {/* Floating toolbar */}
           <div style={{ ...MFloatingToolbarStyle, background: tokens.overlayBg, border: tokens.overlayBorder, boxShadow: tokens.overlayShadow }}>
             {actionsPanel}
@@ -1889,6 +1927,71 @@ export function MuRuleFlowEditor({
               ) : null}
             </aside>
           ) : null}
+          </div>
+          {/* Bottom: Dry Run split panel (only when open) */}
+          {dryRunOpen ? (
+            <>
+              <div
+                onPointerDown={startDryRunResize}
+                style={{
+                  height: 4,
+                  cursor: "ns-resize",
+                  background: tokens.sidebarBorder.replace("1px solid ", ""),
+                  transition: "background 150ms",
+                  flexShrink: 0
+                }}
+                onPointerEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "#3b82f6"; }}
+                onPointerLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = tokens.sidebarBorder.replace("1px solid ", ""); }}
+              />
+              <div style={{ flex: `0 0 ${dryRunPanelHeight}%`, overflow: "auto", background: tokens.sidebarBg }}>
+                <MDryRunInputEditor
+                  value={dryRunInput}
+                  onChange={setDryRunInput}
+                  onReset={() => setDryRunInput(generateDefaultInputJson())}
+                  tokens={tokens}
+                  editorRoot={editorRoot}
+                />
+                <div style={{ display: "flex", gap: 8, padding: "8px 12px", background: tokens.sidebarBg }}>
+                  <button
+                    type="button"
+                    onClick={() => { void executeDryRun(); }}
+                    disabled={dryRunLoading || !apiBaseUrl || !workflowCode}
+                    style={{
+                      padding: "6px 16px", borderRadius: 6, border: "none", cursor: "pointer",
+                      background: "#16a34a", color: "#fff", fontWeight: 600, fontSize: 12,
+                      opacity: dryRunLoading ? 0.6 : 1
+                    }}
+                  >
+                    {dryRunLoading ? "Executing..." : "Execute"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={closeDryRun}
+                    style={{
+                      padding: "6px 16px", borderRadius: 6, cursor: "pointer",
+                      background: "transparent", border: tokens.actionSecondaryBorder,
+                      color: tokens.textSecondary, fontWeight: 500, fontSize: 12
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+                {(dryRunResult || dryRunLoading || dryRunError) ? (
+                  <MDryRunPanel
+                    result={dryRunResult}
+                    loading={dryRunLoading}
+                    error={dryRunError}
+                    onClose={closeDryRun}
+                    onSelectNode={(ruleName) => {
+                      const match = nodesRef.current.find((n) => n.data.ruleCode === ruleName || n.data.label === ruleName);
+                      if (match) selectNodeById(match.id);
+                    }}
+                    tokens={tokens}
+                  />
+                ) : null}
+              </div>
+            </>
+          ) : null}
         </div>
 
         {/* Right panel — Inspector (visible only when node or edge is selected) */}
@@ -1902,56 +2005,6 @@ export function MuRuleFlowEditor({
           </aside>
         ) : null}
       </section>
-      {/* Dry-run bottom panel */}
-      {dryRunOpen ? (
-        <div style={{ borderTop: `1px solid ${tokens.sidebarBorder.replace("1px solid ", "")}` }}>
-          <MDryRunInputEditor
-            value={dryRunInput}
-            onChange={setDryRunInput}
-            onReset={() => setDryRunInput(generateDefaultInputJson())}
-            tokens={tokens}
-            editorRoot={editorRoot}
-          />
-          <div style={{ display: "flex", gap: 8, padding: "8px 12px", background: tokens.sidebarBg }}>
-            <button
-              type="button"
-              onClick={() => { void executeDryRun(); }}
-              disabled={dryRunLoading || !apiBaseUrl || !workflowCode}
-              style={{
-                padding: "6px 16px", borderRadius: 6, border: "none", cursor: "pointer",
-                background: "#16a34a", color: "#fff", fontWeight: 600, fontSize: 12,
-                opacity: dryRunLoading ? 0.6 : 1
-              }}
-            >
-              {dryRunLoading ? "Executing..." : "Execute"}
-            </button>
-            <button
-              type="button"
-              onClick={closeDryRun}
-              style={{
-                padding: "6px 16px", borderRadius: 6, cursor: "pointer",
-                background: "transparent", border: tokens.actionSecondaryBorder,
-                color: tokens.textSecondary, fontWeight: 500, fontSize: 12
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-          {(dryRunResult || dryRunLoading || dryRunError) ? (
-            <MDryRunPanel
-              result={dryRunResult}
-              loading={dryRunLoading}
-              error={dryRunError}
-              onClose={closeDryRun}
-              onSelectNode={(ruleName) => {
-                const match = nodesRef.current.find((n) => n.data.ruleCode === ruleName || n.data.label === ruleName);
-                if (match) selectNodeById(match.id);
-              }}
-              tokens={tokens}
-            />
-          ) : null}
-        </div>
-      ) : null}
       {publishConfirmState ? (
         <MPublishConfirmDialog
           warnings={publishConfirmState.warnings}
