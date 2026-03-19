@@ -547,7 +547,7 @@ function MBuildNodeContractLayers(
       }
     }
 
-    if (node.type === "condition") {
+    if (node.type === "condition" && !node.ruleCode) {
       for (const field of MFlattenContractFields(outputContract.fields).filter((candidate) => !candidate.isResultPayload)) {
         if (!field.valueExpression?.trim()) {
           issues.push({
