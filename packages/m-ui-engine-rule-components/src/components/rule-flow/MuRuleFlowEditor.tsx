@@ -1228,7 +1228,7 @@ export function MuRuleFlowEditor({
   const publishButton = (asDropdown?: boolean) => (
     <button
       type="button"
-      style={asDropdown ? MKebabDropdownItemStyle : { ...MActionButtonStyle(true), flex: "1 1 auto", minWidth: 80, display: isViewingNonActive ? "none" : undefined }}
+      style={asDropdown ? { ...MKebabDropdownItemStyle, display: isViewingNonActive ? "none" : undefined } : { ...MActionButtonStyle(true), flex: "1 1 auto", minWidth: 80, display: isViewingNonActive ? "none" : undefined }}
       onClick={() => { handlePublishClick(); if (asDropdown) setKebabOpen(false); }}
       disabled={!canPublish}
       title={!onPublish ? "No publish handler configured." : validationErrors.length > 0 ? "Fix validation errors before publishing." : "Publish"}
@@ -1240,8 +1240,8 @@ export function MuRuleFlowEditor({
   const importButton = (asDropdown?: boolean) => (
     <button
       type="button"
-      style={asDropdown ? MKebabDropdownItemStyle : { ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }}
-      disabled={readOnly}
+      style={asDropdown ? { ...MKebabDropdownItemStyle, display: isViewingNonActive ? "none" : undefined } : { ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64, display: isViewingNonActive ? "none" : undefined }}
+      disabled={effectiveReadOnly}
       onClick={() => { handleImportClick(); if (asDropdown) setKebabOpen(false); }}
       title="Import"
     >
@@ -1289,8 +1289,8 @@ export function MuRuleFlowEditor({
           </button>
           {!isGroupCollapsed("history") ? (
             <>
-              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.undo(); }} disabled={!history.canUndo} title="Undo (Ctrl+Z)">Undo</button>
-              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.redo(); }} disabled={!history.canRedo} title="Redo (Ctrl+Shift+Z)">Redo</button>
+              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.undo(); }} disabled={effectiveReadOnly || !history.canUndo} title="Undo (Ctrl+Z)">Undo</button>
+              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.redo(); }} disabled={effectiveReadOnly || !history.canRedo} title="Redo (Ctrl+Shift+Z)">Redo</button>
             </>
           ) : null}
         </div>
@@ -1307,7 +1307,7 @@ export function MuRuleFlowEditor({
           </button>
           {!isGroupCollapsed("canvas") ? (
             <>
-              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 96 }} onClick={applyAutoLayout} disabled={readOnly} title="Auto Layout">
+              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 96 }} onClick={applyAutoLayout} disabled={effectiveReadOnly} title="Auto Layout">
                 Auto Layout
               </button>
               <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 80, display: isViewingNonActive ? "none" : undefined }} onClick={handleValidateClick} disabled={effectiveReadOnly} title="Validate">Validate</button>
@@ -1362,7 +1362,7 @@ export function MuRuleFlowEditor({
           contractLoadState={contractLoadState}
           selectedDecisionTable={selectedDecisionTable}
           decisionTableLoadState={decisionTableLoadState}
-          readOnly={readOnly}
+          readOnly={effectiveReadOnly}
           apiBaseUrl={apiBaseUrl}
           inspectorTab={inspectorTab}
           flowOptions={flowOptions}
@@ -1557,7 +1557,41 @@ export function MuRuleFlowEditor({
       {isViewingNonActive ? (
         <div style={{ padding: "8px 16px", background: "rgba(245,158,11,0.12)", borderBottom: "1px solid rgba(245,158,11,0.25)", color: tokens.warningText, fontSize: 12, display: "flex", alignItems: "center", gap: 8 }}>
           <svg width={14} height={14} viewBox="0 0 16 16" fill="currentColor"><path d="M8 1l7 14H1L8 1zm-.5 5v4h1V6h-1zm0 5v1h1v-1h-1z" /></svg>
-          <span>Viewing version {version} (read-only). Switch to the active version to edit.</span>
+          <span>Viewing version v{version} (read-only)</span>
+          <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (!apiBaseUrl || !workflowCode || version == null) return;
+                const baseUrl = apiBaseUrl.replace(/\/$/, "");
+                const headers = MBuildRuleComponentHeaders(undefined, { tenantId });
+                headers.set("Content-Type", "application/json");
+                fetch(`${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/versions`, {
+                  method: "POST",
+                  headers,
+                  body: JSON.stringify({ sourceVersion: version })
+                })
+                  .then((res) => { if (!res.ok) throw new Error("restore failed"); return res.json(); })
+                  .then((data: { version?: number }) => {
+                    // Refetch versions and switch to new version
+                    setVersionOffset(0);
+                    fetchVersionsPage(0, false);
+                    if (data.version != null) onVersionChange?.(data.version);
+                  })
+                  .catch(() => { /* silent fail */ });
+              }}
+              style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, fontWeight: 600, cursor: "pointer", background: "rgba(22,163,74,0.15)", border: "1px solid rgba(22,163,74,0.3)", color: "#16a34a" }}
+            >
+              Restore as New Version
+            </button>
+            <button
+              type="button"
+              onClick={() => onVersionChange?.(null)}
+              style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, fontWeight: 600, cursor: "pointer", background: tokens.actionPrimaryBg, border: tokens.actionPrimaryBorder, color: tokens.textPrimary }}
+            >
+              Back to Active
+            </button>
+          </div>
         </div>
       ) : null}
       <section ref={shellRef} style={{ ...MEditorShellStyle, ...MEditorShellLayoutStyle3(isCompactLayout, !!(selectedNode || selectedEdge), sidebarWidth, sidebarCollapsed), ...themeStyles }}>
