@@ -118,6 +118,25 @@ export function MImportRuleFlowGraph(payload: string): MRuleFlowGraph {
     throw new Error(`Invalid rule flow JSON: ${(error as Error).message}`);
   }
 
+  // Unwrap common envelope formats:
+  // { "flowGraph": { nodes, edges } }           — runtime ruleset envelope
+  // { "ruleSet": { "flowGraph": { ... } } }     — save API request format
+  // { "ruleSetJson": "..." }                     — export API response format
+  if (parsed && typeof parsed === "object") {
+    const envelope = parsed as Record<string, unknown>;
+    if (envelope.ruleSetJson && typeof envelope.ruleSetJson === "string") {
+      try { parsed = JSON.parse(envelope.ruleSetJson); } catch { /* use as-is */ }
+    }
+    const inner = (parsed as Record<string, unknown>);
+    if (inner.ruleSet && typeof inner.ruleSet === "object") {
+      parsed = inner.ruleSet;
+    }
+    const ruleSet = (parsed as Record<string, unknown>);
+    if (ruleSet.flowGraph && typeof ruleSet.flowGraph === "object") {
+      parsed = ruleSet.flowGraph;
+    }
+  }
+
   const graph = MEnsureRuleFlowGraph(parsed);
   const triggerCount = graph.nodes.filter((node) => node.type === "trigger").length;
   const endCount = graph.nodes.filter((node) => node.type === "end").length;
