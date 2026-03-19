@@ -1165,12 +1165,10 @@ function MOutputContractTab({
             <table style={MTableStyle}>
               <thead>
                 <tr>
-                  <th style={MTableHeaderStyle} title="Dotted path where this value is stored in the FactBag">Path</th>
-                  <th style={MTableHeaderStyle} title="Data type of the output value">Type</th>
-                  {showValueExpression ? <th style={MTableHeaderStyle} title="FEEL/Liquid expression that computes this value at runtime">Value Expression</th> : null}
-                  <th style={MTableHeaderStyle} title="How downstream nodes consume this field">Use</th>
-                  <th style={MTableHeaderStyle} title="When checked, passes this field to parent flow scope (only relevant for Sub Flow nodes)">Expose</th>
-                  {editable && !readOnly ? <th style={MTableHeaderStyle}>Actions</th> : null}
+                  <th style={{ ...MTableHeaderStyle, width: showValueExpression ? 90 : 120 }} title="Dotted path where this value is stored in the FactBag">Path</th>
+                  <th style={{ ...MTableHeaderStyle, width: 56 }} title="Data type of the output value">Type</th>
+                  {showValueExpression ? <th style={MTableHeaderStyle} title="FEEL/Liquid expression that computes this value at runtime">Expression</th> : null}
+                  {editable && !readOnly ? <th style={{ ...MTableHeaderStyle, width: 44 }}>Actions</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -1189,21 +1187,20 @@ function MOutputContractTab({
                       )}
                     </td>
                     <td style={MTableCellStyle}>
-                      {editable ? (
-                        <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                          <MTypeBadge dataType={field.dataType} />
-                          {!readOnly ? (
-                            <input
-                              style={{ ...MInputStyle, width: 60 }}
-                              value={field.dataType}
-                              onChange={(event) => updateFieldAt(index, (current) => ({ ...current, dataType: event.target.value }))}
-                            />
-                          ) : null}
-                        </span>
+                      {editable && !readOnly ? (
+                        <select
+                          style={{ fontSize: 11, padding: "2px 4px", borderRadius: 6, border: "1px solid #cbd5e1", background: "#f8fafc", width: "100%", cursor: "pointer" }}
+                          value={field.dataType}
+                          onChange={(event) => updateFieldAt(index, (current) => ({ ...current, dataType: event.target.value }))}
+                        >
+                          {["string", "number", "boolean", "object", "array"].map((t) => (
+                            <option key={t} value={t}>{t}</option>
+                          ))}
+                        </select>
                       ) : <MTypeBadge dataType={field.dataType} />}
                     </td>
                     {showValueExpression ? (
-                      <td style={{ ...MTableCellStyle, minWidth: 200 }}>
+                      <td style={{ ...MTableCellStyle, overflow: "visible", whiteSpace: "normal" }}>
                         {editable ? (
                           <MExpressionEditor
                             value={field.valueExpression ?? ""}
@@ -1220,28 +1217,10 @@ function MOutputContractTab({
                             root={undefined}
                           />
                         ) : (
-                          <span style={{ fontFamily: "monospace", fontSize: 12 }}>{field.valueExpression ?? "\u2014"}</span>
+                          <span style={{ fontFamily: "monospace", fontSize: 11 }}>{field.valueExpression ?? "\u2014"}</span>
                         )}
                       </td>
                     ) : null}
-                    <td style={MTableCellStyle}>
-                      {isCondition
-                        ? field.runtimeWritten ? "runtime fact" : "metadata only"
-                        : isAction
-                          ? field.valueExpression?.trim() ? "computed" : field.required ? "required" : "optional"
-                          : field.required ? "required" : "optional"}
-                    </td>
-                    <td style={MTableCellStyle}>
-                      <label style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                        <input
-                          type="checkbox"
-                          checked={field.exposeToParent !== false}
-                          disabled={readOnly}
-                          onChange={(event) => updateFieldAt(index, (current) => ({ ...current, exposeToParent: event.target.checked }))}
-                        />
-                        parent
-                      </label>
-                    </td>
                     {editable && !readOnly ? (
                       <td style={MTableCellStyle}>
                         <button type="button" style={MInlinePathButtonStyle} onClick={() => removeFieldAt(index)}>
@@ -1292,27 +1271,13 @@ function MOutputContractTab({
             </span>
           </div>
           {autoExpanded ? (
-            <div style={{ ...MTableShellStyle, opacity: 0.85 }}>
-              <table style={MTableStyle}>
-                <thead>
-                  <tr>
-                    <th style={MTableHeaderStyle} title="Dotted path where this value is stored in the FactBag">Path</th>
-                    <th style={MTableHeaderStyle} title="Data type of the output value">Type</th>
-                    <th style={MTableHeaderStyle} title="How downstream nodes consume this field">Use</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {autoFields.map((field, index) => (
-                    <tr key={`output-auto-${index}`}>
-                      <td style={MTableCellStyle}>
-                        <button type="button" style={MInlinePathButtonStyle} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
-                      </td>
-                      <td style={MTableCellStyle}><MTypeBadge dataType={field.dataType} /></td>
-                      <td style={MTableCellStyle}>result payload</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "4px 0" }}>
+              {autoFields.map((field, index) => (
+                <div key={`output-auto-${index}`} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 8px", fontSize: 12 }}>
+                  <button type="button" style={{ ...MInlinePathButtonStyle, flex: 1, textAlign: "left" }} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
+                  <MTypeBadge dataType={field.dataType} />
+                </div>
+              ))}
             </div>
           ) : null}
         </div>
@@ -1338,9 +1303,8 @@ function MFieldTable({
         <thead>
           <tr>
             <th style={MTableHeaderStyle}>Path</th>
-            <th style={MTableHeaderStyle}>Type</th>
+            <th style={{ ...MTableHeaderStyle, width: 56 }}>Type</th>
             <th style={MTableHeaderStyle}>Description</th>
-            <th style={MTableHeaderStyle}>Use</th>
           </tr>
         </thead>
         <tbody>
@@ -1350,8 +1314,7 @@ function MFieldTable({
                 <button type="button" style={MInlinePathButtonStyle} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
               </td>
               <td style={MTableCellStyle}><MTypeBadge dataType={field.dataType} /></td>
-              <td style={MTableCellStyle}>{field.description ?? field.label}</td>
-              <td style={MTableCellStyle}>{field.required ? "required" : "optional"}</td>
+              <td style={MTableCellStyle} title={field.description ?? field.label}>{field.description ?? field.label}</td>
             </tr>
           ))}
         </tbody>
@@ -1409,10 +1372,10 @@ export const MLabelStyle: React.CSSProperties = {
 };
 
 export const MInputStyle: React.CSSProperties = {
-  borderRadius: 12,
+  borderRadius: 8,
   border: "1px solid rgba(148, 163, 184, 0.35)",
-  padding: "11px 13px",
-  fontSize: 14,
+  padding: "6px 8px",
+  fontSize: 12,
   width: "100%"
 };
 
@@ -1423,9 +1386,9 @@ export const MTextareaStyle: React.CSSProperties = {
 };
 
 export const MTableShellStyle: React.CSSProperties = {
-  borderRadius: 16,
+  borderRadius: 12,
   border: "1px solid rgba(148, 163, 184, 0.18)",
-  overflow: "auto",
+  overflow: "hidden",
   maxHeight: 420,
   minWidth: 0,
   background: "#ffffff"
@@ -1433,8 +1396,9 @@ export const MTableShellStyle: React.CSSProperties = {
 
 export const MTableStyle: React.CSSProperties = {
   width: "100%",
-  minWidth: 520,
-  borderCollapse: "collapse"
+  tableLayout: "fixed",
+  borderCollapse: "collapse",
+  fontSize: 12
 };
 
 export const MTableHeaderStyle: React.CSSProperties = {
@@ -1442,18 +1406,24 @@ export const MTableHeaderStyle: React.CSSProperties = {
   top: 0,
   background: "#f8fafc",
   textAlign: "left",
-  padding: "10px 12px",
-  fontSize: 12,
+  padding: "6px 4px",
+  fontSize: 11,
   color: "#475569",
-  borderBottom: "1px solid rgba(148, 163, 184, 0.18)"
+  borderBottom: "1px solid rgba(148, 163, 184, 0.18)",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap"
 };
 
 export const MTableCellStyle: React.CSSProperties = {
-  padding: "10px 12px",
+  padding: "6px 4px",
   fontSize: 12,
   color: "#0f172a",
-  borderBottom: "1px solid rgba(226, 232, 240, 0.85)",
-  verticalAlign: "top"
+  borderBottom: "1px solid #e2e8f0",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  verticalAlign: "middle"
 };
 
 export const MInlinePathButtonStyle: React.CSSProperties = {
