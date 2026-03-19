@@ -94,6 +94,37 @@ export interface MRuleFlowInspectorProps {
   shadowRoot?: ShadowRoot;
 }
 
+/* ── Contextual help constants ─────────────────────────────────────── */
+
+const M_CONTRACT_SOURCE_DESCRIPTIONS: Record<string, string> = {
+  "rule": "Schema loaded from the registered rule code",
+  "flow": "Uses the flow's input schema",
+  "decision-table": "Schema from the linked decision table",
+  "api": "Schema fetched from external API endpoint",
+  "inline": "Schema defined manually in this node"
+};
+
+function MInfoIcon({ tooltip }: { tooltip: string }): React.JSX.Element {
+  return (
+    <span title={tooltip} style={{ display: "inline-flex", alignItems: "center", marginLeft: 4, cursor: "help", color: "#94a3b8" }}>
+      <svg width={14} height={14} viewBox="0 0 16 16" fill="currentColor">
+        <path d="M8 1a7 7 0 1 0 0 14A7 7 0 0 0 8 1zm0 2.5a1 1 0 1 1 0 2 1 1 0 0 1 0-2zM6.5 7h2v5h-2V7h1z" />
+      </svg>
+    </span>
+  );
+}
+
+const MInfoCardStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 8,
+  padding: "10px 14px",
+  background: "rgba(241, 245, 249, 0.7)",
+  border: "1px solid rgba(148, 163, 184, 0.2)",
+  borderRadius: 12,
+  boxShadow: "0 1px 3px rgba(0,0,0,0.04)"
+};
+
 export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.Element {
   const { selectedNode, contractLoadState, readOnly, inspectorTab, setInspectorTab, showSectionHeader = true } = props;
   const layer = selectedNode?.data.contractLayer;
@@ -208,11 +239,11 @@ function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
       </label>
       <label style={MLabelStyle}>
         Description
-        <textarea style={MTextareaStyle} value={String(selectedNode.data.description ?? "")} disabled={readOnly} onChange={(event) => props.onUpdateDescription(event.target.value)} />
+        <textarea style={MTextareaStyle} value={String(selectedNode.data.description ?? "")} disabled={readOnly} placeholder="Describe what this node does for documentation purposes" onChange={(event) => props.onUpdateDescription(event.target.value)} />
       </label>
       <div style={MContractGridStyle}>
         <label style={MLabelStyle}>
-          Contract Source
+          <span>Contract Source<MInfoIcon tooltip="Determines where this node's input/output schema comes from" /></span>
           <select
             style={MInputStyle}
             value={selectedNode.data.contractRef?.sourceType ?? MDefaultContractSourceType(selectedNode.data.nodeType)}
@@ -231,9 +262,12 @@ function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
             <option value="api">api</option>
             <option value="inline">inline</option>
           </select>
+          <span style={{ fontSize: 11, color: "#64748b", fontStyle: "italic", marginTop: 2, lineHeight: 1.4 }}>
+            {M_CONTRACT_SOURCE_DESCRIPTIONS[selectedNode.data.contractRef?.sourceType ?? MDefaultContractSourceType(selectedNode.data.nodeType)] ?? ""}
+          </span>
         </label>
         <label style={MLabelStyle}>
-          Contract Code
+          <span>Contract Code<MInfoIcon tooltip="The unique identifier used to look up the contract" /></span>
           <input
             style={MInputStyle}
             value={selectedNode.data.contractRef?.sourceCode ?? ""}
@@ -248,9 +282,13 @@ function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
           />
         </label>
       </div>
-      <div style={MMetadataCardStyle}>
-        <div><strong>Order:</strong> {selectedNode.data.order ?? "n/a"}</div>
+      <div style={MInfoCardStyle}>
+        <div style={{ display: "flex", alignItems: "center" }}>
+          <span style={{ marginRight: 4 }}>&#x1F4CB;</span>
+          <strong>Order:</strong>&nbsp;{selectedNode.data.order ?? "n/a"}
+        </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ marginRight: 4 }}>&#x1F517;</span>
           <strong>Depends On:</strong>
           {dependsOn.length === 0 ? <span>none</span> : dependsOn.map((item) => (
             <button key={item} type="button" data-testid={`depends-chip-${item}`} style={MDependencyChipButtonStyle} onClick={() => props.onSelectNodeByRuleCode(item)}>
@@ -476,11 +514,11 @@ function MConditionConfigEditor({
   return (
     <div style={{ display: "grid", gap: 10 }}>
       <label style={MLabelStyle}>
-        Success Label
+        <span>Success Label<MInfoIcon tooltip="Shown on output edges when this condition evaluates to true" /></span>
         <input style={MInputStyle} value={normalized.successLabel} disabled={readOnly} onChange={(event) => onChange({ ...normalized, successLabel: event.target.value })} />
       </label>
       <label style={MLabelStyle}>
-        Failure Label
+        <span>Failure Label<MInfoIcon tooltip="Shown on output edges when this condition evaluates to false" /></span>
         <input style={MInputStyle} value={normalized.failureLabel} disabled={readOnly} onChange={(event) => onChange({ ...normalized, failureLabel: event.target.value })} />
       </label>
       <label style={MLabelStyle}>
