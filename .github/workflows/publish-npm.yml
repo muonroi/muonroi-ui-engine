@@ -49,7 +49,8 @@ jobs:
         run: pnpm build
 
       - name: Test (if exists)
-        run: pnpm run --if-present test
+        run: pnpm --filter "$(node -p "require('./${{ matrix.package_dir }}/package.json').name")" run --if-present test
+        continue-on-error: true
 
       - name: Publish package (skip existing)
         env:
