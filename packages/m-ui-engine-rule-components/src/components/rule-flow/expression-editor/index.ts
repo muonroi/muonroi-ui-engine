@@ -8,3 +8,7 @@ export {
   mExpressionEditorExtensions,
   mExpressionEditorDarkExtensions
 } from "./codemirror-theme.js";
+export { mGetLanguageExtension } from "./languages.js";
+export { feelLanguage } from "./lang-feel.js";
+export { liquidLanguage } from "./lang-liquid.js";
+export { scribanLanguage } from "./lang-scriban.js";
