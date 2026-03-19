@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useRef } from "react";
+import type { Extension } from "@codemirror/state";
 import type {
   MContractValidationIssue,
   MDecisionTableModel,
@@ -25,6 +26,7 @@ import {
   M_NODE_TITLES,
   type MInspectorTab
 } from "./rule-flow-helpers.js";
+import { MExpressionEditor, mCreateFeelAutocomplete, mCreateFeelLinter, MFeelFunctionBrowser } from "./expression-editor/index.js";
 
 export type MContractLoadState =
   | { status: "idle" }
@@ -87,6 +89,8 @@ export interface MRuleFlowInspectorProps {
   showSectionHeader?: boolean;
   connectorCatalog?: MConnectorMetadata[];
   onUpdateConnectorConfig?: (config: MRuleFlowConnectorConfig) => void;
+  onSetInsertRef?: (ref: { insert: (text: string) => void }) => void;
+  shadowRoot?: ShadowRoot;
 }
 
 export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.Element {
@@ -158,6 +162,8 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
               apiBaseUrl={props.apiBaseUrl}
               onChangeLanguage={props.onUpdateExpressionLanguage}
               onChangeBody={props.onUpdateExpressionBody}
+              onInsertRef={props.onSetInsertRef}
+              shadowRoot={props.shadowRoot}
             />
           ) : null}
 
@@ -324,7 +330,9 @@ function MExpressionTab({
   readOnly,
   apiBaseUrl,
   onChangeLanguage,
-  onChangeBody
+  onChangeBody,
+  onInsertRef,
+  shadowRoot
 }: {
   nodeType: MRuleFlowNodeType;
   expression: { language: MRuleFlowExpressionLanguage; body: string };
@@ -335,7 +343,10 @@ function MExpressionTab({
   apiBaseUrl?: string;
   onChangeLanguage: (value: MRuleFlowExpressionLanguage) => void;
   onChangeBody: (value: string) => void;
+  onInsertRef?: (ref: { insert: (text: string) => void }) => void;
+  shadowRoot?: ShadowRoot;
 }): React.JSX.Element {
+  const insertRef = useRef<{ insert: (text: string) => void } | null>(null);
   const preview = (nodeType === "liquid" || expression.language === "liquid")
     ? MRenderLiquidPreview(expression.body, upstreamScope?.fields ?? [], liquidOutput ?? "json")
     : "";
@@ -398,13 +409,38 @@ function MExpressionTab({
               <option value="plain-text">Plain Text</option>
             </select>
           </label>
-          <label style={MLabelStyle}>
-            {expression.language === "liquid" ? "Liquid Template" : "Expression"}
-            <textarea style={{ ...MTextareaStyle, minHeight: 180 }} value={expression.body} disabled={readOnly} onChange={(event) => onChangeBody(event.target.value)} />
-          </label>
+          {(() => {
+            const flatFields = MFlattenContractFields(upstreamScope?.fields ?? []);
+            const extraExtensions: Extension[] = [];
+            if (expression.language === "feel") {
+              extraExtensions.push(mCreateFeelAutocomplete(flatFields));
+              extraExtensions.push(mCreateFeelLinter(flatFields));
+            }
+            return (
+              <>
+                <div style={MLabelStyle}>
+                  {expression.language === "liquid" ? "Liquid Template" : "Expression"}
+                  <MExpressionEditor
+                    value={expression.body}
+                    language={expression.language}
+                    readOnly={readOnly}
+                    onChange={onChangeBody}
+                    onInsertToken={(ref) => { insertRef.current = ref; onInsertRef?.(ref); }}
+                    extensions={extraExtensions}
+                    minHeight={180}
+                    root={shadowRoot}
+                  />
+                </div>
+                <MFeelFunctionBrowser
+                  visible={expression.language === "feel"}
+                  onInsert={(template) => insertRef.current?.insert(template)}
+                />
+              </>
+            );
+          })()}
           <div style={MExpressionHintStyle}>
             <strong>Authoring hints</strong>
-            <span>Click any field in Input Scope or Output Contract to insert its path into the current FEEL/Liquid expression.</span>
+            <span>Type '.' after a field name or press Ctrl+Space for autocomplete. Click any field in Input Scope to insert at cursor.</span>
             {apiBaseUrl ? <span>Contract API: {apiBaseUrl}</span> : null}
           </div>
           {(nodeType === "liquid" || expression.language === "liquid") ? (
