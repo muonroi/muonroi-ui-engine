@@ -1,4 +1,5 @@
 ﻿import { LitElement, html, unsafeCSS } from "lit";
+import { MuBaseElement } from "../shared/mu-base-element.js";
 import { customElement, property, state } from "lit/decorators.js";
 import type { MDecisionTableColumn } from "../../models.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
@@ -6,7 +7,7 @@ import tailwindStyles from "../../styles/tailwind.css?inline";
 type ColumnKind = "input" | "output";
 
 @customElement("mu-dt-header-row")
-export class MuDtHeaderRow extends LitElement {
+export class MuDtHeaderRow extends MuBaseElement {
   static styles = [unsafeCSS(tailwindStyles)];
 
   @property({ attribute: false })

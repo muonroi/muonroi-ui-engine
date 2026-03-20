@@ -1,9 +1,10 @@
 ﻿import { LitElement, html, unsafeCSS } from "lit";
+import { MuBaseElement } from "../shared/mu-base-element.js";
 import { customElement, property, state } from "lit/decorators.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
 
 @customElement("mu-nrules-condition")
-export class MuNrulesCondition extends LitElement {
+export class MuNrulesCondition extends MuBaseElement {
   static styles = [unsafeCSS(tailwindStyles)];
 
   @property({ type: String })
