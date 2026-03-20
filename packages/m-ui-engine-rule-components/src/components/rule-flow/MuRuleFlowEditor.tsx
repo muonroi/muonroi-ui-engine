@@ -150,6 +150,20 @@ const M_EDGE_TYPE_HINTS: Record<MRuleFlowEdgeType, string> = {
   "on-error": "Continue only when the source node threw an exception."
 };
 
+// Static oklch values for SVG fill — CSS vars cannot be resolved inside SVG fill attributes
+const M_EDGE_LABEL_FILL: Record<string, string> = {
+  always:     "oklch(50% 0.014 255)",  // neutral blue-gray
+  "on-true":  "oklch(50% 0.16 150)",  // green
+  "on-false": "oklch(51% 0.23 25)",   // red
+  "on-error": "oklch(60% 0.17 70)",   // amber
+};
+const M_EDGE_LABEL_FILL_DARK: Record<string, string> = {
+  always:     "oklch(62% 0.01 255)",
+  "on-true":  "oklch(60% 0.14 150)",
+  "on-false": "oklch(60% 0.20 25)",
+  "on-error": "oklch(66% 0.15 70)",
+};
+
 function MNodeContextSubtitle(data: MCanvasNodeData): string | null {
   if (data.nodeType === "condition" && data.conditionConfig?.successLabel) {
     return `Pass: ${data.conditionConfig.successLabel} / Fail: ${data.conditionConfig.failureLabel ?? "—"}`;
@@ -366,16 +380,18 @@ export function MuRuleFlowEditor({
 
   function MStyleEdges(rawEdges: Edge[]): Edge[] {
     const colors = theme === "dark" ? M_EDGE_COLORS_DARK : M_EDGE_COLORS;
+    const fills = theme === "dark" ? M_EDGE_LABEL_FILL_DARK : M_EDGE_LABEL_FILL;
     return rawEdges.map((edge) => {
       const edgeType = (edge.data as { edgeType?: string } | undefined)?.edgeType ?? "always";
       const color = colors[edgeType as keyof typeof colors] ?? colors.always;
+      const fill = fills[edgeType] ?? fills.always;
       return {
         ...edge,
         style: { stroke: color, strokeWidth: 2 },
         labelStyle: { fill: color, fontWeight: 600, fontSize: 11 },
-        labelBgStyle: { fill: MGetThemeTokens(theme as MFlowTheme).edgeLabelBg, fillOpacity: 0.92 },
-        labelBgPadding: [6, 4] as [number, number],
-        labelBgBorderRadius: 8
+        labelBgStyle: { fill, fillOpacity: 0.12, stroke: fill, strokeOpacity: 0.25 },
+        labelBgPadding: [8, 5] as [number, number],
+        labelBgBorderRadius: 999,
       };
     });
   }
