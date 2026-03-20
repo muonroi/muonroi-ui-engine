@@ -174,6 +174,36 @@ function MNodeContextSubtitle(data: MCanvasNodeData): string | null {
   return null;
 }
 
+interface MStatusAnnouncerProps {
+  politeMessage: string;
+  assertiveMessage: string;
+}
+
+/** Renders two visually-hidden aria-live regions for screen reader announcements. */
+function MStatusAnnouncer({ politeMessage, assertiveMessage }: MStatusAnnouncerProps): React.JSX.Element {
+  const MHiddenStyle: React.CSSProperties = {
+    position: "absolute",
+    width: 1,
+    height: 1,
+    padding: 0,
+    margin: -1,
+    overflow: "hidden",
+    clip: "rect(0,0,0,0)",
+    whiteSpace: "nowrap",
+    border: 0
+  };
+  return (
+    <>
+      <div role="status" aria-live="polite" aria-atomic="true" style={MHiddenStyle}>
+        {politeMessage}
+      </div>
+      <div role="alert" aria-live="assertive" aria-atomic="true" style={MHiddenStyle}>
+        {assertiveMessage}
+      </div>
+    </>
+  );
+}
+
 function MRuleFlowNodeCard({ data, selected }: { data: MCanvasNodeData; selected?: boolean }): React.JSX.Element {
   const accent = M_NODE_ACCENTS[data.nodeType];
   const tokens = MGetThemeTokens(data._theme ?? "light");
@@ -195,6 +225,7 @@ function MRuleFlowNodeCard({ data, selected }: { data: MCanvasNodeData; selected
         borderLeft: `8px solid ${accent}`,
         borderRadius: data.nodeType === "end" ? 999 : data.nodeType === "condition" ? 24 : 18
       }}
+      aria-label={`${M_NODE_TITLES[data.nodeType]} node: ${data.label}`}
     >
       <Handle type="target" position={Position.Left} />
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -363,6 +394,8 @@ export function MuRuleFlowEditor({
   const [catalogGroups, setCatalogGroups] = useState<MRuleCatalogGroup[]>([]);
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [publishConfirmState, setPublishConfirmState] = useState<MPublishConfirmState | null>(null);
+  const [mPoliteAnnouncement, setPoliteAnnouncement] = useState<string>("");
+  const [mAssertiveAnnouncement, setAssertiveAnnouncement] = useState<string>("");
   const metadataRef = useRef(history.present.metadata);
   const lastGraphSignatureRef = useRef(MCreateRuleFlowGraphSignature(history.present));
   const [viewportSyncToken, setViewportSyncToken] = useState(0);
@@ -1206,8 +1239,10 @@ export function MuRuleFlowEditor({
     setAuthoringVersion((current) => current + 1);
     if (validation.isValid) {
       setContractLoadState({ status: "ready", title: `Valid — ${validation.issues.filter((i) => i.severity === "warning").length} warning(s)` });
+      setPoliteAnnouncement(`Validation passed with ${validation.issues.filter((i: { severity: string }) => i.severity === "warning").length} warning(s).`);
     } else {
       setContractLoadState({ status: "error", message: `${validation.issues.filter((i) => i.severity === "error").length} error(s) found.` });
+      setPoliteAnnouncement(`Validation complete: ${validation.issues.filter((i: { severity: string }) => i.severity === "error").length} error(s), ${validation.issues.filter((i: { severity: string }) => i.severity === "warning").length} warning(s).`);
     }
   };
   const handlePublishClick = () => {
@@ -1220,6 +1255,7 @@ export function MuRuleFlowEditor({
     setAuthoringVersion((current) => current + 1);
     if (!validation.isValid) {
       setContractLoadState({ status: "error", message: "Publish blocked because one or more nodes still have contract validation errors." });
+      setAssertiveAnnouncement("Publish blocked: one or more nodes still have contract validation errors.");
       return;
     }
     setPublishConfirmState({
@@ -1700,6 +1736,7 @@ export function MuRuleFlowEditor({
 
   return (
     <ReactFlowProvider>
+      <MStatusAnnouncer politeMessage={mPoliteAnnouncement} assertiveMessage={mAssertiveAnnouncement} />
       {showHeader ? (
         <header style={{ ...MHeaderBarStyle, background: tokens.sidebarBg, borderBottom: tokens.sidebarBorder, color: tokens.textPrimary }}>
           <div style={{ display: "flex", alignItems: "center", gap: "var(--mu-space-sm)" }}>
@@ -2073,12 +2110,14 @@ export function MuRuleFlowEditor({
                 await onPublish?.(publishConfirmState.graph);
                 setPublishConfirmState(null);
                 setContractLoadState({ status: "ready", title: "Published" });
+                setPoliteAnnouncement("Rule published successfully.");
               } catch (error) {
                 setPublishConfirmState(null);
                 setContractLoadState({
                   status: "error",
                   message: (error as Error).message || "Rule Studio publish failed."
                 });
+                setAssertiveAnnouncement(`Publish failed: ${(error as Error).message || "Unknown error"}`);
               }
             })();
           }}
