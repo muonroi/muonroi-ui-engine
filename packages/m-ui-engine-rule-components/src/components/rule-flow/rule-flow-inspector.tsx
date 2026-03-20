@@ -139,9 +139,16 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
 
       {selectedNode ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-sm)", minHeight: 0 }}>
-          <div style={MInspectorTabsStyle}>
+          <div role="tablist" aria-label="Node inspector sections" style={MInspectorTabsStyle}>
             {MAvailableInspectorTabs(selectedNode.data.nodeType).map((tab) => (
-              <button key={tab} type="button" style={MInspectorTabButtonStyle(tab === inspectorTab)} onClick={() => setInspectorTab(tab)}>
+              <button
+                key={tab}
+                role="tab"
+                aria-selected={tab === inspectorTab}
+                type="button"
+                style={MInspectorTabButtonStyle(tab === inspectorTab)}
+                onClick={() => setInspectorTab(tab)}
+              >
                 {MInspectorTabTitle(tab)}
               </button>
             ))}
