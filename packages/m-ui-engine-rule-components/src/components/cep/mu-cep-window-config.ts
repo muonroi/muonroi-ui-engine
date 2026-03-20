@@ -1,4 +1,5 @@
 import { LitElement, html, unsafeCSS } from "lit";
+import { MuBaseElement } from "../shared/mu-base-element.js";
 import { customElement, property, state } from "lit/decorators.js";
 import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
@@ -6,7 +7,7 @@ import tailwindStyles from "../../styles/tailwind.css?inline";
 const M_FEATURE_KEY = "cep-window-config";
 
 @customElement("mu-cep-window-config")
-export class MuCepWindowConfig extends LitElement {
+export class MuCepWindowConfig extends MuBaseElement {
   static styles = [unsafeCSS(tailwindStyles)];
 
   @property({ type: String, attribute: "window-types" })

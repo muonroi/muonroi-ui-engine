@@ -1,9 +1,10 @@
 ﻿import { LitElement, html, unsafeCSS } from "lit";
+import { MuBaseElement } from "./mu-base-element.js";
 import { customElement, property } from "lit/decorators.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
 
 @customElement("mu-upgrade-prompt")
-export class MuUpgradePrompt extends LitElement {
+export class MuUpgradePrompt extends MuBaseElement {
   static styles = [unsafeCSS(tailwindStyles)];
 
   @property({ type: String, attribute: "required-tier" })

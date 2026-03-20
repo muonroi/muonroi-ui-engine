@@ -1,4 +1,5 @@
 import { LitElement, html, unsafeCSS, type TemplateResult } from "lit";
+import { MuBaseElement } from "./mu-base-element.js";
 import { customElement, property, state } from "lit/decorators.js";
 import type {
   MUiEngineAction,
@@ -21,7 +22,7 @@ interface MUiSchemaHashPayload {
 const M_FEATURE_KEY = "ui-engine-app";
 
 @customElement("mu-ui-engine-app")
-export class MuUiEngineApp extends LitElement {
+export class MuUiEngineApp extends MuBaseElement {
   static styles = [unsafeCSS(tailwindStyles)];
 
   @property({ type: String, attribute: "title" })

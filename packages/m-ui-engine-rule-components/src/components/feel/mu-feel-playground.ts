@@ -1,4 +1,5 @@
 import { LitElement, html, unsafeCSS } from "lit";
+import { MuBaseElement } from "../shared/mu-base-element.js";
 import { customElement, property, state } from "lit/decorators.js";
 import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import { MFeelService } from "../../services/feel-service.js";
@@ -7,7 +8,7 @@ import tailwindStyles from "../../styles/tailwind.css?inline";
 const M_FEATURE_KEY = "feel-playground";
 
 @customElement("mu-feel-playground")
-export class MuFeelPlayground extends LitElement {
+export class MuFeelPlayground extends MuBaseElement {
   static styles = [unsafeCSS(tailwindStyles)];
 
   @property({ type: String, attribute: "evaluate-endpoint" })
