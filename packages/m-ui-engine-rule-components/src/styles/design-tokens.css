@@ -93,6 +93,14 @@
   --mu-shadow-overlay: 0 18px 40px oklch(20% 0.015 255 / 0.12);
   --mu-shadow-dialog: 0 24px 60px oklch(20% 0.015 255 / 0.22);
   --mu-shadow-sidebar: 0 12px 30px oklch(20% 0.015 255 / 0.06);
+
+  /* === Spacing (8px grid) === */
+  --mu-space-xs: 4px;
+  --mu-space-sm: 8px;
+  --mu-space-md: 16px;
+  --mu-space-lg: 24px;
+  --mu-space-xl: 32px;
+  --mu-space-2xl: 48px;
 }
 
 /* ============================================================
