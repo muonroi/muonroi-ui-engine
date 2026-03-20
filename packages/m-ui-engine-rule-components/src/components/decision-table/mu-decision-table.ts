@@ -462,14 +462,14 @@ export class MuDecisionTable extends LitElement {
         <header class="flex flex-wrap items-center gap-2">
           <h3 class="text-lg font-semibold">${this.mTable.name}</h3>
           <mu-dt-hit-policy-selector .value=${this.mTable.hitPolicy} @policy-change=${this.MHandlePolicyChange}></mu-dt-hit-policy-selector>
-          <button aria-label="Add new row to decision table" class="rounded bg-[var(--color-mu-primary)] px-3 py-1 text-sm text-white" @click=${this.MAddRow}>Add Row</button>
-          <button aria-label="Add input column" class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MAddInputColumn}>Add Input</button>
-          <button aria-label="Add output column" class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MAddOutputColumn}>Add Output</button>
-          <button aria-label="Validate decision table" class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MValidate}>Validate</button>
-          <button aria-label="Save decision table" class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MSave}>Save</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${() => this.MExport("json")}>Export JSON</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${() => this.MExport("excel")}>Export Excel</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${() => this.MExport("dmn")}>Export DMN</button>
+          <button aria-label="Add new row to decision table" class="inline-flex min-h-[44px] items-center justify-center rounded bg-[var(--color-mu-primary)] px-3 py-2 text-sm text-white" @click=${this.MAddRow}>Add Row</button>
+          <button aria-label="Add input column" class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${this.MAddInputColumn}>Add Input</button>
+          <button aria-label="Add output column" class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${this.MAddOutputColumn}>Add Output</button>
+          <button aria-label="Validate decision table" class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${this.MValidate}>Validate</button>
+          <button aria-label="Save decision table" class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${this.MSave}>Save</button>
+          <button class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${() => this.MExport("json")}>Export JSON</button>
+          <button class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${() => this.MExport("excel")}>Export Excel</button>
+          <button class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${() => this.MExport("dmn")}>Export DMN</button>
         </header>
 
         <mu-dt-header-row
@@ -515,7 +515,7 @@ export class MuDecisionTable extends LitElement {
                   <h4 class="font-semibold">Version diff</h4>
                   ${this.mDiffLoading ? html`<span class="animate-pulse text-xs text-zinc-400">Loading...</span>` : html``}
                   ${this.mDiffError ? html`<span class="text-xs text-red-500">${this.mDiffError}</span>` : html``}
-                  <button class="rounded border border-[var(--color-mu-border)] px-2 py-1 text-xs" @click=${this.MLoadHistory}>
+                  <button class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-2 py-2 text-xs" @click=${this.MLoadHistory}>
                     Reload history
                   </button>
                   <label class="text-xs">
