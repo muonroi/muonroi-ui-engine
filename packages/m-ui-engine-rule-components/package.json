@@ -32,7 +32,6 @@
     "@dnd-kit/sortable": "^8.0.0",
     "@lezer/highlight": "^1.2.3",
     "@microsoft/signalr": "^8.0.0",
-    "@muonroi/ui-engine-core": "workspace:*",
     "@tanstack/virtual-core": "^3.10.0",
     "@xyflow/react": "^12.9.3",
     "lit": "^3.2.0",
@@ -41,7 +40,11 @@
     "react-dom": "^18.3.1",
     "zustand": "^5.0.0"
   },
+  "peerDependencies": {
+    "@muonroi/ui-engine-core": ">=0.1.0"
+  },
   "devDependencies": {
+    "@muonroi/ui-engine-core": "workspace:*",
     "@tailwindcss/postcss": "^4.1.11",
     "@testing-library/react": "^16.3.0",
     "@types/react": "^18.3.12",
