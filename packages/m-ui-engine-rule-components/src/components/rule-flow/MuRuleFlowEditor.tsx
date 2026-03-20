@@ -1282,9 +1282,9 @@ export function MuRuleFlowEditor({
           ) : null}
         </div>
       ) : null}
-      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 4 }}>
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "var(--mu-space-xs)" }}>
         {/* History group */}
-        <div data-testid="toolbar-group-history" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div data-testid="toolbar-group-history" style={{ display: "flex", alignItems: "center", gap: "var(--mu-space-xs)" }}>
           <button type="button" onClick={() => toggleGroup("history")}
             style={MToolbarGroupToggleStyle(tokens)}
             title={isGroupCollapsed("history") ? "Expand History" : "Collapse History"}>
@@ -1299,10 +1299,10 @@ export function MuRuleFlowEditor({
         </div>
 
         {/* Divider */}
-        <div style={{ width: 1, height: 24, background: tokens.sidebarBorder, margin: "0 8px", flexShrink: 0 }} />
+        <div style={{ width: 1, height: 24, background: tokens.sidebarBorder, margin: "0 var(--mu-space-sm)", flexShrink: 0 }} />
 
         {/* Canvas group */}
-        <div data-testid="toolbar-group-canvas" style={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <div data-testid="toolbar-group-canvas" style={{ display: "flex", alignItems: "center", gap: "var(--mu-space-xs)" }}>
           <button type="button" onClick={() => toggleGroup("canvas")}
             style={MToolbarGroupToggleStyle(tokens)}
             title={isGroupCollapsed("canvas") ? "Expand Canvas" : "Collapse Canvas"}>
@@ -1320,7 +1320,7 @@ export function MuRuleFlowEditor({
         </div>
 
         {/* Divider */}
-        <div style={{ width: 1, height: 24, background: tokens.sidebarBorder, margin: "0 8px", flexShrink: 0 }} />
+        <div style={{ width: 1, height: 24, background: tokens.sidebarBorder, margin: "0 var(--mu-space-sm)", flexShrink: 0 }} />
 
         {/* Workflow group — kebab overflow when narrow */}
         {toolbarOverflow ? (
@@ -1800,8 +1800,8 @@ export function MuRuleFlowEditor({
           overflow: sidebarCollapsed ? "hidden" : "auto",
           position: "relative"
         }}>
-          <div style={{ padding: sidebarCollapsed ? "12px 8px 8px" : "12px 14px 8px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            {!sidebarCollapsed && <strong style={{ fontSize: 13, color: tokens.textPrimary }}>Node Library</strong>}
+          <div style={{ padding: "var(--mu-space-sm)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            {!sidebarCollapsed && <strong style={{ fontSize: "var(--mu-text-sm)", fontWeight: "var(--mu-font-semibold)", color: tokens.textPrimary }}>Node Library</strong>}
             <button
               type="button"
               title={sidebarCollapsed ? "Expand Node Library" : "Collapse Node Library"}
@@ -2540,7 +2540,7 @@ function MRuleFlowEdgeInspector({
 
 const MEditorShellStyle: React.CSSProperties = {
   display: "grid",
-  gap: 12,
+  gap: "var(--mu-space-sm)",
   minHeight: 0,
   height: "100%",
   width: "100%",
@@ -2550,8 +2550,8 @@ const MEditorShellStyle: React.CSSProperties = {
 const MSidebarStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 12,
-  padding: 16,
+  gap: "var(--mu-space-sm)",
+  padding: "var(--mu-space-md)",
   borderRadius: 22,
   border: "1px solid var(--mu-border-subtle)",
   minHeight: 0,
@@ -2560,12 +2560,12 @@ const MSidebarStyle: React.CSSProperties = {
 const MSidebarTopStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 12
+  gap: "var(--mu-space-sm)"
 };
 const MSidebarActionsPanelStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 10,
+  gap: "var(--mu-space-sm)",
   minHeight: 0
 };
 const MSidebarInspectorPanelStyle: React.CSSProperties = {
@@ -2613,7 +2613,7 @@ const MValidationSummaryStyle = (hasErrors: boolean): React.CSSProperties => ({
 const MSidebarSectionBodyStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 12,
+  gap: "var(--mu-space-sm)",
   minHeight: 0,
   height: "100%",
   overflow: "auto",
