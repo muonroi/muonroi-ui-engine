@@ -52,13 +52,13 @@ importers:
       '@lit/react':
         specifier: ^1.0.8
         version: 1.0.8(@types/react@18.3.28)
-      '@muonroi/ui-engine-core':
-        specifier: workspace:*
-        version: link:../m-ui-engine-core
       react:
         specifier: '>=18'
         version: 19.2.4
     devDependencies:
+      '@muonroi/ui-engine-core':
+        specifier: workspace:*
+        version: link:../m-ui-engine-core
       '@muonroi/ui-engine-rule-components':
         specifier: workspace:*
         version: link:../m-ui-engine-rule-components
@@ -104,9 +104,6 @@ importers:
       '@microsoft/signalr':
         specifier: ^8.0.0
         version: 8.0.17
-      '@muonroi/ui-engine-core':
-        specifier: workspace:*
-        version: link:../m-ui-engine-core
       '@tanstack/virtual-core':
         specifier: ^3.10.0
         version: 3.13.19
@@ -129,6 +126,9 @@ importers:
         specifier: ^5.0.0
         version: 5.0.11(@types/react@18.3.28)(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))
     devDependencies:
+      '@muonroi/ui-engine-core':
+        specifier: workspace:*
+        version: link:../m-ui-engine-core
       '@tailwindcss/postcss':
         specifier: ^4.1.11
         version: 4.2.1
