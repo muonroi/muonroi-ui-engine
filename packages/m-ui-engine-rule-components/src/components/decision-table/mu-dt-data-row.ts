@@ -85,7 +85,7 @@ export class MuDtDataRow extends LitElement {
         <button
           role="gridcell"
           aria-label=${"Drag to reorder row " + (this.rowIndex + 1)}
-          class="flex cursor-grab items-center justify-center rounded border border-[var(--color-mu-border)] bg-zinc-50 text-xs text-zinc-500"
+          class="sticky left-0 z-[5] flex cursor-grab items-center justify-center rounded border border-[var(--color-mu-border)] bg-[var(--color-mu-surface)] text-xs text-zinc-500"
           style="min-height: 40px; padding: var(--mu-space-xs) var(--mu-space-sm);"
           draggable="true"
           @dragstart=${this.MOnDragStart}
