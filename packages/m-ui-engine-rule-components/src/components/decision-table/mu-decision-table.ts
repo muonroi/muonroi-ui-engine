@@ -451,7 +451,7 @@ export class MuDecisionTable extends LitElement {
     }
 
     if (!this.mTable) {
-      return html`<div class="rounded-lg border border-dashed border-[var(--color-mu-border)] p-6 text-sm text-zinc-500">Loading decision table...</div>`;
+      return html`<div class="rounded-lg border border-dashed border-[var(--color-mu-border)] p-6 text-sm text-[var(--mu-text-muted)]">Loading decision table...</div>`;
     }
 
     const errorColumnIds = this.MResolveErrorColumnIds();
@@ -486,18 +486,18 @@ export class MuDecisionTable extends LitElement {
             @delete-column=${this.MDeleteColumn}
           ></mu-dt-column-config>
 
-          <aside class="space-y-2 rounded border border-[var(--color-mu-border)] bg-white p-3 text-sm">
+          <aside class="space-y-2 rounded border border-[var(--color-mu-border)] bg-[var(--mu-surface-base)] p-3 text-sm">
             <h4 class="font-semibold">Validation panel</h4>
             <div>
-              <div class="text-xs font-medium text-zinc-600">Errors</div>
-              <ul class="list-disc pl-5 text-xs text-red-700">
+              <div class="text-xs font-medium text-[var(--mu-text-secondary)]">Errors</div>
+              <ul class="list-disc pl-5 text-xs text-[var(--mu-color-error-text)]">
                 ${this.mValidationErrors.length === 0
                   ? html`<li>None</li>`
                   : this.mValidationErrors.map((error) => html`<li>${error}</li>`)}
               </ul>
             </div>
             <div>
-              <div class="text-xs font-medium text-zinc-600">Warnings (gaps)</div>
+              <div class="text-xs font-medium text-[var(--mu-text-secondary)]">Warnings (gaps)</div>
               <ul class="list-disc pl-5 text-xs text-amber-700">
                 ${this.mValidationWarnings.length === 0
                   ? html`<li>None</li>`
@@ -510,11 +510,11 @@ export class MuDecisionTable extends LitElement {
         ${!this.enableVersionDiff
           ? html``
           : html`
-              <section class="space-y-2 rounded border border-[var(--color-mu-border)] bg-white p-3">
+              <section class="space-y-2 rounded border border-[var(--color-mu-border)] bg-[var(--mu-surface-base)] p-3">
                 <header class="flex flex-wrap items-center gap-2">
                   <h4 class="font-semibold">Version diff</h4>
-                  ${this.mDiffLoading ? html`<span class="animate-pulse text-xs text-zinc-400">Loading...</span>` : html``}
-                  ${this.mDiffError ? html`<span class="text-xs text-red-500">${this.mDiffError}</span>` : html``}
+                  ${this.mDiffLoading ? html`<span class="animate-pulse text-xs text-[var(--mu-text-placeholder)]">Loading...</span>` : html``}
+                  ${this.mDiffError ? html`<span class="text-xs text-[var(--mu-color-error)]">${this.mDiffError}</span>` : html``}
                   <button class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-2 py-2 text-xs" @click=${this.MLoadHistory}>
                     Reload history
                   </button>
@@ -546,7 +546,7 @@ export class MuDecisionTable extends LitElement {
                   .rightTable=${this.mRightTable}
                 ></mu-dt-version-diff>
                 ${this.mServerDiff
-                  ? html`<p class="text-xs text-zinc-500">
+                  ? html`<p class="text-xs text-[var(--mu-text-muted)]">
                       Server diff: ${this.mServerDiff.columnChanges.length} column changes,
                       ${this.mServerDiff.rowDiffs.length} row changes.
                     </p>`
