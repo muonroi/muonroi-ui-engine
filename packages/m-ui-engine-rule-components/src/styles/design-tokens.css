@@ -71,15 +71,17 @@
   --mu-color-info-border: oklch(55% 0.16 215 / 0.18);
   --mu-color-info-text: oklch(38% 0.14 215);
 
-  /* === Node type accents === */
-  --mu-node-trigger: oklch(55% 0.18 150);
-  --mu-node-condition: oklch(52% 0.26 285);
-  --mu-node-action: oklch(52% 0.23 255);
-  --mu-node-decision-table: oklch(59% 0.19 50);
-  --mu-node-sub-flow: oklch(55% 0.16 215);
-  --mu-node-liquid: oklch(52% 0.15 185);
-  --mu-node-connector: oklch(52% 0.24 305);
-  --mu-node-end: oklch(51% 0.23 25);
+  /* === Node type accent colors ===
+     trigger=blue  condition=amber  action=green
+     decision-table/sub-flow=purple  liquid=cyan  connector=violet  end=slate */
+  --mu-node-trigger: oklch(52% 0.23 255);        /* blue — was green */
+  --mu-node-condition: oklch(59% 0.19 50);       /* amber — was purple */
+  --mu-node-action: oklch(55% 0.18 150);         /* green — was blue */
+  --mu-node-decision-table: oklch(52% 0.26 285); /* purple — was amber */
+  --mu-node-sub-flow: oklch(49% 0.22 285);       /* purple shade — was teal */
+  --mu-node-liquid: oklch(52% 0.15 185);         /* cyan — unchanged */
+  --mu-node-connector: oklch(52% 0.24 305);      /* violet — unchanged */
+  --mu-node-end: oklch(50% 0.008 255);           /* slate — was red */
 
   /* === Edge routing === */
   --mu-edge-always: oklch(50% 0.014 255);
@@ -186,15 +188,17 @@
   --mu-color-info-border: oklch(55% 0.16 215 / 0.35);
   --mu-color-info-text: oklch(70% 0.14 215);
 
-  /* === Node type accents (remain vibrant in dark mode) === */
-  --mu-node-trigger: oklch(63% 0.18 150);
-  --mu-node-condition: oklch(60% 0.24 285);
-  --mu-node-action: oklch(60% 0.2 255);
-  --mu-node-decision-table: oklch(67% 0.2 50);
-  --mu-node-sub-flow: oklch(63% 0.15 215);
-  --mu-node-liquid: oklch(60% 0.14 185);
-  --mu-node-connector: oklch(62% 0.24 305);
-  --mu-node-end: oklch(67% 0.2 25);
+  /* === Node type accent colors (dark — lighter for readability on oklch(13%) canvas) ===
+     trigger=blue  condition=amber  action=green
+     decision-table/sub-flow=purple  liquid=cyan  connector=violet  end=slate */
+  --mu-node-trigger: oklch(62% 0.2 255);         /* blue lighter */
+  --mu-node-condition: oklch(66% 0.17 50);       /* amber lighter */
+  --mu-node-action: oklch(62% 0.16 150);         /* green lighter */
+  --mu-node-decision-table: oklch(60% 0.23 285); /* purple lighter */
+  --mu-node-sub-flow: oklch(58% 0.2 285);        /* purple shade lighter */
+  --mu-node-liquid: oklch(60% 0.14 185);         /* cyan lighter */
+  --mu-node-connector: oklch(60% 0.21 305);      /* violet lighter */
+  --mu-node-end: oklch(58% 0.01 255);            /* slate lighter */
 
   /* === Edge routing === */
   --mu-edge-always: oklch(68% 0.012 255);
