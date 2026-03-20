@@ -1070,6 +1070,64 @@ function MEffectiveInputTab({
   );
 }
 
+function MCollapsibleSection({
+  title,
+  count,
+  defaultExpanded,
+  headerRight,
+  children
+}: {
+  title: string;
+  count?: number;
+  defaultExpanded: boolean;
+  headerRight?: React.ReactNode;
+  children: React.ReactNode;
+}): React.JSX.Element {
+  const [expanded, setExpanded] = useState(defaultExpanded);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-xs)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setExpanded(!expanded)}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setExpanded(!expanded); } }}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            cursor: "pointer",
+            padding: "6px 8px",
+            borderRadius: 6,
+            userSelect: "none",
+            transition: "background-color 0.1s",
+            flex: 1,
+          }}
+        >
+          <span style={{ fontSize: 10, color: "var(--mu-text-muted)", width: 16, textAlign: "center" }}>
+            {expanded ? "\u25BC" : "\u25B6"}
+          </span>
+          <strong style={{ fontSize: 13, color: "var(--mu-text-label)" }}>{title}</strong>
+          {count !== undefined ? (
+            <span style={{
+              background: "var(--mu-border-subtle)",
+              padding: "2px 8px",
+              borderRadius: 10,
+              fontSize: 11,
+              color: "var(--mu-text-secondary)",
+              fontWeight: 600,
+            }}>
+              {count} field{count !== 1 ? "s" : ""}
+            </span>
+          ) : null}
+        </div>
+        {headerRight}
+      </div>
+      {expanded ? children : null}
+    </div>
+  );
+}
+
 function MOutputContractTab({
   nodeType,
   contract,
@@ -1087,8 +1145,6 @@ function MOutputContractTab({
   onInsert: (path: string) => void;
   onChange: (fields: MRuleFlowContractField[]) => void;
 }): React.JSX.Element {
-  const [autoExpanded, setAutoExpanded] = useState(false);
-
   // End node special case — Final Scope (unchanged)
   if (nodeType === "end") {
     return (
@@ -1150,16 +1206,14 @@ function MOutputContractTab({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* ── Section 1: Custom Output Fields ── */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-sm)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--mu-space-sm)", alignItems: "center" }}>
-          <div style={MSectionTitleStyle}>
-            <strong>Custom Output Fields</strong>
-            <span>User-defined fields with expressions</span>
-          </div>
-          {!readOnly && editable ? (
-            <button type="button" style={MActionButtonStyle(false)} onClick={addField}>Add Field</button>
-          ) : null}
-        </div>
+      <MCollapsibleSection
+        title="Custom Output Fields"
+        count={customFields.length}
+        defaultExpanded={true}
+        headerRight={!readOnly && editable ? (
+          <button type="button" style={MActionButtonStyle(false)} onClick={addField}>Add Field</button>
+        ) : undefined}
+      >
         {customFields.length === 0 ? (
           <MEmptyStateBox
             message="No custom output fields defined."
@@ -1240,53 +1294,20 @@ function MOutputContractTab({
             </table>
           </div>
         )}
-      </div>
+      </MCollapsibleSection>
 
       {/* ── Section 2: Auto-Generated Results (collapsed by default) ── */}
       {autoFields.length > 0 ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <div
-            role="button"
-            tabIndex={0}
-            onClick={() => setAutoExpanded(!autoExpanded)}
-            onKeyDown={(e) => { if (e.key === "Enter") setAutoExpanded(!autoExpanded); }}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              cursor: "pointer",
-              padding: "6px 8px",
-              borderRadius: 6,
-              userSelect: "none",
-              transition: "background-color 0.1s",
-            }}
-          >
-            <span style={{ fontSize: 10, color: "var(--mu-text-muted)", width: 16, textAlign: "center" }}>
-              {autoExpanded ? "\u25BC" : "\u25B6"}
-            </span>
-            <strong style={{ fontSize: 13, color: "var(--mu-text-label)" }}>Auto-Generated Results</strong>
-            <span style={{
-              background: "var(--mu-border-subtle)",
-              padding: "2px 8px",
-              borderRadius: 10,
-              fontSize: 11,
-              color: "var(--mu-text-secondary)",
-              fontWeight: 600,
-            }}>
-              {autoFields.length} field{autoFields.length !== 1 ? "s" : ""}
-            </span>
+        <MCollapsibleSection title="Auto-Generated Results" count={autoFields.length} defaultExpanded={false}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "4px 0" }}>
+            {autoFields.map((field, index) => (
+              <div key={`output-auto-${index}`} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 8px", fontSize: 12 }}>
+                <button type="button" style={{ ...MInlinePathButtonStyle, flex: 1, textAlign: "left" }} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
+                <MTypeBadge dataType={field.dataType} />
+              </div>
+            ))}
           </div>
-          {autoExpanded ? (
-            <div style={{ display: "flex", flexDirection: "column", gap: 2, padding: "4px 0" }}>
-              {autoFields.map((field, index) => (
-                <div key={`output-auto-${index}`} style={{ display: "flex", alignItems: "center", gap: 6, padding: "3px 8px", fontSize: 12 }}>
-                  <button type="button" style={{ ...MInlinePathButtonStyle, flex: 1, textAlign: "left" }} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
-                  <MTypeBadge dataType={field.dataType} />
-                </div>
-              ))}
-            </div>
-          ) : null}
-        </div>
+        </MCollapsibleSection>
       ) : null}
 
       {issues.length ? <MIssueList issues={issues.filter((issue) => issue.severity !== "info")} /> : null}
