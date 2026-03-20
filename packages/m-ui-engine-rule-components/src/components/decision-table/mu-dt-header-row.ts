@@ -50,10 +50,14 @@ export class MuDtHeaderRow extends LitElement {
   render() {
     return html`
       <div
+        role="row"
         class="sticky top-0 z-10 grid bg-[var(--color-mu-surface)] pb-2"
         style=${`grid-template-columns: 72px repeat(${this.inputColumns.length + this.outputColumns.length}, minmax(180px, 1fr)); gap: var(--mu-space-sm);`}
       >
         <div
+          role="columnheader"
+          scope="col"
+          aria-label="Row number"
           class="sticky left-0 z-20 flex items-center justify-center rounded border border-[var(--color-mu-border)] bg-zinc-100 text-xs font-semibold text-zinc-500"
           style="min-height: 40px; padding: var(--mu-space-xs) var(--mu-space-sm);"
         >
@@ -62,6 +66,9 @@ export class MuDtHeaderRow extends LitElement {
         ${this.inputColumns.map(
           (column, index) => html`
             <div
+              role="columnheader"
+              scope="col"
+              aria-label=${"Input: " + column.label}
               class="rounded border border-[var(--color-mu-border)] bg-blue-50 px-[var(--mu-space-sm)] py-[var(--mu-space-xs)] text-xs font-semibold uppercase tracking-wide"
               style="min-height: 40px; display: flex; align-items: center;"
               draggable="true"
@@ -76,6 +83,9 @@ export class MuDtHeaderRow extends LitElement {
         ${this.outputColumns.map(
           (column, index) => html`
             <div
+              role="columnheader"
+              scope="col"
+              aria-label=${"Output: " + column.label}
               class="rounded border border-[var(--color-mu-border)] bg-emerald-50 px-[var(--mu-space-sm)] py-[var(--mu-space-xs)] text-xs font-semibold uppercase tracking-wide"
               style="min-height: 40px; display: flex; align-items: center;"
               draggable="true"

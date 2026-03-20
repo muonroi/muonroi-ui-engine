@@ -420,7 +420,7 @@ export class MuDecisionTable extends LitElement {
     const bottomSpacer = Math.max(0, rows.length * rowHeight - topSpacer - visibleRows.length * rowHeight);
 
     return html`
-      <div class="max-h-[420px] overflow-auto" @scroll=${this.MOnScroll}>
+      <div role="grid" aria-label=${this.mTable?.name ?? "Decision table"} class="max-h-[420px] overflow-auto" @scroll=${this.MOnScroll}>
         <div style=${`height:${topSpacer}px`}></div>
         <div class="space-y-2">
           ${visibleRows.map(
@@ -462,11 +462,11 @@ export class MuDecisionTable extends LitElement {
         <header class="flex flex-wrap items-center gap-2">
           <h3 class="text-lg font-semibold">${this.mTable.name}</h3>
           <mu-dt-hit-policy-selector .value=${this.mTable.hitPolicy} @policy-change=${this.MHandlePolicyChange}></mu-dt-hit-policy-selector>
-          <button class="rounded bg-[var(--color-mu-primary)] px-3 py-1 text-sm text-white" @click=${this.MAddRow}>Add Row</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MAddInputColumn}>Add Input</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MAddOutputColumn}>Add Output</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MValidate}>Validate</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MSave}>Save</button>
+          <button aria-label="Add new row to decision table" class="rounded bg-[var(--color-mu-primary)] px-3 py-1 text-sm text-white" @click=${this.MAddRow}>Add Row</button>
+          <button aria-label="Add input column" class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MAddInputColumn}>Add Input</button>
+          <button aria-label="Add output column" class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MAddOutputColumn}>Add Output</button>
+          <button aria-label="Validate decision table" class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MValidate}>Validate</button>
+          <button aria-label="Save decision table" class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MSave}>Save</button>
           <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${() => this.MExport("json")}>Export JSON</button>
           <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${() => this.MExport("excel")}>Export Excel</button>
           <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${() => this.MExport("dmn")}>Export DMN</button>
