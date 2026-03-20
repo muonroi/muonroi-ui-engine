@@ -69,10 +69,6 @@ export interface MFlowThemeTokens {
   chevronBg: string;
   chevronColor: string;
   sectionDescColor: string;
-  tabActiveAlphaBorder: string;
-  tabActiveAlphaBg: string;
-  tabInactiveBorder: string;
-  tabInactiveBg: string;
   // Action buttons
   actionPrimaryBorder: string;
   actionPrimaryBg: string;
@@ -136,10 +132,6 @@ export const SHARED_TOKENS: MFlowThemeTokens = {
   chevronBg: "var(--mu-border-subtle)",
   chevronColor: "var(--mu-text-secondary)",
   sectionDescColor: "var(--mu-text-muted)",
-  tabActiveAlphaBorder: "40",
-  tabActiveAlphaBg: "14",
-  tabInactiveBorder: "1px solid var(--mu-border-subtle)",
-  tabInactiveBg: "var(--mu-surface-base)",
   hintBg: "var(--mu-surface-raised)",
   hintBorder: "1px solid var(--mu-border-subtle)",
   hintText: "var(--mu-text-label)",
