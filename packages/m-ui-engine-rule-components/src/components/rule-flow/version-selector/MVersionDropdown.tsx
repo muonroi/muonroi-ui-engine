@@ -156,6 +156,7 @@ export function MVersionDropdown({
               gap: 8,
               width: "100%",
               padding: "8px 12px",
+              minHeight: 44,  // RESP-04: minimum 44px touch target (WCAG 2.5.5)
               background: selectedVersion == null ? tokens.overlayItemSelectedBg : "transparent",
               border: "none",
               borderBottom: "1px solid rgba(148,163,184,0.12)",
@@ -189,6 +190,7 @@ export function MVersionDropdown({
                   gap: 8,
                   width: "100%",
                   padding: "7px 12px",
+                  minHeight: 44,  // RESP-04: minimum 44px touch target (WCAG 2.5.5)
                   background: isActiveVersion
                     ? "var(--mu-color-interactive-subtle)"
                     : isSelected
