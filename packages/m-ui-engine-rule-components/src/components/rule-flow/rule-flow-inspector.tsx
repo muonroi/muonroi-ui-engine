@@ -1433,7 +1433,10 @@ export const MTableShellStyle: React.CSSProperties = {
   borderRadius: 12,
   border: "1px solid var(--mu-border-subtle)",
   overflow: "hidden",
-  maxHeight: 420,
+  overflowY: "auto",
+  flex: "1 1 auto",
+  minHeight: 120,
+  maxHeight: "50vh",
   minWidth: 0,
   background: "var(--mu-surface-base)"
 };
@@ -1460,7 +1463,7 @@ export const MTableHeaderStyle: React.CSSProperties = {
 };
 
 export const MTableCellStyle: React.CSSProperties = {
-  padding: "6px 4px",
+  padding: "8px 6px",
   fontSize: 12,
   color: "var(--mu-text-primary)",
   borderBottom: "1px solid var(--mu-border-subtle)",
