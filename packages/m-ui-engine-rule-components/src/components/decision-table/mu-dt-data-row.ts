@@ -75,13 +75,14 @@ export class MuDtDataRow extends LitElement {
     const errorSet = new Set(this.errorColumnIds);
     return html`
       <div
-        class="grid gap-2"
-        style=${`grid-template-columns: 72px repeat(${this.inputColumns.length + this.outputColumns.length}, minmax(180px, 1fr));`}
+        class="grid"
+        style=${`grid-template-columns: 72px repeat(${this.inputColumns.length + this.outputColumns.length}, minmax(180px, 1fr)); gap: var(--mu-space-sm);`}
         @dragover=${this.MAllowDrop}
         @drop=${this.MOnDrop}
       >
         <button
           class="flex cursor-grab items-center justify-center rounded border border-[var(--color-mu-border)] bg-zinc-50 text-xs text-zinc-500"
+          style="min-height: 40px; padding: var(--mu-space-xs) var(--mu-space-sm);"
           draggable="true"
           @dragstart=${this.MOnDragStart}
         >
