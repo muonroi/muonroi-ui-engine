@@ -18,10 +18,10 @@
     "build": "npm run -w @muonroi/ui-engine-core build && tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@muonroi/ui-engine-core": "workspace:*",
     "@lit/react": "^1.0.8"
   },
   "peerDependencies": {
+    "@muonroi/ui-engine-core": ">=0.1.0",
     "@muonroi/ui-engine-rule-components": ">=0.1.0",
     "react": ">=18"
   },
@@ -31,6 +31,7 @@
     }
   },
   "devDependencies": {
+    "@muonroi/ui-engine-core": "workspace:*",
     "@muonroi/ui-engine-rule-components": "workspace:*",
     "@types/react": "^18.3.12"
   }
