@@ -202,6 +202,85 @@ export async function MLoadRuleEngineCustomElements(options?: MLoadRuleEngineCus
     mGetHeaders: options?.mGetHeaders
   });
   console.info("[muonroi-debug] runtime configured");
+
+  // Patch Shadow DOM :host tokens — LightningCSS (Vite 6+) strips :host
+  // selectors from CSS during dep pre-bundling. This observer patches
+  // mu-* custom elements after they connect to the DOM.
+  MPatchShadowDomTokens();
+}
+
+/**
+ * Patches mu-* Shadow DOM elements so design tokens (:host custom properties)
+ * are available even when LightningCSS strips :host selectors during Vite
+ * dependency pre-bundling.
+ *
+ * Uses MutationObserver to watch for mu-* elements added to the DOM,
+ * then injects :host{} rules cloned from :root{} rules in adoptedStyleSheets.
+ *
+ * @see https://github.com/parcel-bundler/lightningcss/issues/738
+ */
+const M_PATCHED_ROOTS = new WeakSet<ShadowRoot>();
+
+function MPatchShadowDomTokens(): void {
+  const patchElement = (el: Element) => {
+    const sr = el.shadowRoot;
+    if (!sr || M_PATCHED_ROOTS.has(sr)) return;
+
+    const sheets = sr.adoptedStyleSheets;
+    if (!sheets || sheets.length === 0) return;
+    const sheet = sheets[0];
+    const rules = sheet.cssRules;
+    if (!rules || rules.length === 0) return;
+
+    // Skip if :host already has --mu- tokens
+    for (let i = 0; i < rules.length; i++) {
+      if (rules[i].cssText.startsWith(":host") && rules[i].cssText.includes("--mu-surface-canvas")) {
+        M_PATCHED_ROOTS.add(sr);
+        return;
+      }
+    }
+
+    // Clone :root --mu- token blocks as :host rules
+    let injected = false;
+    for (let i = 0; i < rules.length; i++) {
+      const text = rules[i].cssText;
+      if (!text.includes("--mu-") || !text.startsWith(":root")) continue;
+      const match = text.match(/\{([^}]+)\}/);
+      if (match) {
+        try { sheet.insertRule(`:host{${match[1]}}`, rules.length); injected = true; } catch { /* ignore */ }
+      }
+    }
+    if (injected) M_PATCHED_ROOTS.add(sr);
+  };
+
+  const patchAll = () => {
+    document.querySelectorAll("mu-rule-flow-designer, mu-decision-table, mu-decision-table-list, mu-rule-trace-viewer, mu-rule-result-panel, mu-nrules-editor, mu-feel-playground, mu-rule-test-runner, mu-ui-engine-app, mu-dt-version-diff, mu-cep-window-config, mu-cep-event-stream, mu-quota-indicator, mu-schema-watcher, mu-upgrade-prompt")
+      .forEach(patchElement);
+  };
+
+  // Patch existing elements — defer to let Lit finish first render
+  setTimeout(patchAll, 500);
+  setTimeout(patchAll, 1500);
+  setTimeout(patchAll, 3000);
+
+  // Watch for future mu-* elements
+  const observer = new MutationObserver((mutations) => {
+    let hasMu = false;
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (node instanceof Element && node.tagName.startsWith("MU-")) {
+          hasMu = true;
+          break;
+        }
+      }
+      if (hasMu) break;
+    }
+    if (hasMu) {
+      // Defer to let Lit finish rendering shadow DOM
+      requestAnimationFrame(() => setTimeout(patchAll, 100));
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
 }
 
 export function MBindCustomElementEvent<T>(
