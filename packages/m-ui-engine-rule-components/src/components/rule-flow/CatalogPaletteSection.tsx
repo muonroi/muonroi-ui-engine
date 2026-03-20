@@ -115,22 +115,22 @@ function MMatchesSearch(item: MRuleCatalogItem, search: string): boolean {
 const MCatalogShellStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 10
+  gap: "var(--mu-space-sm)"
 };
 
 const MCatalogHeaderStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 4,
-  fontSize: 13,
+  gap: "var(--mu-space-xs)",
+  fontSize: "var(--mu-text-sm)",
   color: "var(--mu-color-text-muted)"
 };
 
 const MCatalogSearchLabelStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 6,
-  fontSize: 12,
+  gap: "var(--mu-space-xs)",
+  fontSize: "var(--mu-text-xs)",
   color: "var(--mu-color-text-secondary)",
   fontWeight: 600
 };
@@ -158,7 +158,7 @@ const MCatalogPlaceholderStyle: React.CSSProperties = {
 const MCatalogGroupStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 8
+  gap: "var(--mu-space-sm)"
 };
 
 const MCatalogGroupTitleStyle: React.CSSProperties = {
@@ -186,7 +186,8 @@ const MCatalogItemContentStyle: React.CSSProperties = {
 };
 
 const MCatalogCodeStyle: React.CSSProperties = {
-  fontSize: 12,
+  fontSize: "var(--mu-text-xs)",
+  fontFamily: "var(--mu-font-mono)",
   fontWeight: 500,
   color: "var(--mu-color-text-secondary)"
 };
@@ -198,6 +199,6 @@ const MCatalogDescriptionStyle: React.CSSProperties = {
 };
 
 const MCatalogTagsStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: "var(--mu-text-xs)",
   color: "var(--mu-color-interactive)"
 };
