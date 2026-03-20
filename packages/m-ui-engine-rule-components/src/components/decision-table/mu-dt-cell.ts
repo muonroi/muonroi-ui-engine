@@ -203,6 +203,7 @@ export class MuDtCell extends LitElement {
         class="min-h-9 w-full rounded border px-2 py-1 text-left text-sm ${this.hasError
           ? "border-red-400 bg-red-50"
           : "border-[var(--color-mu-border)] bg-white"}"
+        style="font-family: var(--mu-font-mono); font-size: var(--mu-text-sm);"
         @dblclick=${this.MBeginEdit}
       >
         ${this.value}
