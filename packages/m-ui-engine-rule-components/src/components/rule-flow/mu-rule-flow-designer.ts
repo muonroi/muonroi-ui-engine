@@ -1,5 +1,4 @@
 import { LitElement, html, unsafeCSS } from "lit";
-import { MuBaseElement } from "../shared/mu-base-element.js";
 import { customElement, property } from "lit/decorators.js";
 import { createRoot, type Root } from "react-dom/client";
 import { createElement } from "react";
@@ -32,7 +31,7 @@ type MSaveRuleSetResponse = {
 };
 
 @customElement("mu-rule-flow-designer")
-export class MuRuleFlowDesigner extends MuBaseElement {
+export class MuRuleFlowDesigner extends LitElement {
   static styles = [unsafeCSS(tailwindStyles), unsafeCSS(xyflowStyles)];
 
   @property({ attribute: false })

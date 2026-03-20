@@ -253,31 +253,30 @@ function MPatchShadowDomTokens(): void {
     if (injected) M_PATCHED_ROOTS.add(sr);
   };
 
-  const patchAll = () => {
-    document.querySelectorAll("mu-rule-flow-designer, mu-decision-table, mu-decision-table-list, mu-rule-trace-viewer, mu-rule-result-panel, mu-nrules-editor, mu-feel-playground, mu-rule-test-runner, mu-ui-engine-app, mu-dt-version-diff, mu-cep-window-config, mu-cep-event-stream, mu-quota-indicator, mu-schema-watcher, mu-upgrade-prompt")
-      .forEach(patchElement);
+  const patchMuElement = async (el: Element) => {
+    // Wait for Lit updateComplete if available (proper lifecycle)
+    if ("updateComplete" in el) {
+      try { await (el as unknown as { updateComplete: Promise<boolean> }).updateComplete; } catch { /* ignore */ }
+    }
+    patchElement(el);
   };
 
-  // Patch existing elements — defer to let Lit finish first render
-  setTimeout(patchAll, 500);
-  setTimeout(patchAll, 1500);
-  setTimeout(patchAll, 3000);
+  const patchAll = () => {
+    document.querySelectorAll("mu-rule-flow-designer, mu-decision-table, mu-decision-table-list, mu-rule-trace-viewer, mu-rule-result-panel, mu-nrules-editor, mu-feel-playground, mu-rule-test-runner, mu-ui-engine-app, mu-dt-version-diff, mu-cep-window-config, mu-cep-event-stream, mu-quota-indicator, mu-schema-watcher, mu-upgrade-prompt")
+      .forEach(el => patchMuElement(el));
+  };
+
+  // Patch existing elements — use requestAnimationFrame + microtask for Lit render
+  requestAnimationFrame(() => queueMicrotask(patchAll));
 
   // Watch for future mu-* elements
   const observer = new MutationObserver((mutations) => {
-    let hasMu = false;
     for (const m of mutations) {
       for (const node of m.addedNodes) {
         if (node instanceof Element && node.tagName.startsWith("MU-")) {
-          hasMu = true;
-          break;
+          patchMuElement(node);
         }
       }
-      if (hasMu) break;
-    }
-    if (hasMu) {
-      // Defer to let Lit finish rendering shadow DOM
-      requestAnimationFrame(() => setTimeout(patchAll, 100));
     }
   });
   observer.observe(document.body, { childList: true, subtree: true });

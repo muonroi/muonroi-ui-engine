@@ -1,12 +1,11 @@
 ﻿import { LitElement, html, unsafeCSS } from "lit";
-import { MuBaseElement } from "../shared/mu-base-element.js";
 import { customElement, property, query, state } from "lit/decorators.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
 
 type MonacoModule = typeof import("monaco-editor");
 
 @customElement("mu-dt-cell")
-export class MuDtCell extends MuBaseElement {
+export class MuDtCell extends LitElement {
   static styles = [unsafeCSS(tailwindStyles)];
   private static mMonaco?: MonacoModule;
   private static mFeelRegistered = false;

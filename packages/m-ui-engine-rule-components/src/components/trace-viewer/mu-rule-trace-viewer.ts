@@ -1,5 +1,4 @@
 import { LitElement, html, css, nothing } from "lit";
-import { MuBaseElement } from "../shared/mu-base-element.js";
 import { customElement, property, state } from "lit/decorators.js";
 import { MRuleTracePhase } from "../../models/trace-models.js";
 import type { MRuleTraceEntry } from "../../models/trace-models.js";
@@ -13,7 +12,7 @@ const PHASE_LABELS = ["BeforeEval", "AfterEval", "AfterExec", "Error", "Compensa
 const PHASE_CLASS_SUFFIXES = ["before-eval", "after-eval", "after-exec", "error", "compensate"];
 
 @customElement("mu-rule-trace-viewer")
-export class MuRuleTraceViewer extends MuBaseElement {
+export class MuRuleTraceViewer extends LitElement {
   @property({ attribute: "api-base-url" }) apiBaseUrl = "";
   @property({ attribute: "tenant-id" }) tenantId = "";
   @property({ attribute: "correlation-id" }) correlationId = "";

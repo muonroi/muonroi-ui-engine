@@ -1,10 +1,9 @@
 import { LitElement, html, css, nothing } from "lit";
-import { MuBaseElement } from "../shared/mu-base-element.js";
 import { customElement, property, state } from "lit/decorators.js";
 import type { MValidationSummary, MRuleResult } from "../../models/result-models.js";
 
 @customElement("mu-rule-result-panel")
-export class MuRuleResultPanel extends MuBaseElement {
+export class MuRuleResultPanel extends LitElement {
   @property({ attribute: "result-json" }) resultJson = "";
   @property({ type: Boolean }) loading = false;
 
