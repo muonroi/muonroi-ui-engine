@@ -420,7 +420,7 @@ export class MuDecisionTable extends LitElement {
     const bottomSpacer = Math.max(0, rows.length * rowHeight - topSpacer - visibleRows.length * rowHeight);
 
     return html`
-      <div role="grid" aria-label=${this.mTable?.name ?? "Decision table"} class="max-h-[420px] overflow-auto" @scroll=${this.MOnScroll}>
+      <div role="grid" aria-label=${this.mTable?.name ?? "Decision table"} class="max-h-[420px] overflow-x-auto overflow-y-auto" style="min-width: 0;" @scroll=${this.MOnScroll}>
         <div style=${`height:${topSpacer}px`}></div>
         <div class="space-y-2">
           ${visibleRows.map(
