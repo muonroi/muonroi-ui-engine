@@ -2041,16 +2041,36 @@ export function MuRuleFlowEditor({
               onPointerUp={handleSidebarPointerUp}
             >
               <div
+                data-testid="sidebar-resize-grip"
                 style={{
-                  width: 4,
-                  height: 40,
-                  borderRadius: 2,
-                  background: tokens.sidebarBorder.replace("1px solid ", ""),
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 3,
+                  padding: "4px 2px",
+                  borderRadius: 4,
+                  background: "transparent",
                   transition: "background 150ms"
                 }}
-                onPointerEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--mu-color-interactive)"; }}
-                onPointerLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = tokens.sidebarBorder.replace("1px solid ", ""); }}
-              />
+                onPointerEnter={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.background = "color-mix(in oklch, var(--mu-color-interactive) 15%, transparent)";
+                }}
+                onPointerLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.background = "transparent";
+                }}
+              >
+                {[0, 1, 2].map((i) => (
+                  <div
+                    key={i}
+                    style={{
+                      width: 4,
+                      height: 4,
+                      borderRadius: "50%",
+                      background: "var(--mu-color-border-subtle, var(--mu-text-muted))"
+                    }}
+                  />
+                ))}
+              </div>
             </div>
           )}
         </aside>
