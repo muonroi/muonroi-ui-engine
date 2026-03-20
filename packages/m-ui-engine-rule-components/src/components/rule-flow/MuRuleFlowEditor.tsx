@@ -424,6 +424,46 @@ function MFlowRuntimeSync({
   return null;
 }
 
+// Keyboard shortcuts: zoom in (+/Ctrl+=), zoom out (-/Ctrl+-), fit view (F/Ctrl+0)
+// Must be rendered inside <ReactFlow> so useReactFlow() resolves correctly
+function MKeyboardZoomHandler(): null {
+  const reactFlow = useReactFlow();
+
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent): void {
+      // Skip when focus is on an input, textarea, select, or contenteditable
+      const target = e.target as HTMLElement;
+      const tag = target.tagName.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable) {
+        return;
+      }
+
+      const isCtrl = e.ctrlKey || e.metaKey;
+
+      if (e.key === "+" || (isCtrl && e.key === "=")) {
+        e.preventDefault();
+        void reactFlow.zoomIn({ duration: 150 });
+        return;
+      }
+      if (e.key === "-" || (isCtrl && e.key === "-")) {
+        e.preventDefault();
+        void reactFlow.zoomOut({ duration: 150 });
+        return;
+      }
+      if (e.key === "f" || e.key === "F" || (isCtrl && e.key === "0")) {
+        e.preventDefault();
+        void reactFlow.fitView(M_FIT_VIEW_OPTIONS);
+        return;
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [reactFlow]);
+
+  return null;
+}
+
 export function MuRuleFlowEditor({
   graph,
   onGraphChange,
@@ -2089,6 +2129,7 @@ export function MuRuleFlowEditor({
             elementsSelectable
           >
             <MFlowRuntimeSync nodeIds={nodes.map((node) => node.id)} syncToken={viewportSyncToken} hostElement={allowAutoFitRef.current ? canvasPanelRef.current : null} />
+            <MKeyboardZoomHandler />
             <MiniMap />
             <Controls />
             <Background />
