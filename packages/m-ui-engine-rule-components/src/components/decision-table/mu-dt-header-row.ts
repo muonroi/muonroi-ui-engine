@@ -58,7 +58,7 @@ export class MuDtHeaderRow extends LitElement {
           role="columnheader"
           scope="col"
           aria-label="Row number"
-          class="sticky left-0 z-20 flex items-center justify-center rounded border border-[var(--color-mu-border)] bg-zinc-100 text-xs font-semibold text-zinc-500"
+          class="sticky left-0 z-20 flex items-center justify-center rounded border border-[var(--color-mu-border)] bg-[var(--color-mu-surface)] text-xs font-semibold text-zinc-500"
           style="min-height: 40px; padding: var(--mu-space-xs) var(--mu-space-sm);"
         >
           #
