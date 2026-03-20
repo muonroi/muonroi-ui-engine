@@ -12,7 +12,7 @@
 /* ============================================================
    LIGHT THEME (default)
    ============================================================ */
-:root {
+:root, :host {
   /* === Surfaces === */
   --mu-surface-canvas: oklch(97% 0.005 255);
   --mu-surface-base: oklch(100% 0 0);
@@ -129,7 +129,7 @@
    Usage: set data-theme="dark" on the host element.
    All tokens below override the :root light values above.
    ============================================================ */
-[data-theme="dark"] {
+[data-theme="dark"], :host([data-theme="dark"]) {
   /* === Surfaces === */
   --mu-surface-canvas: oklch(13% 0.012 255);
   --mu-surface-base: oklch(20% 0.015 255);
@@ -217,11 +217,11 @@
 /* ============================================================
    BACKWARD COMPATIBILITY ALIASES
    Maps legacy --color-mu-* tokens to new semantic equivalents.
-   These come AFTER the main :root block so the tailwind.css @theme
+   These come AFTER the main :root, :host block so the tailwind.css @theme
    hardcoded oklch values take precedence for Tailwind utilities,
    while CSS var() references use these semantic aliases.
    ============================================================ */
-:root {
+:root, :host {
   --color-mu-primary: var(--mu-color-interactive);
   --color-mu-surface: var(--mu-surface-base);
   --color-mu-border: var(--mu-border-default);
