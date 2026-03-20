@@ -21,10 +21,11 @@ function MDesignTokenHostPlugin(): Plugin {
 
       // CSS ?inline results in a raw CSS string.
       // Find :root (with or without :host) blocks containing --mu- tokens
-      // and append a standalone :host{...} copy that survives LightningCSS.
+      // and append :host copies wrapped in @layer so LightningCSS preserves them.
+      // LightningCSS strips ALL top-level :host blocks but preserves :host inside @layer.
       const transformed = code.replace(
         /:root(?:,\s*:host)?\s*\{((?:[^}]*--mu-[^}]*))\}/g,
-        (match, props) => `${match}:host{${props}}`
+        (match, props) => `${match}@layer mu-tokens{:host{${props}}}`
       );
 
       return transformed !== code ? transformed : undefined;
