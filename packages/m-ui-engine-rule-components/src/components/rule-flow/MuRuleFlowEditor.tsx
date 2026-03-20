@@ -5,10 +5,14 @@ import {
   applyEdgeChanges,
   applyNodeChanges,
   Background,
+  BaseEdge,
   Controls,
   type Connection,
   type Edge,
   type EdgeChange,
+  EdgeLabelRenderer,
+  type EdgeProps,
+  getBezierPath,
   Handle,
   MiniMap,
   type Node,
@@ -150,19 +154,58 @@ const M_EDGE_TYPE_HINTS: Record<MRuleFlowEdgeType, string> = {
   "on-error": "Continue only when the source node threw an exception."
 };
 
-// Static oklch values for SVG fill — CSS vars cannot be resolved inside SVG fill attributes
-const M_EDGE_LABEL_FILL: Record<string, string> = {
-  always:     "oklch(50% 0.014 255)",  // neutral blue-gray
-  "on-true":  "oklch(50% 0.16 150)",  // green
-  "on-false": "oklch(51% 0.23 25)",   // red
-  "on-error": "oklch(60% 0.17 70)",   // amber
+// Edge label pill tokens — use CSS custom properties so light/dark switching is automatic
+const M_EDGE_PILL_TOKENS: Record<MRuleFlowEdgeType, { bg: string; border: string; icon: string }> = {
+  always:    { bg: "var(--mu-edge-pill-always-bg)", border: "var(--mu-edge-pill-always-border)", icon: "\u2192" },
+  "on-true": { bg: "var(--mu-edge-pill-pass-bg)",  border: "var(--mu-edge-pill-pass-border)",   icon: "\u2713" },
+  "on-false":{ bg: "var(--mu-edge-pill-fail-bg)",  border: "var(--mu-edge-pill-fail-border)",   icon: "\u2717" },
+  "on-error":{ bg: "var(--mu-edge-pill-error-bg)", border: "var(--mu-edge-pill-error-border)",  icon: "\u26A0" },
 };
-const M_EDGE_LABEL_FILL_DARK: Record<string, string> = {
-  always:     "oklch(62% 0.01 255)",
-  "on-true":  "oklch(60% 0.14 150)",
-  "on-false": "oklch(60% 0.20 25)",
-  "on-error": "oklch(66% 0.15 70)",
-};
+
+/** Custom edge component: renders the edge path via BaseEdge + a pill badge via EdgeLabelRenderer. */
+function MCustomEdge({
+  id, sourceX, sourceY, targetX, targetY,
+  sourcePosition, targetPosition, style, data, markerEnd
+}: EdgeProps): React.JSX.Element {
+  const [edgePath, labelX, labelY] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
+  const edgeType = ((data as { edgeType?: string } | undefined)?.edgeType ?? "always") as MRuleFlowEdgeType;
+  const pill = M_EDGE_PILL_TOKENS[edgeType] ?? M_EDGE_PILL_TOKENS.always;
+  const labelText = M_EDGE_TYPE_LABELS[edgeType] ?? "Always";
+  return (
+    <>
+      <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />
+      <EdgeLabelRenderer>
+        <div
+          className="nodrag nopan"
+          style={{
+            position: "absolute",
+            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
+            pointerEvents: "all",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            padding: "3px 10px",
+            borderRadius: 999,
+            background: pill.bg,
+            border: `1.5px solid ${pill.border}`,
+            fontSize: 12,
+            fontWeight: 600,
+            color: pill.border,
+            whiteSpace: "nowrap",
+            cursor: "pointer",
+            zIndex: 5,
+          }}
+        >
+          <span style={{ fontSize: 11 }}>{pill.icon}</span>
+          {labelText}
+        </div>
+      </EdgeLabelRenderer>
+    </>
+  );
+}
+
+/** Stable module-scope edge type map — must not be defined inline in JSX to avoid remount on every render. */
+const M_EDGE_TYPES = { default: MCustomEdge };
 
 function MNodeContextSubtitle(data: MCanvasNodeData): string | null {
   if (data.nodeType === "condition" && data.conditionConfig?.successLabel) {
@@ -490,18 +533,14 @@ export function MuRuleFlowEditor({
 
   function MStyleEdges(rawEdges: Edge[]): Edge[] {
     const colors = theme === "dark" ? M_EDGE_COLORS_DARK : M_EDGE_COLORS;
-    const fills = theme === "dark" ? M_EDGE_LABEL_FILL_DARK : M_EDGE_LABEL_FILL;
     return rawEdges.map((edge) => {
       const edgeType = (edge.data as { edgeType?: string } | undefined)?.edgeType ?? "always";
       const color = colors[edgeType as keyof typeof colors] ?? colors.always;
-      const fill = fills[edgeType] ?? fills.always;
       return {
         ...edge,
+        type: "default", // Route through MCustomEdge for pill label rendering
         style: { stroke: color, strokeWidth: 2 },
-        labelStyle: { fill: color, fontWeight: 600, fontSize: 11 },
-        labelBgStyle: { fill, fillOpacity: 0.12, stroke: fill, strokeOpacity: 0.25 },
-        labelBgPadding: [8, 5] as [number, number],
-        labelBgBorderRadius: 999,
+        label: undefined, // Suppress built-in SVG label — MCustomEdge handles it via EdgeLabelRenderer
       };
     });
   }
@@ -2111,6 +2150,7 @@ export function MuRuleFlowEditor({
             nodes={nodes}
             edges={edges}
             nodeTypes={M_NODE_TYPES}
+            edgeTypes={M_EDGE_TYPES}
             onMoveStart={() => {
               allowAutoFitRef.current = false;
             }}
