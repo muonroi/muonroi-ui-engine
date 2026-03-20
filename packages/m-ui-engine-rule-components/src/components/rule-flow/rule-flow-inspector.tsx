@@ -1363,10 +1363,12 @@ export const MInspectorShellStyle: React.CSSProperties = {
 
 export const MInspectorTabsStyle: React.CSSProperties = {
   display: "flex",
-  flexWrap: "wrap",
-  gap: 6,
-  paddingBottom: 8,
-  borderBottom: "1px solid var(--mu-border-subtle)"
+  flexWrap: "nowrap",
+  overflowX: "auto",
+  gap: 0,
+  paddingBottom: 0,
+  borderBottom: "1px solid var(--mu-border-subtle)",
+  marginBottom: "var(--mu-space-xs)",
 };
 
 export const MLabelStyle: React.CSSProperties = {
@@ -1548,12 +1550,17 @@ export function MActionButtonStyle(primary: boolean): React.CSSProperties {
 
 export function MInspectorTabButtonStyle(active: boolean): React.CSSProperties {
   return {
-    borderRadius: 999,
-    border: active ? "1px solid var(--mu-color-interactive-border)" : "1px solid var(--mu-border-subtle)",
-    background: active ? "var(--mu-color-interactive-subtle)" : "var(--mu-surface-base)",
-    color: "var(--mu-text-primary)",
-    fontSize: 13,
-    padding: "10px 14px",
-    fontWeight: 600
+    borderRadius: 0,
+    border: "none",
+    borderBottom: active ? "2px solid var(--mu-color-interactive)" : "2px solid transparent",
+    background: "transparent",
+    color: active ? "var(--mu-color-interactive)" : "var(--mu-text-muted)",
+    fontWeight: active ? 600 : 400,
+    fontSize: "var(--mu-text-sm)",
+    padding: "var(--mu-space-xs) var(--mu-space-sm)",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    transition: "border-color 0.15s, color 0.15s",
+    outline: "none",
   };
 }
