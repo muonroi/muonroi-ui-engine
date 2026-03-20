@@ -192,7 +192,7 @@ export class MuDtCell extends LitElement {
   render() {
     if (this.mIsEditing) {
       return html`
-        <div class="relative min-h-9 rounded border border-[var(--color-mu-primary)] bg-white">
+        <div class="relative min-h-9 rounded border border-[var(--color-mu-primary)] bg-[var(--mu-surface-input)]">
           <div id="editor-host" class="h-24 w-full"></div>
         </div>
       `;
@@ -201,8 +201,8 @@ export class MuDtCell extends LitElement {
     return html`
       <button
         class="min-h-9 w-full rounded border px-2 py-1 text-left text-sm ${this.hasError
-          ? "border-red-400 bg-red-50"
-          : "border-[var(--color-mu-border)] bg-white"}"
+          ? "border-[var(--mu-color-error)] bg-[var(--mu-color-error-bg)]"
+          : "border-[var(--color-mu-border)] bg-[var(--mu-surface-input)]"}"
         style="font-family: var(--mu-font-mono); font-size: var(--mu-text-sm);"
         @dblclick=${this.MBeginEdit}
       >

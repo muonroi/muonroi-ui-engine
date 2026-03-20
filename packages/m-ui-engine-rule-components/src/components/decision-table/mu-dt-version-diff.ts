@@ -21,7 +21,7 @@ export class MuDtVersionDiff extends LitElement {
 
   private MRenderTable(table: MDecisionTableModel | null, side: "left" | "right") {
     if (!table) {
-      return html`<div class="text-xs text-zinc-500">No snapshot selected.</div>`;
+      return html`<div class="text-xs text-[var(--mu-text-muted)]">No snapshot selected.</div>`;
     }
 
     const columns = [...table.inputColumns, ...table.outputColumns];
@@ -30,8 +30,8 @@ export class MuDtVersionDiff extends LitElement {
         <table class="w-full border-collapse text-xs">
           <thead>
             <tr>
-              <th class="sticky left-0 z-10 border border-[var(--color-mu-border)] bg-zinc-100 px-2 py-1">#</th>
-              ${columns.map((column) => html`<th class="border border-[var(--color-mu-border)] bg-zinc-100 px-2 py-1">${column.label}</th>`)}
+              <th class="sticky left-0 z-10 border border-[var(--color-mu-border)] bg-[var(--mu-surface-raised)] px-2 py-1">#</th>
+              ${columns.map((column) => html`<th class="border border-[var(--color-mu-border)] bg-[var(--mu-surface-raised)] px-2 py-1">${column.label}</th>`)}
             </tr>
           </thead>
           <tbody>
@@ -39,7 +39,7 @@ export class MuDtVersionDiff extends LitElement {
               const values = [...row.inputCells.map((x) => x.expression), ...row.outputCells.map((x) => x.expression)];
               return html`
                 <tr>
-                  <td class="sticky left-0 z-10 border border-[var(--color-mu-border)] bg-white px-2 py-1">${rowIndex + 1}</td>
+                  <td class="sticky left-0 z-10 border border-[var(--color-mu-border)] bg-[var(--mu-surface-base)] px-2 py-1">${rowIndex + 1}</td>
                   ${values.map(
                     (value, columnIndex) => html`
                       <td class="border border-[var(--color-mu-border)] px-2 py-1 ${this.MDiffClass(side, rowIndex, columnIndex, value)}">${value}</td>
@@ -62,10 +62,10 @@ export class MuDtVersionDiff extends LitElement {
     }
 
     if (side === "left") {
-      return value ? "bg-red-50 text-red-700" : "bg-zinc-50";
+      return value ? "bg-[var(--mu-color-error-bg)] text-[var(--mu-color-error-text)]" : "bg-[var(--mu-surface-raised)]";
     }
 
-    return value ? "bg-emerald-50 text-emerald-700" : "bg-zinc-50";
+    return value ? "bg-[var(--mu-color-success-bg)] text-[var(--mu-color-success-text)]" : "bg-[var(--mu-surface-raised)]";
   }
 
   private MValueAt(table: MDecisionTableModel | null, rowIndex: number, columnIndex: number): string {
@@ -89,11 +89,11 @@ export class MuDtVersionDiff extends LitElement {
   render() {
     return html`
       <section class="grid gap-3 md:grid-cols-2">
-        <article class="rounded-lg border border-[var(--color-mu-border)] bg-white p-3">
+        <article class="rounded-lg border border-[var(--color-mu-border)] bg-[var(--mu-surface-base)] p-3">
           <h4 class="mb-2 text-sm font-semibold">Version ${this.leftVersion || "A"}</h4>
           ${this.MRenderTable(this.leftTable, "left")}
         </article>
-        <article class="rounded-lg border border-[var(--color-mu-border)] bg-white p-3">
+        <article class="rounded-lg border border-[var(--color-mu-border)] bg-[var(--mu-surface-base)] p-3">
           <h4 class="mb-2 text-sm font-semibold">Version ${this.rightVersion || "B"}</h4>
           ${this.MRenderTable(this.rightTable, "right")}
         </article>

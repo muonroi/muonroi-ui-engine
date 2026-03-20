@@ -58,7 +58,7 @@ export class MuDtHeaderRow extends LitElement {
           role="columnheader"
           scope="col"
           aria-label="Row number"
-          class="sticky left-0 z-20 flex items-center justify-center rounded border border-[var(--color-mu-border)] bg-[var(--color-mu-surface)] text-xs font-semibold text-zinc-500"
+          class="sticky left-0 z-20 flex items-center justify-center rounded border border-[var(--color-mu-border)] bg-[var(--color-mu-surface)] text-xs font-semibold text-[var(--mu-text-muted)]"
           style="min-height: 40px; padding: var(--mu-space-xs) var(--mu-space-sm);"
         >
           #
@@ -69,7 +69,7 @@ export class MuDtHeaderRow extends LitElement {
               role="columnheader"
               scope="col"
               aria-label=${"Input: " + column.label}
-              class="rounded border border-[var(--color-mu-border)] bg-blue-50 px-[var(--mu-space-sm)] py-[var(--mu-space-xs)] text-xs font-semibold uppercase tracking-wide"
+              class="rounded border border-[var(--color-mu-border)] bg-[var(--mu-node-accent-decision-table,_#eff6ff)] px-[var(--mu-space-sm)] py-[var(--mu-space-xs)] text-xs font-semibold uppercase tracking-wide"
               style="min-height: 40px; display: flex; align-items: center;"
               draggable="true"
               @dragstart=${() => this.MOnDragStart("input", index)}
@@ -86,7 +86,7 @@ export class MuDtHeaderRow extends LitElement {
               role="columnheader"
               scope="col"
               aria-label=${"Output: " + column.label}
-              class="rounded border border-[var(--color-mu-border)] bg-emerald-50 px-[var(--mu-space-sm)] py-[var(--mu-space-xs)] text-xs font-semibold uppercase tracking-wide"
+              class="rounded border border-[var(--color-mu-border)] bg-[var(--mu-color-success-bg,_#ecfdf5)] px-[var(--mu-space-sm)] py-[var(--mu-space-xs)] text-xs font-semibold uppercase tracking-wide"
               style="min-height: 40px; display: flex; align-items: center;"
               draggable="true"
               @dragstart=${() => this.MOnDragStart("output", index)}
