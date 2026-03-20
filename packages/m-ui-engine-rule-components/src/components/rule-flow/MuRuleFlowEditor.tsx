@@ -5,14 +5,10 @@ import {
   applyEdgeChanges,
   applyNodeChanges,
   Background,
-  BaseEdge,
   Controls,
   type Connection,
   type Edge,
   type EdgeChange,
-  EdgeLabelRenderer,
-  type EdgeProps,
-  getBezierPath,
   Handle,
   MiniMap,
   type Node,
@@ -154,58 +150,24 @@ const M_EDGE_TYPE_HINTS: Record<MRuleFlowEdgeType, string> = {
   "on-error": "Continue only when the source node threw an exception."
 };
 
-// Edge label pill tokens — use CSS custom properties so light/dark switching is automatic
-const M_EDGE_PILL_TOKENS: Record<MRuleFlowEdgeType, { bg: string; border: string; icon: string }> = {
-  always:    { bg: "var(--mu-edge-pill-always-bg)", border: "var(--mu-edge-pill-always-border)", icon: "\u2192" },
-  "on-true": { bg: "var(--mu-edge-pill-pass-bg)",  border: "var(--mu-edge-pill-pass-border)",   icon: "\u2713" },
-  "on-false":{ bg: "var(--mu-edge-pill-fail-bg)",  border: "var(--mu-edge-pill-fail-border)",   icon: "\u2717" },
-  "on-error":{ bg: "var(--mu-edge-pill-error-bg)", border: "var(--mu-edge-pill-error-border)",  icon: "\u26A0" },
+/* Edge pill tokens — inline oklch values because CSS custom properties don't resolve
+   inside Shadow DOM SVG (LightningCSS strips :host selectors, and SVG rects
+   don't participate in CSS custom property inheritance from the shadow host). */
+const M_EDGE_PILL_LIGHT: Record<MRuleFlowEdgeType, { bg: string; border: string; icon: string }> = {
+  always:    { bg: "oklch(95% 0.01 255)",  border: "oklch(45% 0.02 255)",  icon: "\u2192" },
+  "on-true": { bg: "oklch(94% 0.04 150)",  border: "oklch(42% 0.12 150)",  icon: "\u2713" },
+  "on-false":{ bg: "oklch(94% 0.04 25)",   border: "oklch(48% 0.18 25)",   icon: "\u2717" },
+  "on-error":{ bg: "oklch(95% 0.04 75)",   border: "oklch(52% 0.15 70)",   icon: "\u26A0" },
+};
+const M_EDGE_PILL_DARK: Record<MRuleFlowEdgeType, { bg: string; border: string; icon: string }> = {
+  always:    { bg: "oklch(28% 0.01 255)",  border: "oklch(70% 0.01 255)",  icon: "\u2192" },
+  "on-true": { bg: "oklch(28% 0.04 150)",  border: "oklch(65% 0.14 150)",  icon: "\u2713" },
+  "on-false":{ bg: "oklch(28% 0.04 25)",   border: "oklch(65% 0.18 25)",   icon: "\u2717" },
+  "on-error":{ bg: "oklch(30% 0.04 75)",   border: "oklch(68% 0.14 70)",   icon: "\u26A0" },
 };
 
-/** Custom edge component: renders the edge path via BaseEdge + a pill badge via EdgeLabelRenderer. */
-function MCustomEdge({
-  id, sourceX, sourceY, targetX, targetY,
-  sourcePosition, targetPosition, style, data, markerEnd
-}: EdgeProps): React.JSX.Element {
-  const [edgePath, labelX, labelY] = getBezierPath({ sourceX, sourceY, sourcePosition, targetX, targetY, targetPosition });
-  const edgeType = ((data as { edgeType?: string } | undefined)?.edgeType ?? "always") as MRuleFlowEdgeType;
-  const pill = M_EDGE_PILL_TOKENS[edgeType] ?? M_EDGE_PILL_TOKENS.always;
-  const labelText = M_EDGE_TYPE_LABELS[edgeType] ?? "Always";
-  return (
-    <>
-      <BaseEdge id={id} path={edgePath} style={style} markerEnd={markerEnd} />
-      <EdgeLabelRenderer>
-        <div
-          className="nodrag nopan"
-          style={{
-            position: "absolute",
-            transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-            pointerEvents: "all",
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 4,
-            padding: "3px 10px",
-            borderRadius: 999,
-            background: pill.bg,
-            border: `1.5px solid ${pill.border}`,
-            fontSize: 12,
-            fontWeight: 600,
-            color: pill.border,
-            whiteSpace: "nowrap",
-            cursor: "pointer",
-            zIndex: 5,
-          }}
-        >
-          <span style={{ fontSize: 11 }}>{pill.icon}</span>
-          {labelText}
-        </div>
-      </EdgeLabelRenderer>
-    </>
-  );
-}
-
-/** Stable module-scope edge type map — must not be defined inline in JSX to avoid remount on every render. */
-const M_EDGE_TYPES = { default: MCustomEdge };
+/* NOTE: EdgeLabelRenderer (portal) and foreignObject both fail in Shadow DOM (Lit host).
+   We use React Flow's built-in SVG label with enhanced styling instead. */
 
 function MNodeContextSubtitle(data: MCanvasNodeData): string | null {
   if (data.nodeType === "condition" && data.conditionConfig?.successLabel) {
@@ -533,14 +495,20 @@ export function MuRuleFlowEditor({
 
   function MStyleEdges(rawEdges: Edge[]): Edge[] {
     const colors = theme === "dark" ? M_EDGE_COLORS_DARK : M_EDGE_COLORS;
+    const pills = theme === "dark" ? M_EDGE_PILL_DARK : M_EDGE_PILL_LIGHT;
     return rawEdges.map((edge) => {
       const edgeType = (edge.data as { edgeType?: string } | undefined)?.edgeType ?? "always";
       const color = colors[edgeType as keyof typeof colors] ?? colors.always;
+      const pill = pills[edgeType as MRuleFlowEdgeType] ?? pills.always;
+      const labelText = `${pill.icon} ${M_EDGE_TYPE_LABELS[edgeType as MRuleFlowEdgeType] ?? "Always"}`;
       return {
         ...edge,
-        type: "default", // Route through MCustomEdge for pill label rendering
+        label: labelText,
         style: { stroke: color, strokeWidth: 2 },
-        label: undefined, // Suppress built-in SVG label — MCustomEdge handles it via EdgeLabelRenderer
+        labelStyle: { fill: pill.border, fontWeight: 700, fontSize: 11 },
+        labelBgStyle: { fill: pill.bg, stroke: pill.border, strokeWidth: 1.5, rx: 12, ry: 12 },
+        labelBgPadding: [6, 10] as [number, number],
+        labelBgBorderRadius: 999,
       };
     });
   }
