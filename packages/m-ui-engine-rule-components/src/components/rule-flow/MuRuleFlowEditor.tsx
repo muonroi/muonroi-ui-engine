@@ -2690,10 +2690,13 @@ function exportGraph(graph: MRuleFlowGraph, ruleSetCode?: string): void {
   const blob = new Blob([payload], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
+  anchor.style.display = "none";
   anchor.href = url;
   anchor.download = `${ruleSetCode ?? "rule-flow"}.json`;
+  document.body.appendChild(anchor);
   anchor.click();
-  URL.revokeObjectURL(url);
+  document.body.removeChild(anchor);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
 }
 
 function MRuleFlowEdgeInspector({
