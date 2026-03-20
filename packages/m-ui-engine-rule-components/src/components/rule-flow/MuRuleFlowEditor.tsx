@@ -276,6 +276,76 @@ const M_NODE_TYPES = {
   end: MRuleFlowNodeCard
 };
 
+/** Renders a small SVG icon for toolbar buttons. Inherits color via fill="currentColor". */
+function MToolbarIcon({ path }: { path: string | string[] }): React.JSX.Element {
+  const paths = Array.isArray(path) ? path : [path];
+  return (
+    <svg width={12} height={12} viewBox="0 0 16 16" fill="currentColor" style={{ flexShrink: 0 }}>
+      {paths.map((d, i) => <path key={i} d={d} />)}
+    </svg>
+  );
+}
+
+/** Shown when the canvas has no nodes and editor is not in read-only mode. */
+function MEmptyCanvasOverlay({ onAddTrigger }: { onAddTrigger: () => void }): React.JSX.Element {
+  return (
+    <div style={{
+      position: "absolute",
+      inset: 0,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: "var(--mu-space-md)",
+      pointerEvents: "none",
+      zIndex: 5,
+    }}>
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: "var(--mu-space-sm)",
+        padding: "var(--mu-space-lg) var(--mu-space-xl)",
+        background: "var(--mu-surface-overlay)",
+        border: "1px solid var(--mu-border-subtle)",
+        borderRadius: 18,
+        boxShadow: "var(--mu-shadow-node)",
+        pointerEvents: "auto",
+        maxWidth: 320,
+        textAlign: "center",
+      }}>
+        <svg width={32} height={32} viewBox="0 0 16 16" fill="var(--mu-color-interactive)" opacity={0.7}>
+          <path d="M14 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H2a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h12zM2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H2z" />
+          <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+        </svg>
+        <strong style={{ fontSize: "var(--mu-text-md)", color: "var(--mu-text-primary)" }}>
+          Start your workflow
+        </strong>
+        <span style={{ fontSize: "var(--mu-text-sm)", color: "var(--mu-text-muted)", lineHeight: "20px" }}>
+          Drop a trigger node to begin, or click the button below to add one automatically.
+        </span>
+        <button
+          type="button"
+          onClick={onAddTrigger}
+          style={{
+            padding: "var(--mu-space-xs) var(--mu-space-md)",
+            borderRadius: 8,
+            border: "1px solid var(--mu-color-interactive-border)",
+            background: "var(--mu-color-interactive)",
+            color: "var(--mu-text-on-accent)",
+            fontSize: "var(--mu-text-sm)",
+            fontWeight: 600,
+            cursor: "pointer",
+            marginTop: "var(--mu-space-xs)",
+          }}
+        >
+          Add Trigger Node
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function MFlowRuntimeSync({
   nodeIds,
   syncToken,
@@ -1154,6 +1224,11 @@ export function MuRuleFlowEditor({
     commitNewNode(nextNode);
   }
 
+  /** Called by MEmptyCanvasOverlay CTA — drops a default trigger node at canvas center. */
+  function handleAddTriggerNode(): void {
+    addNode("trigger", { x: 200, y: 180 });
+  }
+
   /* Sidebar drag-resize handler */
   const sidebarDragState = useRef<{ startX: number; startW: number } | null>(null);
   const handleSidebarPointerDown = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -1283,33 +1358,36 @@ export function MuRuleFlowEditor({
   const publishButton = (asDropdown?: boolean) => (
     <button
       type="button"
-      style={asDropdown ? { ...MKebabDropdownItemStyle, display: isViewingNonActive ? "none" : undefined } : { ...MActionButtonStyle(true), flex: "1 1 auto", minWidth: 80, display: isViewingNonActive ? "none" : undefined }}
+      style={asDropdown ? { ...MKebabDropdownItemStyle, display: "flex", alignItems: "center", gap: 5, visibility: isViewingNonActive ? "hidden" : undefined } : { ...MActionButtonStyle(true), display: isViewingNonActive ? "none" : "inline-flex", alignItems: "center", gap: 5, flex: "1 1 auto", minWidth: 80 }}
       onClick={() => { handlePublishClick(); if (asDropdown) setKebabOpen(false); }}
       disabled={!canPublish}
       title={!onPublish ? "No publish handler configured." : validationErrors.length > 0 ? "Fix validation errors before publishing." : "Publish"}
       aria-disabled={!canPublish}
     >
+      <MToolbarIcon path="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3zM1 13.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 0 1h-13a.5.5 0 0 1-.5-.5z" />
       Publish
     </button>
   );
   const importButton = (asDropdown?: boolean) => (
     <button
       type="button"
-      style={asDropdown ? { ...MKebabDropdownItemStyle, display: isViewingNonActive ? "none" : undefined } : { ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64, display: isViewingNonActive ? "none" : undefined }}
+      style={asDropdown ? { ...MKebabDropdownItemStyle, display: "flex", alignItems: "center", gap: 5, visibility: isViewingNonActive ? "hidden" : undefined } : { ...MActionButtonStyle(false), display: isViewingNonActive ? "none" : "inline-flex", alignItems: "center", gap: 5, flex: "1 1 auto", minWidth: 64 }}
       disabled={effectiveReadOnly}
       onClick={() => { handleImportClick(); if (asDropdown) setKebabOpen(false); }}
       title="Import"
     >
+      <MToolbarIcon path={["M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z", "M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"]} />
       Import
     </button>
   );
   const exportButton = (asDropdown?: boolean) => (
     <button
       type="button"
-      style={asDropdown ? MKebabDropdownItemStyle : { ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }}
+      style={asDropdown ? { ...MKebabDropdownItemStyle, display: "flex", alignItems: "center", gap: 5 } : { ...MActionButtonStyle(false), display: "inline-flex", alignItems: "center", gap: 5, flex: "1 1 auto", minWidth: 64 }}
       onClick={() => { handleExportClick(); if (asDropdown) setKebabOpen(false); }}
       title="Export"
     >
+      <MToolbarIcon path={["M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z", "M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"]} />
       Export
     </button>
   );
@@ -1344,8 +1422,14 @@ export function MuRuleFlowEditor({
           </button>
           {!isGroupCollapsed("history") ? (
             <>
-              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.undo(); }} disabled={effectiveReadOnly || !history.canUndo} title="Undo (Ctrl+Z)">Undo</button>
-              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.redo(); }} disabled={effectiveReadOnly || !history.canRedo} title="Redo (Ctrl+Shift+Z)">Redo</button>
+              <button type="button" style={{ ...MActionButtonStyle(false), display: "inline-flex", alignItems: "center", gap: 5, flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.undo(); }} disabled={effectiveReadOnly || !history.canUndo} title="Undo (Ctrl+Z)">
+                <MToolbarIcon path="M7.5 4H3V0L0 3l3 3V3h4.5A3.5 3.5 0 0 1 11 6.5 3.5 3.5 0 0 1 7.5 10H4v1.5h3.5A5 5 0 0 0 12.5 6.5 5 5 0 0 0 7.5 2V4z" />
+                Undo
+              </button>
+              <button type="button" style={{ ...MActionButtonStyle(false), display: "inline-flex", alignItems: "center", gap: 5, flex: "1 1 auto", minWidth: 64 }} onClick={() => { flushPendingCommit(); history.redo(); }} disabled={effectiveReadOnly || !history.canRedo} title="Redo (Ctrl+Shift+Z)">
+                <MToolbarIcon path="M8.5 4h4.5v3l3-3-3-3v3H8.5A5 5 0 0 0 3.5 6.5 5 5 0 0 0 8.5 11H12V9.5H8.5A3.5 3.5 0 0 1 5 6.5 3.5 3.5 0 0 1 8.5 3V4z" />
+                Redo
+              </button>
             </>
           ) : null}
         </div>
@@ -1362,11 +1446,18 @@ export function MuRuleFlowEditor({
           </button>
           {!isGroupCollapsed("canvas") ? (
             <>
-              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 96 }} onClick={applyAutoLayout} disabled={effectiveReadOnly} title="Auto Layout">
+              <button type="button" style={{ ...MActionButtonStyle(false), display: "inline-flex", alignItems: "center", gap: 5, flex: "1 1 auto", minWidth: 96 }} onClick={applyAutoLayout} disabled={effectiveReadOnly} title="Auto Layout">
+                <MToolbarIcon path="M1 2.5A1.5 1.5 0 0 1 2.5 1h3A1.5 1.5 0 0 1 7 2.5v3A1.5 1.5 0 0 1 5.5 7h-3A1.5 1.5 0 0 1 1 5.5v-3zm8 0A1.5 1.5 0 0 1 10.5 1h3A1.5 1.5 0 0 1 15 2.5v3A1.5 1.5 0 0 1 13.5 7h-3A1.5 1.5 0 0 1 9 5.5v-3zm-8 8A1.5 1.5 0 0 1 2.5 9h3A1.5 1.5 0 0 1 7 10.5v3A1.5 1.5 0 0 1 5.5 15h-3A1.5 1.5 0 0 1 1 13.5v-3zm8 0A1.5 1.5 0 0 1 10.5 9h3A1.5 1.5 0 0 1 15 10.5v3A1.5 1.5 0 0 1 13.5 15h-3A1.5 1.5 0 0 1 9 13.5v-3z" />
                 Auto Layout
               </button>
-              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 80, display: isViewingNonActive ? "none" : undefined }} onClick={handleValidateClick} disabled={effectiveReadOnly} title="Validate">Validate</button>
-              <button type="button" style={{ ...MActionButtonStyle(false), flex: "1 1 auto", minWidth: 72 }} onClick={handleDryRunOpen} disabled={!apiBaseUrl || !workflowCode} title="Dry Run">Dry Run</button>
+              <button type="button" style={{ ...MActionButtonStyle(false), display: isViewingNonActive ? "none" : "inline-flex", alignItems: "center", gap: 5, flex: "1 1 auto", minWidth: 80 }} onClick={handleValidateClick} disabled={effectiveReadOnly} title="Validate">
+                <MToolbarIcon path="M13.854 3.646a.5.5 0 0 1 0 .708l-7 7a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L6.5 10.293l6.646-6.647a.5.5 0 0 1 .708 0z" />
+                Validate
+              </button>
+              <button type="button" style={{ ...MActionButtonStyle(false), display: "inline-flex", alignItems: "center", gap: 5, flex: "1 1 auto", minWidth: 72 }} onClick={handleDryRunOpen} disabled={!apiBaseUrl || !workflowCode} title="Dry Run">
+                <MToolbarIcon path="M11.5 2H9V.5a.5.5 0 0 0-1 0V2H5.5A2.5 2.5 0 0 0 3 4.5v7A2.5 2.5 0 0 0 5.5 14h5A2.5 2.5 0 0 0 13 11.5v-7A2.5 2.5 0 0 0 11.5 2zM8 11a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm0-1a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />
+                Dry Run
+              </button>
             </>
           ) : null}
         </div>
@@ -1950,6 +2041,9 @@ export function MuRuleFlowEditor({
           <div style={{ ...MFloatingToolbarStyle, background: tokens.overlayBg, border: tokens.overlayBorder, boxShadow: tokens.overlayShadow }}>
             {actionsPanel}
           </div>
+          {nodes.length === 0 && !effectiveReadOnly ? (
+            <MEmptyCanvasOverlay onAddTrigger={handleAddTriggerNode} />
+          ) : null}
           <ReactFlow
             proOptions={{ hideAttribution: true }}
             style={{ width: "100%", height: "100%" }}
