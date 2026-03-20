@@ -1579,7 +1579,8 @@ export function MActionButtonStyle(primary: boolean): React.CSSProperties {
     background: primary ? "var(--mu-color-interactive-subtle)" : "var(--mu-surface-raised)",
     color: "var(--mu-text-primary)",
     padding: "10px 12px",
-    fontWeight: 600
+    fontWeight: 600,
+    minHeight: 44  // RESP-04: minimum 44px touch target (WCAG 2.5.5)
   };
 }
 
@@ -1597,5 +1598,6 @@ export function MInspectorTabButtonStyle(active: boolean): React.CSSProperties {
     whiteSpace: "nowrap",
     transition: "border-color 0.15s, color 0.15s",
     outline: "none",
+    minHeight: 44  // RESP-04: minimum 44px touch target (WCAG 2.5.5)
   };
 }
