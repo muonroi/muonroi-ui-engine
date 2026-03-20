@@ -1702,7 +1702,7 @@ export function MuRuleFlowEditor({
     <ReactFlowProvider>
       {showHeader ? (
         <header style={{ ...MHeaderBarStyle, background: tokens.sidebarBg, borderBottom: tokens.sidebarBorder, color: tokens.textPrimary }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "var(--mu-space-sm)" }}>
             <strong style={{ fontSize: 14 }}>Rule Studio</strong>
             {workflowCode ? <span style={{ ...MHeaderBadgeStyle, background: tokens.actionPrimaryBg, border: tokens.actionPrimaryBorder, color: tokens.textPrimary }}>{workflowCode}</span> : null}
             {versions.length > 0 ? (
@@ -2462,7 +2462,7 @@ function MPublishConfirmDialog({
             ))}
           </div>
         ) : null}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "var(--mu-space-sm)" }}>
           <button type="button" style={MActionButtonStyle(false)} onClick={onCancel}>
             Cancel
           </button>
@@ -2624,7 +2624,7 @@ function MSidebarSectionStyle(isOpen: boolean): React.CSSProperties {
   return {
     display: "flex",
     flexDirection: "column",
-    gap: 12,
+    gap: "var(--mu-space-sm)",
     minHeight: 0,
     flex: isOpen ? "1 1 auto" : "0 0 auto",
     borderRadius: 20,
@@ -2640,7 +2640,7 @@ function MSidebarSectionHeaderStyle(isOpen: boolean): React.CSSProperties {
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
-    gap: 12,
+    gap: "var(--mu-space-sm)",
     width: "100%",
     border: "none",
     background: "transparent",
@@ -2838,7 +2838,7 @@ const MDependencyOverlayStyle: React.CSSProperties = {
   zIndex: 2,
   display: "flex",
   flexDirection: "column",
-  gap: 10,
+  gap: "var(--mu-space-sm)",
   width: "min(320px, calc(100% - 32px))",
   maxHeight: "calc(100% - 32px)",
   padding: 14,
