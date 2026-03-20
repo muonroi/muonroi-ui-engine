@@ -1,5 +1,4 @@
 import { LitElement, type PropertyValues, html, unsafeCSS } from "lit";
-import { MuBaseElement } from "../shared/mu-base-element.js";
 import { customElement, property, state } from "lit/decorators.js";
 import type { MDecisionTableDiff, MDecisionTableModel, MDecisionTableVersionInfo } from "../../models.js";
 import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
@@ -13,7 +12,7 @@ const M_DEFAULT_DIFF_ENDPOINT = `${M_DEFAULT_API_BASE}/{id}/versions/{v1}/diff/{
 const M_FEATURE_KEY = "decision-table";
 
 @customElement("mu-decision-table")
-export class MuDecisionTable extends MuBaseElement {
+export class MuDecisionTable extends LitElement {
   static styles = [unsafeCSS(tailwindStyles)];
 
   @property({ type: String, attribute: "api-base" })

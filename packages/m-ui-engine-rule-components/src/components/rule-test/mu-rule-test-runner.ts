@@ -1,5 +1,4 @@
 import { LitElement, html, unsafeCSS } from "lit";
-import { MuBaseElement } from "../shared/mu-base-element.js";
 import { customElement, property, state } from "lit/decorators.js";
 import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
@@ -7,7 +6,7 @@ import tailwindStyles from "../../styles/tailwind.css?inline";
 const M_FEATURE_KEY = "rule-test-runner";
 
 @customElement("mu-rule-test-runner")
-export class MuRuleTestRunner extends MuBaseElement {
+export class MuRuleTestRunner extends LitElement {
   static styles = [unsafeCSS(tailwindStyles)];
 
   @property({ type: String, attribute: "test-endpoint" })

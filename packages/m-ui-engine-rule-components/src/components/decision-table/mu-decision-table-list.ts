@@ -1,5 +1,4 @@
 import { LitElement, html, unsafeCSS } from "lit";
-import { MuBaseElement } from "../shared/mu-base-element.js";
 import { customElement, property, state } from "lit/decorators.js";
 import type { MDecisionTableModel } from "../../models.js";
 import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
@@ -8,7 +7,7 @@ import tailwindStyles from "../../styles/tailwind.css?inline";
 const M_FEATURE_KEY = "decision-table-list";
 
 @customElement("mu-decision-table-list")
-export class MuDecisionTableList extends MuBaseElement {
+export class MuDecisionTableList extends LitElement {
   static styles = [unsafeCSS(tailwindStyles)];
 
   @property({ type: String, attribute: "api-base" })
