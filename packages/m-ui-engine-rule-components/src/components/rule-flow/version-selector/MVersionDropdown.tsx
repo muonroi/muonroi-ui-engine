@@ -177,6 +177,7 @@ export function MVersionDropdown({
           {/* Version list */}
           {versions.map((v) => {
             const isSelected = selectedVersion === v.version;
+            const isActiveVersion = v.isActive;
             return (
               <button
                 key={v.version}
@@ -188,23 +189,33 @@ export function MVersionDropdown({
                   gap: 8,
                   width: "100%",
                   padding: "7px 12px",
-                  background: isSelected ? tokens.overlayItemSelectedBg : "transparent",
-                  border: "none",
+                  background: isActiveVersion
+                    ? "var(--mu-color-interactive-subtle)"
+                    : isSelected
+                      ? tokens.overlayItemSelectedBg
+                      : "transparent",
+                  borderTop: "none",
+                  borderRight: "none",
                   borderBottom: "1px solid rgba(148,163,184,0.06)",
+                  borderLeft: isActiveVersion
+                    ? "3px solid var(--mu-color-interactive)"
+                    : "3px solid transparent",
                   cursor: "pointer",
                   textAlign: "left",
                   color: tokens.textPrimary,
-                  fontSize: 12
+                  fontSize: 12,
                 }}
               >
-                {v.isActive ? (
-                  <span style={{ color: "var(--mu-color-success-text)", fontSize: 11 }}>{"\u2605"}</span>
+                {isActiveVersion ? (
+                  <span style={{ color: "var(--mu-color-interactive)", fontSize: 13, flexShrink: 0 }}>{"\u2605"}</span>
                 ) : (
-                  <span style={{ width: 11, display: "inline-block" }} />
+                  <span style={{ width: 13, display: "inline-block", flexShrink: 0 }} />
                 )}
-                <span style={{ fontWeight: 600, minWidth: 36 }}>v{v.version}</span>
-                <span style={{ ...badgeBase, ...statusBadgeStyle(v.status, v.isActive) }}>
-                  {v.isActive ? "Active" : v.status}
+                <span style={{ fontWeight: isActiveVersion ? 700 : 600, minWidth: 36, color: isActiveVersion ? "var(--mu-color-interactive)" : tokens.textPrimary }}>
+                  v{v.version}
+                </span>
+                <span style={{ ...badgeBase, ...statusBadgeStyle(v.status, isActiveVersion) }}>
+                  {isActiveVersion ? "Active" : v.status}
                 </span>
                 <span style={{ fontSize: 10, color: tokens.textMuted, marginLeft: "auto" }}>
                   {formatDate(v.createdAt)}
