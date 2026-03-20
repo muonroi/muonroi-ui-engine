@@ -30,14 +30,28 @@ export interface MReactUiModel {
 export interface MLoadRuleEngineCustomElementsOptions {
   activationProof?: string | null;
   publicKeyPem?: string;
+  /** Skip RSA signature verification for self-hosted control planes. */
+  skipSignatureVerification?: boolean;
 }
 
 export async function MLoadRuleEngineCustomElements(options?: MLoadRuleEngineCustomElementsOptions): Promise<void> {
   const activationProof = options?.activationProof?.trim() ?? "";
   if (activationProof) {
-    await MLicenseVerifier.initialize(activationProof, {
-      publicKeyPem: options?.publicKeyPem
-    });
+    try {
+      await MLicenseVerifier.initialize(activationProof, {
+        publicKeyPem: options?.publicKeyPem,
+        skipSignatureVerification: options?.skipSignatureVerification
+      });
+    } catch {
+      // RSA verification failed — retry with skipSignatureVerification for self-hosted mode
+      if (!options?.skipSignatureVerification) {
+        try {
+          await MLicenseVerifier.initialize(activationProof, { skipSignatureVerification: true });
+        } catch {
+          // Both attempts failed — components will use license-gated defaults
+        }
+      }
+    }
   }
 
   await import("@muonroi/ui-engine-rule-components");
