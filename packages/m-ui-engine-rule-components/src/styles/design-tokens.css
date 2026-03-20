@@ -101,6 +101,25 @@
   --mu-space-lg: 24px;
   --mu-space-xl: 32px;
   --mu-space-2xl: 48px;
+
+  /* === Typography Scale === */
+  /* size / line-height pairs */
+  --mu-text-xs: 11px;   /* line-height: 16px */
+  --mu-text-sm: 13px;   /* line-height: 20px */
+  --mu-text-base: 14px; /* line-height: 24px */
+  --mu-text-md: 16px;   /* line-height: 24px */
+  --mu-text-lg: 20px;   /* line-height: 32px */
+  --mu-text-xl: 24px;   /* line-height: 32px */
+  --mu-text-2xl: 32px;  /* line-height: 40px */
+
+  /* === Font Stacks === */
+  --mu-font-mono: "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* === Font Weights === */
+  --mu-font-regular: 400;
+  --mu-font-medium: 500;
+  --mu-font-semibold: 600;
+  --mu-font-bold: 700;
 }
 
 /* ============================================================
