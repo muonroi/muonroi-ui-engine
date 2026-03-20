@@ -138,7 +138,7 @@ export function MRuleFlowInspector(props: MRuleFlowInspectorProps): React.JSX.El
       ) : null}
 
       {selectedNode ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-sm)", minHeight: 0 }}>
           <div style={MInspectorTabsStyle}>
             {MAvailableInspectorTabs(selectedNode.data.nodeType).map((tab) => (
               <button key={tab} type="button" style={MInspectorTabButtonStyle(tab === inspectorTab)} onClick={() => setInspectorTab(tab)}>
@@ -227,7 +227,7 @@ function MGeneralTab(props: MRuleFlowInspectorProps): React.JSX.Element {
   const dependsOn = selectedNode.data.dependsOn ?? [];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-sm)" }}>
       <label style={MLabelStyle}>
         Label
         <input style={MInputStyle} value={selectedNode.data.label} disabled={readOnly} onChange={(event) => props.onUpdateLabel(event.target.value)} />
@@ -399,7 +399,7 @@ function MExpressionTab({
   const isPerFieldLogicNode = nodeType === "action" || nodeType === "connector";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-sm)" }}>
       {isPerFieldLogicNode && (hasPerFieldExpressions || !expression.body.trim()) ? (
         <>
           <div style={MSectionTitleStyle}>
@@ -425,7 +425,7 @@ function MExpressionTab({
                     <tr key={field.path}>
                       <td style={MTableCellStyle}>{field.path}</td>
                       <td style={MTableCellStyle}>{field.dataType}</td>
-                      <td style={{ ...MTableCellStyle, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: 12 }}>{field.valueExpression}</td>
+                      <td style={{ ...MTableCellStyle, fontFamily: "var(--mu-font-mono)", fontSize: 12 }}>{field.valueExpression}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -511,7 +511,7 @@ function MConditionConfigEditor({
   };
 
   return (
-    <div style={{ display: "grid", gap: 10 }}>
+    <div style={{ display: "grid", gap: "var(--mu-space-sm)" }}>
       <label style={MLabelStyle}>
         <span>Success Label<MInfoIcon tooltip="Shown on output edges when this condition evaluates to true" /></span>
         <input style={MInputStyle} value={normalized.successLabel} disabled={readOnly} onChange={(event) => onChange({ ...normalized, successLabel: event.target.value })} />
@@ -547,7 +547,7 @@ function MConnectorConfigEditor({
   }
 
   return (
-    <div style={{ display: "grid", gap: 10 }}>
+    <div style={{ display: "grid", gap: "var(--mu-space-sm)" }}>
       <label style={MLabelStyle}>
         Connector Type
         <select
@@ -574,7 +574,7 @@ function MConnectorConfigEditor({
           <label style={MLabelStyle}>
             Config JSON
             <textarea
-              style={{ ...MTextareaStyle, fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: 13 }}
+              style={{ ...MTextareaStyle, fontFamily: "var(--mu-font-mono)", fontSize: 13 }}
               value={JSON.stringify(config.connectorConfig ?? {}, null, 2)}
               disabled={readOnly}
               onChange={(event) => {
@@ -590,7 +590,7 @@ function MConnectorConfigEditor({
           {selectedMeta?.configSchema ? (
             <div style={MExpressionHintStyle}>
               <strong>Config Schema</strong>
-              <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace", fontSize: 11 }}>
+              <pre style={{ margin: 0, whiteSpace: "pre-wrap", wordBreak: "break-word", fontFamily: "var(--mu-font-mono)", fontSize: 11 }}>
                 {JSON.stringify(selectedMeta.configSchema, null, 2)}
               </pre>
             </div>
@@ -718,7 +718,7 @@ function MScopeTable({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-sm)" }}>
       {/* Header row with title + view toggle */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={MSectionTitleStyle}>
@@ -912,8 +912,8 @@ function MEffectiveInputTab({
     // Code-first nodes (action with no expression)
     if (nodeType === "action" && !hasExpression) {
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-sm)" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--mu-space-sm)", alignItems: "center" }}>
             <div style={MSectionTitleStyle}>
               <strong>Data Flow</strong>
               <span>Where this node gets its data from upstream nodes</span>
@@ -932,7 +932,7 @@ function MEffectiveInputTab({
     // FEEL/expression nodes with no expression body
     if ((nodeType === "condition" || nodeType === "liquid") && !hasExpression) {
       return (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-sm)" }}>
           <div style={MSectionTitleStyle}>
             <strong>Data Flow</strong>
             <span>Where this node gets its data from upstream nodes</span>
@@ -948,7 +948,7 @@ function MEffectiveInputTab({
     }
     // Has expression but no mappings resolved
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-sm)" }}>
         <div style={MSectionTitleStyle}>
           <strong>Data Flow</strong>
           <span>Where this node gets its data from upstream nodes</span>
@@ -964,8 +964,8 @@ function MEffectiveInputTab({
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-sm)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--mu-space-sm)", alignItems: "center" }}>
         <div style={MSectionTitleStyle}>
           <strong>Data Flow</strong>
           <span>Where this node gets its data from upstream nodes</span>
@@ -1085,7 +1085,7 @@ function MOutputContractTab({
   // End node special case — Final Scope (unchanged)
   if (nodeType === "end") {
     return (
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-sm)" }}>
         <div style={MSectionTitleStyle}>
           <strong>Final Scope</strong>
           <span>Everything guaranteed to be available when the flow reaches this end node.</span>
@@ -1143,8 +1143,8 @@ function MOutputContractTab({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* ── Section 1: Custom Output Fields ── */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "var(--mu-space-sm)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: "var(--mu-space-sm)", alignItems: "center" }}>
           <div style={MSectionTitleStyle}>
             <strong>Custom Output Fields</strong>
             <span>User-defined fields with expressions</span>
@@ -1216,7 +1216,7 @@ function MOutputContractTab({
                             root={undefined}
                           />
                         ) : (
-                          <span style={{ fontFamily: "monospace", fontSize: 11 }}>{field.valueExpression ?? "\u2014"}</span>
+                          <span style={{ fontFamily: "var(--mu-font-mono)", fontSize: "var(--mu-text-xs)" }}>{field.valueExpression ?? "\u2014"}</span>
                         )}
                       </td>
                     ) : null}
@@ -1337,16 +1337,16 @@ function MIssueList({ issues }: { issues: MContractValidationIssue[] }): React.J
 export const MSectionTitleStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 4,
-  fontSize: 13,
+  gap: "var(--mu-space-xs)",
+  fontSize: "var(--mu-text-sm)",
   color: "var(--mu-text-muted)"
 };
 
 export const MInspectorShellStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 12,
-  padding: 18,
+  gap: "var(--mu-space-sm)",
+  padding: "var(--mu-space-md)",
   width: "100%",
   minWidth: 0,
   borderRadius: 18,
@@ -1365,16 +1365,17 @@ export const MInspectorTabsStyle: React.CSSProperties = {
 export const MLabelStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
-  gap: 6,
-  fontSize: 13,
+  gap: "var(--mu-space-xs)",
+  fontSize: "var(--mu-text-sm)",
+  fontWeight: "var(--mu-font-medium)",
   color: "var(--mu-text-label)"
 };
 
 export const MInputStyle: React.CSSProperties = {
   borderRadius: 8,
   border: "1px solid var(--mu-border-input)",
-  padding: "6px 8px",
-  fontSize: 12,
+  padding: "var(--mu-space-xs) var(--mu-space-sm)",
+  fontSize: "var(--mu-text-xs)",
   width: "100%"
 };
 
@@ -1405,8 +1406,8 @@ export const MTableHeaderStyle: React.CSSProperties = {
   top: 0,
   background: "var(--mu-surface-raised)",
   textAlign: "left",
-  padding: "6px 4px",
-  fontSize: 11,
+  padding: "var(--mu-space-xs) var(--mu-space-xs)",
+  fontSize: "var(--mu-text-xs)",
   color: "var(--mu-text-secondary)",
   borderBottom: "1px solid var(--mu-border-subtle)",
   overflow: "hidden",
@@ -1439,7 +1440,7 @@ export const MInlinePathButtonStyle: React.CSSProperties = {
 export const MContractGridStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: 10
+  gap: "var(--mu-space-sm)"
 };
 
 export const MDeleteButtonStyle: React.CSSProperties = {
@@ -1512,7 +1513,7 @@ const MPreviewStyle: React.CSSProperties = {
   margin: 0,
   whiteSpace: "pre-wrap",
   wordBreak: "break-word",
-  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+  fontFamily: "var(--mu-font-mono)",
   fontSize: 12
 };
 
