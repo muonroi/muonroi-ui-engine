@@ -2215,17 +2215,15 @@ export function MuRuleFlowEditor({
                 onPointerEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--mu-color-interactive)"; }}
                 onPointerLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = tokens.sidebarBorder.replace("1px solid ", ""); }}
               />
-              <div style={{ flex: `0 0 ${dryRunPanelHeight}%`, overflow: "hidden", display: "flex", flexDirection: "column", background: tokens.sidebarBg }}>
-                <div style={{ flex: "1 1 auto", overflow: "auto", minHeight: 0 }}>
-                  <MDryRunInputEditor
-                    value={dryRunInput}
-                    onChange={setDryRunInput}
-                    onReset={() => setDryRunInput(generateDefaultInputJson())}
-                    tokens={tokens}
-                    editorRoot={editorRoot}
-                  />
-                </div>
-                <div style={{ display: "flex", gap: 8, padding: "8px 12px", background: tokens.sidebarBg, flexShrink: 0, borderTop: `1px solid ${tokens.sidebarBorder.replace("1px solid ", "")}` }}>
+              <div style={{ flex: `0 0 ${dryRunPanelHeight}%`, overflow: "auto", background: tokens.sidebarBg }}>
+                <MDryRunInputEditor
+                  value={dryRunInput}
+                  onChange={setDryRunInput}
+                  onReset={() => setDryRunInput(generateDefaultInputJson())}
+                  tokens={tokens}
+                  editorRoot={editorRoot}
+                />
+                <div style={{ display: "flex", gap: 8, padding: "8px 12px", background: tokens.sidebarBg }}>
                   <button
                     type="button"
                     onClick={() => { void executeDryRun(); }}
