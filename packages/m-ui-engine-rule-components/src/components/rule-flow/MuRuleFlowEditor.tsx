@@ -150,20 +150,19 @@ const M_EDGE_TYPE_HINTS: Record<MRuleFlowEdgeType, string> = {
   "on-error": "Continue only when the source node threw an exception."
 };
 
-/* Edge pill tokens — inline oklch values because CSS custom properties don't resolve
-   inside Shadow DOM SVG (LightningCSS strips :host selectors, and SVG rects
-   don't participate in CSS custom property inheritance from the shadow host). */
-const M_EDGE_PILL_LIGHT: Record<MRuleFlowEdgeType, { bg: string; border: string; icon: string }> = {
-  always:    { bg: "oklch(95% 0.01 255)",  border: "oklch(45% 0.02 255)",  icon: "\u2192" },
-  "on-true": { bg: "oklch(94% 0.04 150)",  border: "oklch(42% 0.12 150)",  icon: "\u2713" },
-  "on-false":{ bg: "oklch(94% 0.04 25)",   border: "oklch(48% 0.18 25)",   icon: "\u2717" },
-  "on-error":{ bg: "oklch(95% 0.04 75)",   border: "oklch(52% 0.15 70)",   icon: "\u26A0" },
+/* Edge chip tokens — solid filled chips with contrasting text. No border.
+   Inline oklch because CSS custom properties don't resolve in Shadow DOM SVG. */
+const M_EDGE_CHIP_LIGHT: Record<MRuleFlowEdgeType, { bg: string; text: string }> = {
+  always:    { bg: "oklch(82% 0.01 255)",  text: "oklch(35% 0.02 255)" },
+  "on-true": { bg: "oklch(82% 0.08 150)",  text: "oklch(30% 0.10 150)" },
+  "on-false":{ bg: "oklch(82% 0.08 25)",   text: "oklch(35% 0.14 25)" },
+  "on-error":{ bg: "oklch(85% 0.06 75)",   text: "oklch(38% 0.12 70)" },
 };
-const M_EDGE_PILL_DARK: Record<MRuleFlowEdgeType, { bg: string; border: string; icon: string }> = {
-  always:    { bg: "oklch(28% 0.01 255)",  border: "oklch(70% 0.01 255)",  icon: "\u2192" },
-  "on-true": { bg: "oklch(28% 0.04 150)",  border: "oklch(65% 0.14 150)",  icon: "\u2713" },
-  "on-false":{ bg: "oklch(28% 0.04 25)",   border: "oklch(65% 0.18 25)",   icon: "\u2717" },
-  "on-error":{ bg: "oklch(30% 0.04 75)",   border: "oklch(68% 0.14 70)",   icon: "\u26A0" },
+const M_EDGE_CHIP_DARK: Record<MRuleFlowEdgeType, { bg: string; text: string }> = {
+  always:    { bg: "oklch(38% 0.01 255)",  text: "oklch(82% 0.01 255)" },
+  "on-true": { bg: "oklch(35% 0.06 150)",  text: "oklch(80% 0.08 150)" },
+  "on-false":{ bg: "oklch(35% 0.06 25)",   text: "oklch(80% 0.08 25)" },
+  "on-error":{ bg: "oklch(38% 0.05 75)",   text: "oklch(82% 0.06 70)" },
 };
 
 /* NOTE: EdgeLabelRenderer (portal) and foreignObject both fail in Shadow DOM (Lit host).
@@ -495,20 +494,20 @@ export function MuRuleFlowEditor({
 
   function MStyleEdges(rawEdges: Edge[]): Edge[] {
     const colors = theme === "dark" ? M_EDGE_COLORS_DARK : M_EDGE_COLORS;
-    const pills = theme === "dark" ? M_EDGE_PILL_DARK : M_EDGE_PILL_LIGHT;
+    const chips = theme === "dark" ? M_EDGE_CHIP_DARK : M_EDGE_CHIP_LIGHT;
     return rawEdges.map((edge) => {
       const edgeType = (edge.data as { edgeType?: string } | undefined)?.edgeType ?? "always";
       const color = colors[edgeType as keyof typeof colors] ?? colors.always;
-      const pill = pills[edgeType as MRuleFlowEdgeType] ?? pills.always;
-      const labelText = `${pill.icon} ${M_EDGE_TYPE_LABELS[edgeType as MRuleFlowEdgeType] ?? "Always"}`;
+      const chip = chips[edgeType as MRuleFlowEdgeType] ?? chips.always;
+      const labelText = M_EDGE_TYPE_LABELS[edgeType as MRuleFlowEdgeType] ?? "Always";
       return {
         ...edge,
         label: labelText,
         style: { stroke: color, strokeWidth: 2 },
-        labelStyle: { fill: pill.border, fontWeight: 700, fontSize: 11 },
-        labelBgStyle: { fill: pill.bg, stroke: pill.border, strokeWidth: 1.5 },
-        labelBgPadding: [6, 10] as [number, number],
-        labelBgBorderRadius: 12,
+        labelStyle: { fill: chip.text, fontWeight: 600, fontSize: 10, letterSpacing: "0.02em" },
+        labelBgStyle: { fill: chip.bg },
+        labelBgPadding: [4, 8] as [number, number],
+        labelBgBorderRadius: 6,
       };
     });
   }
