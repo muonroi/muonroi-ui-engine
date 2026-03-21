@@ -1225,10 +1225,10 @@ function MOutputContractTab({
             <table style={MTableStyle}>
               <thead>
                 <tr>
-                  <th style={{ ...MTableHeaderStyle, width: showValueExpression ? 90 : 120 }} title="Dotted path where this value is stored in the FactBag">Path</th>
-                  <th style={{ ...MTableHeaderStyle, width: 56 }} title="Data type of the output value">Type</th>
+                  <th style={{ ...MTableHeaderStyle, width: showValueExpression ? "25%" : "35%" }} title="Dotted path where this value is stored in the FactBag">Path</th>
+                  <th style={{ ...MTableHeaderStyle, width: "15%" }} title="Data type of the output value">Type</th>
                   {showValueExpression ? <th style={MTableHeaderStyle} title="FEEL/Liquid expression that computes this value at runtime">Expression</th> : null}
-                  {editable && !readOnly ? <th style={{ ...MTableHeaderStyle, width: 44 }}>Actions</th> : null}
+                  {editable && !readOnly ? <th style={{ ...MTableHeaderStyle, width: "12%" }}>Actions</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -1330,7 +1330,7 @@ function MFieldTable({
         <thead>
           <tr>
             <th style={MTableHeaderStyle}>Path</th>
-            <th style={{ ...MTableHeaderStyle, width: 56 }}>Type</th>
+            <th style={{ ...MTableHeaderStyle, width: "15%" }}>Type</th>
             <th style={MTableHeaderStyle}>Description</th>
           </tr>
         </thead>
