@@ -3,21 +3,39 @@ using Microsoft.AspNetCore.Razor.TagHelpers;
 
 namespace Muonroi.Ui.Engine.Mvc.TagHelpers;
 
+/// <summary>
+/// Renders a custom UI engine web component and its optional assets.
+/// </summary>
 [HtmlTargetElement("mu-rule-component")]
 public sealed class MUiEngineComponentTagHelper : TagHelper
 {
+    /// <summary>
+    /// Gets or sets the component type used to build the custom element tag.
+    /// </summary>
     [HtmlAttributeName("component-type")]
     public string ComponentType { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Gets or sets the component properties serialized as HTML attributes.
+    /// </summary>
     [HtmlAttributeName("props")]
     public IDictionary<string, string>? Props { get; set; }
 
+    /// <summary>
+    /// Gets or sets the optional JavaScript module URL to load after the component.
+    /// </summary>
     [HtmlAttributeName("bundle-url")]
     public string? BundleUrl { get; set; }
 
+    /// <summary>
+    /// Gets or sets the optional stylesheet URL to include after the component.
+    /// </summary>
     [HtmlAttributeName("css-url")]
     public string? CssUrl { get; set; }
 
+    /// <summary>
+    /// Processes the tag helper output for the configured component.
+    /// </summary>
     public override void Process(TagHelperContext context, TagHelperOutput output)
     {
         if (string.IsNullOrWhiteSpace(ComponentType))
