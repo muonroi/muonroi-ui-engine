@@ -2349,14 +2349,14 @@ export function MuRuleFlowEditor({
     }
     const nextEdges = applyEdgeChanges(changes, edgesRef.current) as Edge[];
     if (isRestoringRef.current) {
-      setEdges(nextEdges);
+      setEdges(MStyleEdges(nextEdges));
       return;
     }
     const selectedIds = nextEdges.filter((edge) => edge.selected).map((edge) => edge.id);
     setSelectedEdgeId(selectedIds[0] ?? selectedEdgeId);
     const hasSemanticChange = changes.some((change) => change.type === "add" || change.type === "remove" || change.type === "replace");
     if (!hasSemanticChange) {
-      setEdges(nextEdges);
+      setEdges(MStyleEdges(nextEdges));
       return;
     }
     commitGraph(buildGraph(nodesRef.current, nextEdges));
