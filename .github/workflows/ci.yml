@@ -1,6 +1,10 @@
 name: CI
 
 on:
+  push:
+    branches:
+      - develop
+      - main
   pull_request:
     branches:
       - develop
@@ -9,6 +13,9 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,6 +31,11 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
       - name: install
         run: pnpm install --frozen-lockfile
 
@@ -38,3 +50,14 @@ jobs:
 
       - name: test
         run: pnpm run --if-present test
+
+      - name: dotnet test with coverage
+        run: dotnet test Muonroi.Ui.Engine.sln -v minimal --collect:"XPlat Code Coverage" --results-directory ./TestResults /m:1
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./TestResults/**/coverage.cobertura.xml
+          fail_ci_if_error: false
+          use_oidc: true
+          verbose: true

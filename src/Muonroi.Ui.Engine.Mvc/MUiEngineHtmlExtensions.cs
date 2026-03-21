@@ -4,8 +4,14 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace Muonroi.Ui.Engine.Mvc;
 
+/// <summary>
+/// Provides HTML helper extensions for rendering UI engine components.
+/// </summary>
 public static class MUiEngineHtmlExtensions
 {
+    /// <summary>
+    /// Renders a custom UI engine component tag and optional asset references.
+    /// </summary>
     public static IHtmlContent MRenderRuleComponent(
         this IHtmlHelper htmlHelper,
         string componentType,
@@ -17,12 +23,15 @@ public static class MUiEngineHtmlExtensions
         HtmlContentBuilder builder = new();
         string tagName = $"mu-{componentType}";
 
-        string attributes = props is null
+        string attributes = props is null || props.Count == 0
             ? string.Empty
             : string.Join(" ", props.Select(x =>
                 $"{ToKebabCase(x.Key)}=\"{HtmlEncoder.Default.Encode(x.Value)}\""));
 
-        builder.AppendHtml($"<{tagName} {attributes}></{tagName}>");
+        string openingTag = string.IsNullOrEmpty(attributes)
+            ? $"<{tagName}></{tagName}>"
+            : $"<{tagName} {attributes}></{tagName}>";
+        builder.AppendHtml(openingTag);
 
         if (!string.IsNullOrWhiteSpace(cssUrl))
         {
