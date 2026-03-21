@@ -506,9 +506,9 @@ export function MuRuleFlowEditor({
         label: labelText,
         style: { stroke: color, strokeWidth: 2 },
         labelStyle: { fill: pill.border, fontWeight: 700, fontSize: 11 },
-        labelBgStyle: { fill: pill.bg, stroke: pill.border, strokeWidth: 1.5, rx: 12, ry: 12 },
+        labelBgStyle: { fill: pill.bg, stroke: pill.border, strokeWidth: 1.5 },
         labelBgPadding: [6, 10] as [number, number],
-        labelBgBorderRadius: 999,
+        labelBgBorderRadius: 12,
       };
     });
   }
@@ -2118,7 +2118,7 @@ export function MuRuleFlowEditor({
             nodes={nodes}
             edges={edges}
             nodeTypes={M_NODE_TYPES}
-            edgeTypes={M_EDGE_TYPES}
+
             onMoveStart={() => {
               allowAutoFitRef.current = false;
             }}
