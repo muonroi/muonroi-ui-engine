@@ -1221,36 +1221,41 @@ function MOutputContractTab({
             onAction={editable && !readOnly ? addField : undefined}
           />
         ) : (
-          <div style={MTableShellStyle}>
-            <table style={MTableStyle}>
-              <thead>
-                <tr>
-                  <th style={{ ...MTableHeaderStyle, width: showValueExpression ? "25%" : "35%" }} title="Dotted path where this value is stored in the FactBag">Path</th>
-                  <th style={{ ...MTableHeaderStyle, width: "15%" }} title="Data type of the output value">Type</th>
-                  {showValueExpression ? <th style={MTableHeaderStyle} title="FEEL/Liquid expression that computes this value at runtime">Expression</th> : null}
-                  {editable && !readOnly ? <th style={{ ...MTableHeaderStyle, width: "12%" }}>Actions</th> : null}
-                </tr>
-              </thead>
-              <tbody>
+          <div style={MOutputCardListStyle}>
                 {customFields.map((field, index) => (
-                  <tr key={`output-custom-${index}`}>
-                    <td style={MTableCellStyle}>
+                  <div key={`output-custom-${index}`} style={MOutputCardStyle}>
+                    {/* Row 1: Path + delete */}
+                    <div style={MOutputCardRowStyle}>
                       {editable ? (
                         <input
-                          style={MInputStyle}
+                          style={{ ...MInputStyle, flex: "1 1 0%", minWidth: 0 }}
                           value={field.path}
                           disabled={readOnly}
+                          placeholder="field.path"
+                          title="Dotted path where this value is stored in the FactBag"
                           onChange={(event) => updateFieldAt(index, (current) => ({ ...current, path: event.target.value, label: event.target.value }))}
                         />
                       ) : (
-                        <button type="button" style={MInlinePathButtonStyle} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
+                        <button type="button" style={{ ...MInlinePathButtonStyle, flex: "1 1 0%", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }} onClick={() => onInsert(field.path)} disabled={readOnly}>{field.path}</button>
                       )}
-                    </td>
-                    <td style={MTableCellStyle}>
+                      {editable && !readOnly ? (
+                        <button
+                          type="button"
+                          style={{ ...MInlinePathButtonStyle, color: "var(--mu-color-error-text)", flexShrink: 0, fontSize: "var(--mu-text-xs)" }}
+                          onClick={() => removeFieldAt(index)}
+                          title="Remove this field"
+                        >
+                          delete
+                        </button>
+                      ) : null}
+                    </div>
+                    {/* Row 2: Type + Expression */}
+                    <div style={MOutputCardRowStyle}>
                       {editable && !readOnly ? (
                         <select
-                          style={{ fontSize: 11, padding: "2px 4px", borderRadius: 6, border: "1px solid var(--mu-border-input)", background: "var(--mu-surface-raised)", width: "100%", cursor: "pointer" }}
+                          style={MOutputTypeSelectStyle}
                           value={field.dataType}
+                          title="Data type of the output value"
                           onChange={(event) => updateFieldAt(index, (current) => ({ ...current, dataType: event.target.value }))}
                         >
                           {["string", "number", "boolean", "object", "array"].map((t) => (
@@ -1258,40 +1263,31 @@ function MOutputContractTab({
                           ))}
                         </select>
                       ) : <MTypeBadge dataType={field.dataType} />}
-                    </td>
-                    {showValueExpression ? (
-                      <td style={{ ...MTableCellStyle, overflow: "visible", whiteSpace: "normal" }}>
-                        {editable ? (
-                          <MExpressionEditor
-                            value={field.valueExpression ?? ""}
-                            language="feel"
-                            readOnly={readOnly}
-                            singleLine={true}
-                            placeholderText="e.g. command.details.length"
-                            onChange={(val) => updateFieldAt(index, (current) => ({
-                              ...current,
-                              valueExpression: val,
-                              runtimeWritten: val.trim().length > 0
-                            }))}
-                            extensions={upstreamAutocompleteExts}
-                            root={undefined}
-                          />
-                        ) : (
-                          <span style={{ fontFamily: "var(--mu-font-mono)", fontSize: "var(--mu-text-xs)" }}>{field.valueExpression ?? "\u2014"}</span>
-                        )}
-                      </td>
-                    ) : null}
-                    {editable && !readOnly ? (
-                      <td style={MTableCellStyle}>
-                        <button type="button" style={MInlinePathButtonStyle} onClick={() => removeFieldAt(index)}>
-                          delete
-                        </button>
-                      </td>
-                    ) : null}
-                  </tr>
+                      {showValueExpression ? (
+                        <div style={{ flex: "1 1 0%", minWidth: 0 }}>
+                          {editable ? (
+                            <MExpressionEditor
+                              value={field.valueExpression ?? ""}
+                              language="feel"
+                              readOnly={readOnly}
+                              singleLine={true}
+                              placeholderText="e.g. command.details.length"
+                              onChange={(val) => updateFieldAt(index, (current) => ({
+                                ...current,
+                                valueExpression: val,
+                                runtimeWritten: val.trim().length > 0
+                              }))}
+                              extensions={upstreamAutocompleteExts}
+                              root={undefined}
+                            />
+                          ) : (
+                            <span style={{ fontFamily: "var(--mu-font-mono)", fontSize: "var(--mu-text-xs)" }}>{field.valueExpression ?? "\u2014"}</span>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
           </div>
         )}
       </MCollapsibleSection>
@@ -1509,6 +1505,44 @@ export const MContractGridStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: "var(--mu-space-sm)"
+};
+
+/* ── Output card layout: stacked form pattern for narrow inspector ── */
+
+export const MOutputCardListStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "var(--mu-space-xs)",
+  overflowY: "auto",
+  maxHeight: "50vh",
+  minHeight: 80
+};
+
+export const MOutputCardStyle: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: "var(--mu-space-xs)",
+  padding: "var(--mu-space-sm)",
+  borderRadius: 10,
+  border: "1px solid var(--mu-border-subtle)",
+  background: "var(--mu-surface-base)"
+};
+
+export const MOutputCardRowStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--mu-space-xs)",
+  minWidth: 0
+};
+
+export const MOutputTypeSelectStyle: React.CSSProperties = {
+  fontSize: "var(--mu-text-xs)",
+  padding: "2px 4px",
+  borderRadius: 6,
+  border: "1px solid var(--mu-border-input)",
+  background: "var(--mu-surface-raised)",
+  cursor: "pointer",
+  flexShrink: 0
 };
 
 export const MDeleteButtonStyle: React.CSSProperties = {
