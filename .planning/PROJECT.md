@@ -6,7 +6,7 @@ Transform the Control Plane dashboard from a functional prototype into a profess
 
 ## Constraints
 
-- Must work within existing Control Plane API infrastructure (cp.truyentm.xyz)
+- Must work within existing Control Plane API infrastructure
 - UI built with React + PrimeReact component library
 - Must follow professional token system (no inline styles, no hardcoded values)
 - Phase numbering continues from v1.1 (phases 13-17), starting at 18
