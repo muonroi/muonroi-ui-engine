@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-angular",
-  "version": "0.1.6-alpha.20",
+  "version": "0.1.9",
   "description": "Angular helper mappings for Muonroi UI Engine",
   "type": "module",
   "main": "dist/index.js",
@@ -19,8 +19,8 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@muonroi/ui-engine-core": "workspace:*",
-    "@muonroi/ui-engine-rule-components": "workspace:*"
+    "@muonroi/ui-engine-core": "workspace:^",
+    "@muonroi/ui-engine-rule-components": "workspace:^"
   },
   "peerDependencies": {
     "@angular/common": ">=17",

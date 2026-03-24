@@ -44,7 +44,7 @@
     "@muonroi/ui-engine-core": ">=0.1.0"
   },
   "devDependencies": {
-    "@muonroi/ui-engine-core": "workspace:*",
+    "@muonroi/ui-engine-core": "workspace:^",
     "@tailwindcss/postcss": "^4.1.11",
     "@testing-library/react": "^16.3.0",
     "@types/react": "^18.3.12",

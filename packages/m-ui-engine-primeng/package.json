@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-primeng",
-  "version": "0.1.2",
+  "version": "0.1.9",
   "description": "PrimeNG adapter for Muonroi UI engine",
   "type": "module",
   "main": "dist/index.js",
@@ -19,10 +19,9 @@
     "test": "npm run -w @muonroi/ui-engine-core build && vitest run"
   },
   "dependencies": {
-    "@muonroi/ui-engine-core": "workspace:*"
+    "@muonroi/ui-engine-core": "workspace:^"
   },
   "peerDependencies": {
     "primeng": ">=17"
   }
 }
-
