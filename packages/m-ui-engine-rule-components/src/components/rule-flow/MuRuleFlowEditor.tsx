@@ -1765,8 +1765,8 @@ export function MuRuleFlowEditor({
       }
       const data: MDryRunResult = await res.json();
       setDryRunResult(data);
-      // Apply node highlights (fire-and-forget animation)
-      void applyDryRunHighlights(data);
+      // Apply node + edge highlights based on factBag traversal
+      applyDryRunHighlights(data);
     } catch (err: unknown) {
       setDryRunError(err instanceof Error ? err.message : "Unknown error");
     } finally {
@@ -1879,6 +1879,18 @@ export function MuRuleFlowEditor({
     setDryRunResult(null);
     setDryRunError(null);
     clearDryRunHighlights();
+  }
+
+  function handleDryRunNodeHover(event: React.MouseEvent, node: Node<MCanvasNodeData>): void {
+    if (!dryRunResult || dryRunTraversedNodes.size === 0) return;
+    const nodeKey = node.data.ruleCode || node.data.label;
+    const isTraversed = dryRunTraversedNodes.has(node.id) || dryRunTraversedNodes.has(nodeKey);
+    if (!isTraversed) return;
+    setDryRunHoverNode({ nodeId: nodeKey, mousePos: { x: event.clientX, y: event.clientY } });
+  }
+
+  function handleDryRunNodeLeave(): void {
+    setDryRunHoverNode(null);
   }
 
   function startDryRunResize(e: React.PointerEvent): void {
@@ -2184,6 +2196,8 @@ export function MuRuleFlowEditor({
             onNodeClick={(_event, node) => { selectNodeById(node.id); }}
             onEdgeClick={(_event, edge) => { setSelectedEdgeId(edge.id); setSelectedNodeId(""); setInspectorTab("basic-info"); }}
             onPaneClick={() => { setSelectedNodeId(""); setSelectedEdgeId(""); setInspectorTab("basic-info"); }}
+            onNodeMouseEnter={handleDryRunNodeHover}
+            onNodeMouseLeave={handleDryRunNodeLeave}
             nodesConnectable={!effectiveReadOnly}
             nodesDraggable={!effectiveReadOnly}
             elementsSelectable
@@ -2194,6 +2208,21 @@ export function MuRuleFlowEditor({
             <Controls />
             <Background />
           </ReactFlow>
+          {dryRunHoverNode && dryRunResult ? (() => {
+            const entry = dryRunResult.results.find((r) => r.ruleName === dryRunHoverNode.nodeId);
+            if (!entry) return null;
+            return (
+              <MDryRunNodeTooltip
+                nodeName={entry.ruleName}
+                isSuccess={entry.isSuccess}
+                evaluationResult={entry.evaluationResult}
+                outputs={entry.outputs}
+                errors={entry.errors}
+                position={dryRunHoverNode.mousePos}
+                tokens={tokens}
+              />
+            );
+          })() : null}
           {dependencyOverlay.length > 0 ? (
             <aside data-testid="rule-flow-dependency-overlay" style={{ ...MDependencyOverlayStyle, background: tokens.overlayBg, border: tokens.overlayBorder, boxShadow: tokens.overlayShadow }}>
               <button
