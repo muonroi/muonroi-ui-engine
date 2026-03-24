@@ -138,10 +138,10 @@ const M_DRAG_RULE_TEMPLATE_KEY = "application/muonroi-rule-flow-rule-template";
 const M_FIT_VIEW_OPTIONS = { duration: 0, padding: 0.22, minZoom: 0.18, maxZoom: 1.1 };
 const M_COMPACT_LAYOUT_BREAKPOINT = 860;
 const M_EDGE_TYPE_LABELS: Record<MRuleFlowEdgeType, string> = {
-  always: "Always",
-  "on-true": "On Pass",
-  "on-false": "On Fail",
-  "on-error": "On Error"
+  always: "\u2192 Always",
+  "on-true": "\u2713 On Pass",
+  "on-false": "\u2717 On Fail",
+  "on-error": "\u26A0 On Error"
 };
 const M_EDGE_TYPE_HINTS: Record<MRuleFlowEdgeType, string> = {
   always: "Always continue to the next node when the source node executed.",
@@ -504,10 +504,10 @@ export function MuRuleFlowEditor({
         ...edge,
         label: labelText,
         style: { stroke: color, strokeWidth: 2 },
-        labelStyle: { fill: chip.text, fontWeight: 600, fontSize: 10, letterSpacing: "0.02em" },
+        labelStyle: { fill: chip.text, fontWeight: 600, fontSize: 12, letterSpacing: "0.02em" },
         labelBgStyle: { fill: chip.bg },
         labelBgPadding: [4, 8] as [number, number],
-        labelBgBorderRadius: 6,
+        labelBgBorderRadius: 999,
       };
     });
   }

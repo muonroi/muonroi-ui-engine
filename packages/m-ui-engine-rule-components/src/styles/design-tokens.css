@@ -89,14 +89,6 @@
   --mu-edge-on-false: oklch(51% 0.23 25);
   --mu-edge-on-error: oklch(60% 0.17 70);
   --mu-edge-label-bg: oklch(100% 0 0);
-  --mu-edge-pill-always-bg: oklch(92% 0.01 255);
-  --mu-edge-pill-always-border: oklch(72% 0.02 255);
-  --mu-edge-pill-pass-bg: oklch(92% 0.04 150);
-  --mu-edge-pill-pass-border: oklch(55% 0.16 150);
-  --mu-edge-pill-fail-bg: oklch(92% 0.04 25);
-  --mu-edge-pill-fail-border: oklch(55% 0.2 25);
-  --mu-edge-pill-error-bg: oklch(93% 0.04 70);
-  --mu-edge-pill-error-border: oklch(62% 0.17 70);
 
   /* === Shadows === */
   --mu-shadow-node: 0 14px 30px oklch(20% 0.015 255 / 0.10);
@@ -214,14 +206,6 @@
   --mu-edge-on-false: oklch(67% 0.2 25);
   --mu-edge-on-error: oklch(76% 0.17 75);
   --mu-edge-label-bg: oklch(25% 0.016 255);
-  --mu-edge-pill-always-bg: oklch(25% 0.015 255);
-  --mu-edge-pill-always-border: oklch(45% 0.02 255);
-  --mu-edge-pill-pass-bg: oklch(25% 0.04 150);
-  --mu-edge-pill-pass-border: oklch(50% 0.14 150);
-  --mu-edge-pill-fail-bg: oklch(25% 0.04 25);
-  --mu-edge-pill-fail-border: oklch(50% 0.18 25);
-  --mu-edge-pill-error-bg: oklch(28% 0.04 70);
-  --mu-edge-pill-error-border: oklch(55% 0.15 70);
 
   /* === Shadows === */
   --mu-shadow-node: 0 14px 30px oklch(0% 0 0 / 0.25);
