@@ -2304,7 +2304,17 @@ export function MuRuleFlowEditor({
                 await onPublish?.(publishConfirmState.graph);
                 setPublishConfirmState(null);
                 setContractLoadState({ status: "ready", title: "Published" });
-                setPoliteAnnouncement("Rule published successfully.");
+                // Refresh version list after successful publish so new version appears with correct status
+                setVersionOffset(0);
+                fetchVersionsPage(0, false);
+                // Read approval status from host element data attribute (set by Lit wrapper after MPersistRuleSetAsync)
+                const publishHost = editorRoot instanceof ShadowRoot ? editorRoot.host as HTMLElement : null;
+                const lastStatus = publishHost?.getAttribute?.("data-last-publish-status");
+                if (lastStatus?.toLowerCase() === "pendingapproval" || lastStatus?.toLowerCase() === "draft") {
+                  setPoliteAnnouncement("Rule saved and submitted for approval.");
+                } else {
+                  setPoliteAnnouncement("Rule published and activated successfully.");
+                }
               } catch (error) {
                 setPublishConfirmState(null);
                 setContractLoadState({
