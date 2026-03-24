@@ -2327,18 +2327,20 @@ export function MuRuleFlowEditor({
           }}
         />
       ) : null}
-      <MVersionDiffModal
-        open={diffModalOpen}
-        onClose={() => setDiffModalOpen(false)}
-        versions={versions}
-        activeVersion={activeVersion}
-        initialLeftVersion={activeVersion?.version ?? null}
-        initialRightVersion={version ?? null}
-        apiBaseUrl={apiBaseUrl ?? ""}
-        workflowCode={workflowCode ?? ""}
-        tenantId={tenantId}
-        tokens={tokens}
-      />
+      {diffModalOpen ? (
+        <MVersionDiffModal
+          open
+          onClose={() => setDiffModalOpen(false)}
+          versions={versions}
+          activeVersion={activeVersion}
+          initialLeftVersion={activeVersion?.version ?? null}
+          initialRightVersion={version ?? null}
+          apiBaseUrl={apiBaseUrl ?? ""}
+          workflowCode={workflowCode ?? ""}
+          tenantId={tenantId}
+          tokens={tokens}
+        />
+      ) : null}
     </ReactFlowProvider>
   );
 
