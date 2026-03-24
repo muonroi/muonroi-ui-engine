@@ -104,25 +104,28 @@ export class MuRuleFlowDesigner extends LitElement {
       return;
     }
 
-    // When version changes, DON'T render immediately with stale graph — clear graph and
-    // let MLoadWorkflowGraphAsync reload the correct version first.  The final render
-    // happens at the mInternalGraphUpdate branch below after the fetch completes.
+    // When user switches version (not initial render), clear stale graph and reload.
+    // Detect real version switch: old value was a number OR current is a number (not undefined→null).
     if (changed.has("version")) {
-      this.mInternalGraphUpdate = true;
-      if (this.graphJson.trim()) {
-        this.graphJson = "";
+      const oldVersion = changed.get("version") as number | null | undefined;
+      const isRealSwitch = oldVersion !== undefined;
+      if (isRealSwitch) {
+        this.mInternalGraphUpdate = true;
+        if (this.graphJson.trim()) {
+          this.graphJson = "";
+        }
+        this.graph = MCreateEmptyRuleFlowGraph();
+        this.mLastGraphSignature = MCreateRuleFlowGraphSignature(this.graph);
+        void this.MLoadWorkflowGraphAsync();
+        return;
       }
-      this.graph = MCreateEmptyRuleFlowGraph();
-      this.mLastGraphSignature = MCreateRuleFlowGraphSignature(this.graph);
-      void this.MLoadWorkflowGraphAsync();
-      return;
     }
 
-    if (!this.mInternalGraphUpdate && (changed.has("graph") || changed.has("graphJson") || changed.has("readOnly") || changed.has("theme") || changed.has("apiBaseUrl") || changed.has("catalogApiBase") || changed.has("height") || changed.has("tenantId") || changed.has("showHeader"))) {
+    if (!this.mInternalGraphUpdate && (changed.has("graph") || changed.has("graphJson") || changed.has("readOnly") || changed.has("theme") || changed.has("apiBaseUrl") || changed.has("catalogApiBase") || changed.has("height") || changed.has("tenantId") || changed.has("showHeader") || changed.has("version"))) {
       this.MRenderEditor();
     }
 
-    if ((changed.has("workflowCode") || changed.has("apiBaseUrl") || changed.has("tenantId")) && !this.graphJson.trim()) {
+    if ((changed.has("workflowCode") || changed.has("apiBaseUrl") || changed.has("tenantId") || changed.has("version")) && !this.graphJson.trim()) {
       void this.MLoadWorkflowGraphAsync();
     }
 
