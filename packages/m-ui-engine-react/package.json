@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-react",
-  "version": "0.1.6",
+  "version": "0.1.9",
   "description": "React helper mappings for Muonroi UI Engine",
   "type": "module",
   "main": "dist/index.js",
@@ -31,9 +31,8 @@
     }
   },
   "devDependencies": {
-    "@muonroi/ui-engine-core": "workspace:*",
-    "@muonroi/ui-engine-rule-components": "workspace:*",
+    "@muonroi/ui-engine-core": "workspace:^",
+    "@muonroi/ui-engine-rule-components": "workspace:^",
     "@types/react": "^18.3.12"
   }
 }
-

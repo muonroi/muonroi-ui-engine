@@ -27,10 +27,10 @@ importers:
         specifier: '>=17'
         version: 21.2.0(rxjs@7.8.2)
       '@muonroi/ui-engine-core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../m-ui-engine-core
       '@muonroi/ui-engine-rule-components':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../m-ui-engine-rule-components
       rxjs:
         specifier: '>=7'
@@ -41,7 +41,7 @@ importers:
   packages/m-ui-engine-primeng:
     dependencies:
       '@muonroi/ui-engine-core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../m-ui-engine-core
       primeng:
         specifier: '>=17'
@@ -57,10 +57,10 @@ importers:
         version: 19.2.4
     devDependencies:
       '@muonroi/ui-engine-core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../m-ui-engine-core
       '@muonroi/ui-engine-rule-components':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../m-ui-engine-rule-components
       '@types/react':
         specifier: ^18.3.12
@@ -127,7 +127,7 @@ importers:
         version: 5.0.11(@types/react@18.3.28)(react@18.3.1)(use-sync-external-store@1.6.0(react@18.3.1))
     devDependencies:
       '@muonroi/ui-engine-core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../m-ui-engine-core
       '@tailwindcss/postcss':
         specifier: ^4.1.11
@@ -166,13 +166,13 @@ importers:
   packages/m-ui-engine-rule-components-primeng:
     dependencies:
       '@muonroi/ui-engine-core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../m-ui-engine-core
       '@muonroi/ui-engine-primeng':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../m-ui-engine-primeng
       '@muonroi/ui-engine-rule-components':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../m-ui-engine-rule-components
       primeng:
         specifier: '>=17'
@@ -184,7 +184,7 @@ importers:
         specifier: ^8.0.7
         version: 8.0.17
       '@muonroi/ui-engine-core':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../m-ui-engine-core
 
   packages/m-ui-engine-sync: {}
