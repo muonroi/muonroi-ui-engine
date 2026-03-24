@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-core",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "description": "Muonroi UI engine core runtime",
   "type": "module",
   "main": "dist/index.js",
