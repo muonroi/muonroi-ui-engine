@@ -649,7 +649,8 @@ export function MuRuleFlowEditor({
     return () => ro.disconnect();
   }, []);
 
-  // Click-outside to close kebab menu
+  // Click-outside to close kebab menu (use "click" not "mousedown" to avoid
+  // cancelling user gesture before button onClick fires — fixes Import/Export/Publish in kebab)
   useEffect(() => {
     if (!kebabOpen) return;
     const handler = (e: MouseEvent) => {
@@ -657,8 +658,8 @@ export function MuRuleFlowEditor({
         setKebabOpen(false);
       }
     };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
+    document.addEventListener("click", handler);
+    return () => document.removeEventListener("click", handler);
   }, [kebabOpen]);
 
   useEffect(() => () => {
@@ -1405,7 +1406,7 @@ export function MuRuleFlowEditor({
     <button
       type="button"
       style={asDropdown ? { ...MKebabDropdownItemStyle, display: "flex", alignItems: "center", gap: 5, visibility: isViewingNonActive ? "hidden" : undefined } : { ...MActionButtonStyle(true), display: isViewingNonActive ? "none" : "inline-flex", alignItems: "center", gap: 5, flex: "1 1 auto", minWidth: 80 }}
-      onClick={() => { handlePublishClick(); if (asDropdown) setKebabOpen(false); }}
+      onClick={() => { handlePublishClick(); if (asDropdown) setTimeout(() => setKebabOpen(false), 0); }}
       disabled={!canPublish}
       title={!onPublish ? "No publish handler configured." : validationErrors.length > 0 ? "Fix validation errors before publishing." : "Publish"}
       aria-disabled={!canPublish}
@@ -1419,7 +1420,7 @@ export function MuRuleFlowEditor({
       type="button"
       style={asDropdown ? { ...MKebabDropdownItemStyle, display: "flex", alignItems: "center", gap: 5, visibility: isViewingNonActive ? "hidden" : undefined } : { ...MActionButtonStyle(false), display: isViewingNonActive ? "none" : "inline-flex", alignItems: "center", gap: 5, flex: "1 1 auto", minWidth: 64 }}
       disabled={effectiveReadOnly}
-      onClick={() => { handleImportClick(); if (asDropdown) setKebabOpen(false); }}
+      onClick={() => { handleImportClick(); if (asDropdown) setTimeout(() => setKebabOpen(false), 0); }}
       title="Import"
     >
       <MToolbarIcon path={["M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z", "M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"]} />
@@ -1430,7 +1431,7 @@ export function MuRuleFlowEditor({
     <button
       type="button"
       style={asDropdown ? { ...MKebabDropdownItemStyle, display: "flex", alignItems: "center", gap: 5 } : { ...MActionButtonStyle(false), display: "inline-flex", alignItems: "center", gap: 5, flex: "1 1 auto", minWidth: 64 }}
-      onClick={() => { handleExportClick(); if (asDropdown) setKebabOpen(false); }}
+      onClick={() => { handleExportClick(); if (asDropdown) setTimeout(() => setKebabOpen(false), 0); }}
       title="Export"
     >
       <MToolbarIcon path={["M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z", "M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z"]} />
