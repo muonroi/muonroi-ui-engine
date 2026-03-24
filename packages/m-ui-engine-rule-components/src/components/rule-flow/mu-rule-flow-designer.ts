@@ -104,18 +104,15 @@ export class MuRuleFlowDesigner extends LitElement {
       return;
     }
 
-    // When user switches version (not initial render), clear stale graph and reload.
-    // Detect real version switch: old value was a number OR current is a number (not undefined→null).
+    // When user switches version (not initial render), reload graph for the new version.
+    // Detect real version switch: old value was not undefined (initial render is undefined→null).
     if (changed.has("version")) {
       const oldVersion = changed.get("version") as number | null | undefined;
       const isRealSwitch = oldVersion !== undefined;
       if (isRealSwitch) {
-        this.mInternalGraphUpdate = true;
-        if (this.graphJson.trim()) {
-          this.graphJson = "";
-        }
-        this.graph = MCreateEmptyRuleFlowGraph();
-        this.mLastGraphSignature = MCreateRuleFlowGraphSignature(this.graph);
+        // Don't set graph=empty synchronously — that would consume the mInternalGraphUpdate
+        // flag before the async load completes.  Just kick off the reload; MLoadWorkflowGraphAsync
+        // will set mInternalGraphUpdate + graph atomically when the fetch resolves.
         void this.MLoadWorkflowGraphAsync();
         return;
       }
