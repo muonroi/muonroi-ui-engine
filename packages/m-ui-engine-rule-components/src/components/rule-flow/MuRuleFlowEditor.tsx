@@ -1925,6 +1925,21 @@ export function MuRuleFlowEditor({
             ) : null}
             {envLabel ? <span style={{ ...MHeaderBadgeStyle, background: envLabel === "DEV" ? "var(--mu-color-warning-bg)" : "var(--mu-color-success-bg)", border: envLabel === "DEV" ? "1px solid var(--mu-color-warning-border)" : "1px solid var(--mu-color-success-border)", color: envLabel === "DEV" ? tokens.warningText : "var(--mu-color-success-text)", fontSize: 10, fontWeight: 700 }}>{envLabel}</span> : null}
             {effectiveReadOnly ? <span style={{ ...MHeaderBadgeStyle, background: tokens.errorBg, border: tokens.errorBorder, color: tokens.errorText, fontSize: 10, fontWeight: 700 }}>READ-ONLY</span> : null}
+            {/* Approval status badge — show when viewing a version with pending/rejected/approved status */}
+            {(() => {
+              const currentVersionItem = version != null ? versions.find(v => v.version === version) : activeVersion;
+              const versionStatus = currentVersionItem?.status?.toLowerCase();
+              if (versionStatus === "pendingapproval") {
+                return <span style={{ ...MHeaderBadgeStyle, background: "var(--mu-color-warning-bg)", border: "1px solid var(--mu-color-warning-border)", color: tokens.warningText, fontSize: 10, fontWeight: 700 }}>PENDING APPROVAL</span>;
+              }
+              if (versionStatus === "rejected") {
+                return <span style={{ ...MHeaderBadgeStyle, background: tokens.errorBg, border: tokens.errorBorder, color: tokens.errorText, fontSize: 10, fontWeight: 700 }}>REJECTED</span>;
+              }
+              if (versionStatus === "approved" && !currentVersionItem?.isActive) {
+                return <span style={{ ...MHeaderBadgeStyle, background: "color-mix(in oklch, var(--mu-color-interactive) 12%, transparent)", border: "1px solid color-mix(in oklch, var(--mu-color-interactive) 25%, transparent)", color: "var(--mu-color-interactive)", fontSize: 10, fontWeight: 700 }}>APPROVED</span>;
+              }
+              return null;
+            })()}
           </div>
           <div style={{ position: "relative" }}>
             <button type="button" style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, color: tokens.textMuted, fontSize: 16 }} onClick={() => setHeaderInfoOpen((prev) => !prev)} title="Technical details">

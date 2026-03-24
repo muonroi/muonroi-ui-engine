@@ -40,12 +40,41 @@ function statusBadgeStyle(status: string, isActive: boolean): React.CSSPropertie
     border: "1px solid color-mix(in oklch, var(--mu-color-interactive) 25%, transparent)",
     color: "var(--mu-color-interactive)"
   };
+  if (s === "pendingapproval") return {
+    background: "color-mix(in oklch, var(--mu-color-warning) 15%, transparent)",
+    border: "1px solid color-mix(in oklch, var(--mu-color-warning) 30%, transparent)",
+    color: "var(--mu-color-warning-text)"
+  };
+  if (s === "rejected") return {
+    background: "color-mix(in oklch, var(--mu-color-error) 12%, transparent)",
+    border: "1px solid color-mix(in oklch, var(--mu-color-error) 25%, transparent)",
+    color: "var(--mu-color-error-text)"
+  };
+  if (s === "superseded") return {
+    background: "color-mix(in oklch, var(--mu-text-muted) 12%, transparent)",
+    border: "1px solid color-mix(in oklch, var(--mu-text-muted) 20%, transparent)",
+    color: "var(--mu-text-muted)"
+  };
+  if (s === "rolledback") return {
+    background: "color-mix(in oklch, var(--mu-color-error) 8%, transparent)",
+    border: "1px solid color-mix(in oklch, var(--mu-color-error) 15%, transparent)",
+    color: "var(--mu-text-muted)"
+  };
   // Draft and others
   return {
     background: "color-mix(in oklch, var(--mu-border-subtle) 50%, transparent)",
     border: "1px solid color-mix(in oklch, var(--mu-border-default) 50%, transparent)",
     color: "var(--mu-text-muted)"
   };
+}
+
+/** Format status string for human-readable display in badges. */
+function formatStatus(status: string): string {
+  const s = status.toLowerCase();
+  if (s === "pendingapproval") return "Pending";
+  if (s === "rolledback") return "Rolled Back";
+  // Draft, Approved, Superseded, Rejected, Active are already readable
+  return status;
 }
 
 export function MVersionDropdown({
@@ -217,7 +246,7 @@ export function MVersionDropdown({
                   v{v.version}
                 </span>
                 <span style={{ ...badgeBase, ...statusBadgeStyle(v.status, isActiveVersion) }}>
-                  {isActiveVersion ? "Active" : v.status}
+                  {isActiveVersion ? "Active" : formatStatus(v.status)}
                 </span>
                 <span style={{ fontSize: 10, color: tokens.textMuted, marginLeft: "auto" }}>
                   {formatDate(v.createdAt)}
