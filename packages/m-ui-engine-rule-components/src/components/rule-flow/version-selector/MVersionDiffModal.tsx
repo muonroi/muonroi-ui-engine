@@ -106,14 +106,16 @@ export function MVersionDiffModal({
       const baseUrl = apiBaseUrl.replace(/\/$/, "");
       const headers = MBuildRuleComponentHeaders(undefined, { tenantId });
       const res = await fetch(
-        `${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/versions/${versionNumber}`,
+        `${baseUrl}/rulesets/${encodeURIComponent(workflowCode)}/export?version=${versionNumber}`,
         { headers }
       );
       if (!res.ok) {
         throw new Error(`Version ${versionNumber} not available (HTTP ${res.status})`);
       }
       const data = await res.json();
-      return JSON.stringify(data, null, 2);
+      // Extract ruleSetJson for cleaner diff — fallback to full response
+      const ruleSet = typeof data.ruleSetJson === "string" ? JSON.parse(data.ruleSetJson) : data;
+      return JSON.stringify(ruleSet, null, 2);
     },
     [apiBaseUrl, workflowCode, tenantId]
   );
