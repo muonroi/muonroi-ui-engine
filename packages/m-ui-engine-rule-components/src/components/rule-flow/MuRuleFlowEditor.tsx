@@ -39,6 +39,7 @@ import { MVersionDropdown } from "./version-selector/MVersionDropdown.js";
 import { MVersionDiffModal } from "./version-selector/MVersionDiffModal.js";
 import { MDryRunInputEditor } from "./dry-run/MDryRunInputEditor.js";
 import { MDryRunPanel, type MDryRunResult } from "./dry-run/MDryRunPanel.js";
+import { MDryRunNodeTooltip } from "./dry-run/MDryRunNodeTooltip.js";
 import { useRuleFlowHistory } from "../../hooks/useRuleFlowHistory.js";
 import {
   MActionButtonStyle,
@@ -1717,6 +1718,8 @@ export function MuRuleFlowEditor({
   const [dryRunError, setDryRunError] = useState<string | null>(null);
   const [dryRunPanelHeight, setDryRunPanelHeight] = useState(40);
   const isDraggingDryRunRef = useRef(false);
+  const [dryRunTraversedNodes, setDryRunTraversedNodes] = useState<Set<string>>(new Set());
+  const [dryRunHoverNode, setDryRunHoverNode] = useState<{ nodeId: string; mousePos: { x: number; y: number } } | null>(null);
 
   function generateDefaultInputJson(): string {
     const triggerNode = currentGraph.nodes.find((n) => n.type === "trigger");
@@ -1771,78 +1774,89 @@ export function MuRuleFlowEditor({
     }
   }
 
-  async function applyDryRunHighlights(result: MDryRunResult): Promise<void> {
-    // First, dim all nodes
-    setNodes((prev) =>
-      prev.map((node) => ({
-        ...node,
-        style: { ...node.style, opacity: 0.4, transition: "all 300ms ease" },
-        className: ""
-      }))
-    );
+  function MExtractTraversedNodeIds(factBag: Record<string, unknown>): Set<string> {
+    const ids = new Set<string>();
+    for (const key of Object.keys(factBag)) {
+      const match = key.match(/^__graph\.node\.(.+?)\.(?:executed|result|outputs)/);
+      if (match) ids.add(match[1]);
+    }
+    return ids;
+  }
 
-    // Animate each executed node sequentially
-    for (let i = 0; i < result.results.length; i++) {
-      const entry = result.results[i];
+  function applyDryRunHighlights(result: MDryRunResult): void {
+    // Extract traversed node IDs from factBag graph keys
+    const traversedIds = MExtractTraversedNodeIds(result.factBag);
 
-      // Phase 1: Show "running" state — blue pulse
-      setNodes((prev) =>
-        prev.map((node) => {
-          const isMatch = node.data.ruleCode === entry.ruleName || node.data.label === entry.ruleName;
-          if (!isMatch) return node;
-          return {
-            ...node,
-            style: {
-              ...node.style,
-              opacity: 1,
-              border: "2px solid var(--mu-color-interactive)",
-              borderRadius: 12,
-              boxShadow: "0 0 12px var(--mu-color-interactive-border), 0 0 24px var(--mu-color-interactive-subtle)",
-              transition: "all 300ms ease"
-            },
-            className: "mu-node-running"
-          };
-        })
-      );
-
-      await new Promise((r) => setTimeout(r, 300));
-
-      // Phase 2: Show final state — green (pass) or red (fail)
-      setNodes((prev) =>
-        prev.map((node) => {
-          const isMatch = node.data.ruleCode === entry.ruleName || node.data.label === entry.ruleName;
-          if (!isMatch) return node;
-          const color = entry.isSuccess ? "var(--mu-color-success)" : "var(--mu-color-error)";
-          const bgColor = entry.isSuccess ? "var(--mu-color-success-bg)" : "var(--mu-color-error-bg)";
-          return {
-            ...node,
-            style: {
-              ...node.style,
-              opacity: 1,
-              background: bgColor,
-              border: `2px solid ${color}`,
-              borderRadius: 12,
-              boxShadow: `0 0 8px ${entry.isSuccess ? "var(--mu-color-success-bg)" : "var(--mu-color-error-bg)"}`,
-              transition: "all 300ms ease"
-            },
-            className: ""
-          };
-        })
-      );
-
-      if (i < result.results.length - 1) {
-        await new Promise((r) => setTimeout(r, 200));
+    // Backward compat: if no graph keys in factBag, fall back to result.results
+    if (traversedIds.size === 0) {
+      for (const entry of result.results) {
+        traversedIds.add(entry.ruleName);
       }
     }
 
-    // Restore non-executed nodes to slightly dimmed
+    setDryRunTraversedNodes(traversedIds);
+
+    // Build lookup map for quick access to result entries
+    const resultMap = new Map(result.results.map((r) => [r.ruleName, r]));
+
+    // Apply 3-state node styling (instant, no sequential animation)
     setNodes((prev) =>
       prev.map((node) => {
-        const wasExecuted = result.results.some(
-          (r) => r.ruleName === node.data.ruleCode || r.ruleName === node.data.label
-        );
-        if (wasExecuted) return node;
-        return { ...node, style: { ...node.style, opacity: 0.5, transition: "all 300ms ease" } };
+        const nodeKey = node.data.ruleCode || node.data.label;
+        const isTraversed = traversedIds.has(node.id) || traversedIds.has(nodeKey);
+        const entry = resultMap.get(nodeKey);
+
+        if (!isTraversed) {
+          // Not traversed — dimmed
+          return {
+            ...node,
+            style: { ...node.style, opacity: 0.35, transition: "all 300ms ease", filter: "grayscale(0.5)" },
+            className: ""
+          };
+        }
+
+        // Traversed — green glow (pass) or red glow (fail)
+        const passed = entry?.isSuccess ?? true;
+        const color = passed ? "var(--mu-color-success)" : "var(--mu-color-error)";
+        const bgColor = passed ? "var(--mu-color-success-bg)" : "var(--mu-color-error-bg)";
+        return {
+          ...node,
+          style: {
+            ...node.style,
+            opacity: 1,
+            background: bgColor,
+            border: `2px solid ${color}`,
+            borderRadius: 12,
+            boxShadow: `0 0 8px ${bgColor}, 0 0 16px ${bgColor}`,
+            transition: "all 300ms ease",
+            filter: "none"
+          },
+          className: ""
+        };
+      })
+    );
+
+    // Apply edge highlighting — traversed edges thick + full opacity, non-traversed dimmed
+    setEdges((prev) =>
+      prev.map((edge) => {
+        const sourceNode = nodesRef.current.find((n) => n.id === edge.source);
+        const targetNode = nodesRef.current.find((n) => n.id === edge.target);
+        const srcKey = sourceNode?.data.ruleCode || sourceNode?.data.label || edge.source;
+        const tgtKey = targetNode?.data.ruleCode || targetNode?.data.label || edge.target;
+        const isTraversed =
+          (traversedIds.has(edge.source) || traversedIds.has(srcKey)) &&
+          (traversedIds.has(edge.target) || traversedIds.has(tgtKey));
+
+        if (isTraversed) {
+          return {
+            ...edge,
+            style: { ...edge.style, strokeWidth: 3, opacity: 1, transition: "all 300ms ease" }
+          };
+        }
+        return {
+          ...edge,
+          style: { ...edge.style, strokeWidth: 1, opacity: 0.35, transition: "all 300ms ease" }
+        };
       })
     );
   }
@@ -1855,6 +1869,9 @@ export function MuRuleFlowEditor({
         className: ""
       }))
     );
+    setEdges((prev) => MStyleEdges(prev.map((e) => ({ ...e, style: undefined }))));
+    setDryRunTraversedNodes(new Set());
+    setDryRunHoverNode(null);
   }
 
   function closeDryRun(): void {
@@ -2231,15 +2248,17 @@ export function MuRuleFlowEditor({
                 onPointerEnter={(e) => { (e.currentTarget as HTMLDivElement).style.background = "var(--mu-color-interactive)"; }}
                 onPointerLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = tokens.sidebarBorder.replace("1px solid ", ""); }}
               />
-              <div style={{ flex: `0 0 ${dryRunPanelHeight}%`, overflow: "auto", background: tokens.sidebarBg }}>
-                <MDryRunInputEditor
-                  value={dryRunInput}
-                  onChange={setDryRunInput}
-                  onReset={() => setDryRunInput(generateDefaultInputJson())}
-                  tokens={tokens}
-                  editorRoot={editorRoot}
-                />
-                <div style={{ display: "flex", gap: 8, padding: "8px 12px", background: tokens.sidebarBg }}>
+              <div style={{ flex: `0 0 ${dryRunPanelHeight}%`, overflow: "hidden", display: "flex", flexDirection: "column", background: tokens.sidebarBg }}>
+                <div style={{ flex: "1 1 auto", overflowY: "auto", minHeight: 0 }}>
+                  <MDryRunInputEditor
+                    value={dryRunInput}
+                    onChange={setDryRunInput}
+                    onReset={() => setDryRunInput(generateDefaultInputJson())}
+                    tokens={tokens}
+                    editorRoot={editorRoot}
+                  />
+                </div>
+                <div style={{ display: "flex", gap: 8, padding: "8px 12px", background: tokens.sidebarBg, flexShrink: 0, borderTop: `1px solid ${tokens.sidebarBorder.replace("1px solid ", "")}` }}>
                   <button
                     type="button"
                     onClick={() => { void executeDryRun(); }}
@@ -2265,17 +2284,19 @@ export function MuRuleFlowEditor({
                   </button>
                 </div>
                 {(dryRunResult || dryRunLoading || dryRunError) ? (
-                  <MDryRunPanel
-                    result={dryRunResult}
-                    loading={dryRunLoading}
-                    error={dryRunError}
-                    onClose={closeDryRun}
-                    onSelectNode={(ruleName) => {
-                      const match = nodesRef.current.find((n) => n.data.ruleCode === ruleName || n.data.label === ruleName);
-                      if (match) selectNodeById(match.id);
-                    }}
-                    tokens={tokens}
-                  />
+                  <div style={{ flexShrink: 0 }}>
+                    <MDryRunPanel
+                      result={dryRunResult}
+                      loading={dryRunLoading}
+                      error={dryRunError}
+                      onClose={closeDryRun}
+                      onSelectNode={(ruleName) => {
+                        const match = nodesRef.current.find((n) => n.data.ruleCode === ruleName || n.data.label === ruleName);
+                        if (match) selectNodeById(match.id);
+                      }}
+                      tokens={tokens}
+                    />
+                  </div>
                 ) : null}
               </div>
             </>
