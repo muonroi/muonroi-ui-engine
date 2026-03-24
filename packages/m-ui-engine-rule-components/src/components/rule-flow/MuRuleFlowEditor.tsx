@@ -1777,8 +1777,8 @@ export function MuRuleFlowEditor({
   function MExtractTraversedNodeIds(factBag: Record<string, unknown>): Set<string> {
     const ids = new Set<string>();
     for (const key of Object.keys(factBag)) {
-      const match = key.match(/^__graph\.node\.(.+?)\.(?:executed|result|outputs)/);
-      if (match) ids.add(match[1]);
+      const match = key.match(/^__graph\.node\.(.+?)\.executed$/);
+      if (match && factBag[key] === true) ids.add(match[1]);
     }
     return ids;
   }
@@ -1816,7 +1816,9 @@ export function MuRuleFlowEditor({
         }
 
         // Traversed — green glow (pass) or red glow (fail)
-        const passed = entry?.isSuccess ?? true;
+        // Prefer factBag __graph.node.{id}.passed (real execution data) over results array
+        const graphPassed = result.factBag[`__graph.node.${node.id}.passed`];
+        const passed = graphPassed !== undefined ? graphPassed === true : (entry?.isSuccess ?? true);
         const color = passed ? "var(--mu-color-success)" : "var(--mu-color-error)";
         const bgColor = passed ? "var(--mu-color-success-bg)" : "var(--mu-color-error-bg)";
         return {
