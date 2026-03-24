@@ -20,8 +20,6 @@ export interface MLicenseState {
 
 export interface MLicenseVerifierInitializeOptions {
   publicKeyPem?: string;
-  /** Skip RSA signature verification — parse JWT payload directly. Use for self-hosted control planes where key mismatch is expected. */
-  skipSignatureVerification?: boolean;
 }
 
 const MUONROI_PUBLIC_KEY_PEM = `-----BEGIN RSA PUBLIC KEY-----
@@ -70,20 +68,13 @@ export class MLicenseVerifier {
     }
 
     try {
-      let payload: Record<string, unknown>;
-
-      if (options?.skipSignatureVerification) {
-        // Self-hosted mode: parse JWT payload without RSA verification
-        payload = MParseJwtPayloadUnsafe(token);
-      } else {
-        const keyPem = (options?.publicKeyPem ?? MUONROI_PUBLIC_KEY_PEM).trim();
-        if (!keyPem) {
-          throw new MLicenseVerificationError("verification_failed", "Public key PEM is empty.");
-        }
-
-        const key = await this.MGetOrImportPublicKey(keyPem);
-        payload = await this.MVerifyJwt(token, key);
+      const keyPem = (options?.publicKeyPem ?? MUONROI_PUBLIC_KEY_PEM).trim();
+      if (!keyPem) {
+        throw new MLicenseVerificationError("verification_failed", "Public key PEM is empty.");
       }
+
+      const key = await this.MGetOrImportPublicKey(keyPem);
+      const payload = await this.MVerifyJwt(token, key);
 
       const features = MReadStringArrayClaim(payload, "features", "allowedFeatures", "capabilities");
       let tier = MParseTier(MReadClaim(payload, "tier", "license_tier", "licenseTier"));
@@ -265,16 +256,6 @@ class MLicenseVerificationError extends Error {
     super(message);
     this.name = "MLicenseVerificationError";
   }
-}
-
-/** Parse JWT payload without signature verification. For self-hosted mode only. */
-function MParseJwtPayloadUnsafe(token: string): Record<string, unknown> {
-  const parts = token.split(".");
-  if (parts.length !== 3) {
-    throw new MLicenseVerificationError("invalid_format", "JWT must have 3 parts.");
-  }
-
-  return MParseJwtSection(parts[1]);
 }
 
 function MGetLicenseStore(): MLicenseGlobalStore {
