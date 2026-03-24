@@ -30,8 +30,6 @@ export interface MReactUiModel {
 export interface MLoadRuleEngineCustomElementsOptions {
   activationProof?: string | null;
   publicKeyPem?: string;
-  /** Skip RSA signature verification for self-hosted control planes. */
-  skipSignatureVerification?: boolean;
 }
 
 export async function MLoadRuleEngineCustomElements(options?: MLoadRuleEngineCustomElementsOptions): Promise<void> {
@@ -39,18 +37,10 @@ export async function MLoadRuleEngineCustomElements(options?: MLoadRuleEngineCus
   if (activationProof) {
     try {
       await MLicenseVerifier.initialize(activationProof, {
-        publicKeyPem: options?.publicKeyPem,
-        skipSignatureVerification: options?.skipSignatureVerification
+        publicKeyPem: options?.publicKeyPem
       });
     } catch {
-      // RSA verification failed — retry with skipSignatureVerification for self-hosted mode
-      if (!options?.skipSignatureVerification) {
-        try {
-          await MLicenseVerifier.initialize(activationProof, { skipSignatureVerification: true });
-        } catch {
-          // Both attempts failed — components will use license-gated defaults
-        }
-      }
+      // RSA verification failed — components will use license-gated defaults
     }
   }
 
