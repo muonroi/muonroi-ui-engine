@@ -274,6 +274,9 @@ export class MuRuleFlowDesigner extends LitElement {
 
     try {
       const result = await this.MPersistRuleSetAsync(detail);
+      // Expose last publish status via data attribute so React editor can read approval state
+      this.setAttribute("data-last-publish-status", result.status ?? "Active");
+      this.setAttribute("data-last-publish-approval", String(result.approvalWorkflowEnabled));
       this.dispatchEvent(
         new CustomEvent<MRuleStudioPublishResultDetail>("publish-complete", {
           detail: result,
