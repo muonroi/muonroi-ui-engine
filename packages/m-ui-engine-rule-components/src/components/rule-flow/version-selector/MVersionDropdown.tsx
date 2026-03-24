@@ -90,11 +90,14 @@ export function MVersionDropdown({
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Click-outside to close
+  // Click-outside to close — use composedPath() to handle shadow DOM correctly
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as HTMLElement)) {
+      if (!containerRef.current) return;
+      // composedPath() crosses shadow DOM boundaries, unlike e.target
+      const path = e.composedPath();
+      if (!path.includes(containerRef.current)) {
         setOpen(false);
       }
     };
