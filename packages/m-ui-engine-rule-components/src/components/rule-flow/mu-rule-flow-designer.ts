@@ -104,18 +104,25 @@ export class MuRuleFlowDesigner extends LitElement {
       return;
     }
 
-    if (!this.mInternalGraphUpdate && (changed.has("graph") || changed.has("graphJson") || changed.has("readOnly") || changed.has("theme") || changed.has("apiBaseUrl") || changed.has("catalogApiBase") || changed.has("height") || changed.has("tenantId") || changed.has("showHeader") || changed.has("version"))) {
+    // When version changes, DON'T render immediately with stale graph — clear graph and
+    // let MLoadWorkflowGraphAsync reload the correct version first.  The final render
+    // happens at the mInternalGraphUpdate branch below after the fetch completes.
+    if (changed.has("version")) {
+      this.mInternalGraphUpdate = true;
+      if (this.graphJson.trim()) {
+        this.graphJson = "";
+      }
+      this.graph = MCreateEmptyRuleFlowGraph();
+      this.mLastGraphSignature = MCreateRuleFlowGraphSignature(this.graph);
+      void this.MLoadWorkflowGraphAsync();
+      return;
+    }
+
+    if (!this.mInternalGraphUpdate && (changed.has("graph") || changed.has("graphJson") || changed.has("readOnly") || changed.has("theme") || changed.has("apiBaseUrl") || changed.has("catalogApiBase") || changed.has("height") || changed.has("tenantId") || changed.has("showHeader"))) {
       this.MRenderEditor();
     }
 
-    if (changed.has("version") && this.graphJson.trim()) {
-      this.mInternalGraphUpdate = true;
-      this.graphJson = "";
-      this.graph = MCreateEmptyRuleFlowGraph();
-      this.mLastGraphSignature = MCreateRuleFlowGraphSignature(this.graph);
-    }
-
-    if ((changed.has("workflowCode") || changed.has("apiBaseUrl") || changed.has("tenantId") || changed.has("version")) && !this.graphJson.trim()) {
+    if ((changed.has("workflowCode") || changed.has("apiBaseUrl") || changed.has("tenantId")) && !this.graphJson.trim()) {
       void this.MLoadWorkflowGraphAsync();
     }
 
