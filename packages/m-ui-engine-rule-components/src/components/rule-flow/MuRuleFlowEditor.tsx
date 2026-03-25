@@ -1794,6 +1794,19 @@ export function MuRuleFlowEditor({
       }
     }
 
+    // Trigger and End nodes are structural — graph dispatcher doesn't emit
+    // __graph.node keys for them. Infer: trigger always starts, end reached if flow succeeded.
+    if (traversedIds.size > 0) {
+      const nodeTypes = new Map<string, string>();
+      for (const n of nodesRef.current) {
+        nodeTypes.set(n.id, n.data.nodeType);
+      }
+      for (const [id, type] of nodeTypes) {
+        if (type === "trigger") traversedIds.add(id);
+        if (type === "end" && result.isSuccess) traversedIds.add(id);
+      }
+    }
+
     setDryRunTraversedNodes(traversedIds);
 
     // Build lookup map for quick access to result entries
@@ -1815,21 +1828,24 @@ export function MuRuleFlowEditor({
           };
         }
 
-        // Traversed — green glow (pass) or red glow (fail)
+        // Traversed — left accent bar + subtle background tint (n8n-style)
         // Prefer factBag __graph.node.{id}.passed (real execution data) over results array
         const graphPassed = result.factBag[`__graph.node.${node.id}.passed`];
         const passed = graphPassed !== undefined ? graphPassed === true : (entry?.isSuccess ?? true);
-        const color = passed ? "var(--mu-color-success)" : "var(--mu-color-error)";
-        const bgColor = passed ? "var(--mu-color-success-bg)" : "var(--mu-color-error-bg)";
+        const accentColor = passed ? "var(--mu-color-success)" : "var(--mu-color-error)";
+        const tintBg = passed
+          ? "color-mix(in oklch, var(--mu-color-success) 6%, transparent)"
+          : "color-mix(in oklch, var(--mu-color-error) 6%, transparent)";
         return {
           ...node,
           style: {
             ...node.style,
             opacity: 1,
-            background: bgColor,
-            border: `2px solid ${color}`,
-            borderRadius: 12,
-            boxShadow: `0 0 8px ${bgColor}, 0 0 16px ${bgColor}`,
+            background: tintBg,
+            border: "none",
+            borderLeft: `4px solid ${accentColor}`,
+            borderRadius: 8,
+            boxShadow: "none",
             transition: "all 300ms ease",
             filter: "none"
           },
