@@ -135,10 +135,10 @@ function MNodeInspectorView({
         type="button"
         onClick={onShowFullFactBag}
         style={{
-          fontSize: 11,
+          fontSize: 12,
           color: tokens.textSecondary,
           cursor: "pointer",
-          padding: "4px 8px",
+          padding: "6px 10px",
           background: "none",
           border: "none",
           textAlign: "left",
@@ -164,7 +164,7 @@ function MNodeInspectorView({
           }}>
             {entry.isSuccess ? "\u2713" : "\u2717"}
           </span>
-          <span style={{ fontSize: 12, fontWeight: 600, color: entry.isSuccess ? "var(--mu-color-success-text)" : "var(--mu-color-error)" }}>
+          <span style={{ fontSize: 13, fontWeight: 600, color: entry.isSuccess ? "var(--mu-color-success-text)" : "var(--mu-color-error)" }}>
             {entry.isSuccess ? "Passed" : "Failed"}
           </span>
           {/* Execution time badge */}
@@ -218,7 +218,7 @@ function MNodeInspectorView({
             fontFamily: "var(--mu-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)"
           }}>
             {outputKeys.map((key) => (
-              <div key={key} style={{ display: "flex", gap: 6, flexWrap: "wrap", fontSize: 11 }}>
+              <div key={key} style={{ display: "flex", gap: 6, flexWrap: "wrap", fontSize: 12 }}>
                 <span style={{ fontWeight: 600, color: tokens.textSecondary }}>{key}:</span>
                 <span style={{ color: tokens.textPrimary }}>
                   {typeof outputData[key] === "object" && outputData[key] !== null
@@ -276,7 +276,7 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
   return (
     <div style={{
       borderTop: `2px solid ${tokens.sidebarBorder.replace("1px solid ", "")}`,
-      height: 280, overflow: "hidden", display: "flex", flexDirection: "column",
+      height: 380, overflow: "hidden", display: "flex", flexDirection: "column",
       background: tokens.inspectorBg
     }}>
       {/* Header */}
@@ -286,7 +286,7 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
         flexShrink: 0
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 13, fontWeight: 600, color: tokens.textPrimary }}>Dry Run Results</span>
+          <span style={{ fontSize: 14, fontWeight: 600, color: tokens.textPrimary }}>Dry Run Results</span>
           {result ? (
             <span style={{
               fontSize: 11, padding: "2px 8px", borderRadius: 12,
@@ -327,7 +327,7 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
           <div style={{ display: "flex", height: "100%" }}>
             {/* Left — Results table (60%) */}
             <div style={{ width: "60%", overflow: "auto", borderRight: `1px solid ${tokens.sidebarBorder.replace("1px solid ", "")}` }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead>
                   <tr style={{ borderBottom: `1px solid ${tokens.sidebarBorder.replace("1px solid ", "")}`, position: "sticky", top: 0, background: tokens.inspectorBg, zIndex: 1 }}>
                     <th style={{ ...MThStyle, color: tokens.textSecondary }}>Node</th>
@@ -350,7 +350,7 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
                         background: selectedRule === entry.ruleName ? tokens.overlayItemSelectedBg : "transparent"
                       }}
                     >
-                      <td style={{ padding: "6px 12px", color: tokens.textPrimary, fontWeight: 500 }}>
+                      <td style={{ padding: "8px 12px", color: tokens.textPrimary, fontWeight: 500, fontSize: 13 }}>
                         {entry.ruleName}
                         {entry.errors && entry.errors.length > 0 ? (
                           <div style={{ fontSize: 11, color: tokens.errorText, marginTop: 2 }}>
@@ -358,7 +358,7 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
                           </div>
                         ) : null}
                       </td>
-                      <td style={{ padding: "6px 8px", textAlign: "center" }}>
+                      <td style={{ padding: "8px 8px", textAlign: "center" }}>
                         <span style={{
                           display: "inline-block", width: 18, height: 18, borderRadius: "50%",
                           lineHeight: "18px", textAlign: "center", fontSize: 11, fontWeight: 700,
@@ -380,7 +380,7 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
             </div>
 
             {/* Right — Node Inspector (40%) */}
-            <div style={{ width: "40%", overflow: "auto", padding: 8 }}>
+            <div style={{ width: "40%", overflow: "auto", padding: "10px 12px" }}>
               {selectedEntry ? (
                 <MNodeInspectorView
                   entry={selectedEntry}
