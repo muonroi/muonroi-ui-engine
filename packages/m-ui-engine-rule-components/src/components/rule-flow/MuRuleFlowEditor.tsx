@@ -2147,7 +2147,7 @@ export function MuRuleFlowEditor({
         {/* Center — Canvas with floating toolbar */}
         <div
           ref={canvasPanelRef}
-          style={{ ...MCanvasPanelStyle, ...MCanvasPanelLayoutStyle(isCompactLayout), height: resolvedCanvasHeight, background: tokens.canvasGradient, display: "flex", flexDirection: "column" }}
+          style={{ ...MCanvasPanelStyle, ...MCanvasPanelLayoutStyle(isCompactLayout), height: dryRunOpen ? "auto" : resolvedCanvasHeight, minHeight: dryRunOpen ? undefined : MCanvasPanelLayoutStyle(isCompactLayout).minHeight, background: tokens.canvasGradient, display: "flex", flexDirection: "column" }}
           data-testid="rule-flow-canvas"
           data-node-count={nodes.length}
           data-edge-count={edges.length}
@@ -2331,7 +2331,7 @@ export function MuRuleFlowEditor({
                   </button>
                 </div>
                 {(dryRunResult || dryRunLoading || dryRunError) ? (
-                  <div style={{ flexShrink: 0 }}>
+                  <div style={{ flex: "1 1 auto", minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                     <MDryRunPanel
                       result={dryRunResult}
                       loading={dryRunLoading}
