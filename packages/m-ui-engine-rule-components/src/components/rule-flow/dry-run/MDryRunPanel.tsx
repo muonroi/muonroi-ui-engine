@@ -298,7 +298,7 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
   return (
     <div style={{
       borderTop: `2px solid ${tokens.sidebarBorder.replace("1px solid ", "")}`,
-      height: "45vh", minHeight: 280, overflow: "hidden", display: "flex", flexDirection: "column",
+      flex: "1 1 auto", minHeight: 200, overflow: "hidden", display: "flex", flexDirection: "column",
       background: tokens.inspectorBg
     }}>
       {/* Header */}
