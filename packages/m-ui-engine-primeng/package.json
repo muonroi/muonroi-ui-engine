@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-primeng",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "description": "PrimeNG adapter for Muonroi UI engine",
   "type": "module",
   "main": "dist/index.js",

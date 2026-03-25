@@ -107,13 +107,11 @@ function MCollapsibleSection({
 function MNodeInspectorView({
   entry,
   tokens,
-  onShowFullFactBag,
-  factBagClean
+  onShowFullFactBag
 }: {
   entry: MDryRunResult["results"][0];
   tokens: MFlowThemeTokens;
   onShowFullFactBag: () => void;
-  factBagClean?: Record<string, unknown>;
 }): React.JSX.Element {
   // Compute output data: prefer businessFacts, then extract 'result' payload
   // from outputs (graph execution stores isPass/message/errorCode there)
@@ -139,15 +137,6 @@ function MNodeInspectorView({
 
   const outputKeys = Object.keys(outputData);
   const elapsedMs = entry.status?.elapsedMs ?? entry.elapsedMs;
-
-  // Build relevant FactBag keys for this node (keys that aren't __graph.* or __node.*)
-  // This gives visibility into what business data exists in the pipeline
-  const nodeFactBag: Record<string, unknown> = {};
-  if (factBagClean) {
-    for (const [k, v] of Object.entries(factBagClean)) {
-      if (!k.startsWith("__")) nodeFactBag[k] = v;
-    }
-  }
 
   const monoFont = "var(--mu-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)";
 
@@ -258,33 +247,6 @@ function MNodeInspectorView({
         )}
       </MCollapsibleSection>
 
-      {/* Input / FactBag Context section */}
-      <MCollapsibleSection
-        title="FactBag Context"
-        count={Object.keys(nodeFactBag).length > 0 ? Object.keys(nodeFactBag).length : undefined}
-        defaultExpanded={false}
-      >
-        {Object.keys(nodeFactBag).length > 0 ? (
-          <pre style={{
-            margin: 0,
-            fontSize: 12,
-            lineHeight: 1.6,
-            whiteSpace: "pre-wrap",
-            wordBreak: "break-word",
-            fontFamily: monoFont,
-            color: tokens.textPrimary,
-            maxHeight: 250,
-            overflowY: "auto",
-            padding: "6px 10px",
-          }}>
-            {JSON.stringify(nodeFactBag, null, 2)}
-          </pre>
-        ) : (
-          <div style={{ padding: "6px 10px", fontSize: 13, color: tokens.textMuted, fontStyle: "italic" }}>
-            No FactBag data available
-          </div>
-        )}
-      </MCollapsibleSection>
     </div>
   );
 }
@@ -426,7 +388,6 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, on
                   entry={selectedEntry}
                   tokens={tokens}
                   onShowFullFactBag={() => setSelectedRule(null)}
-                  factBagClean={result?.factBagClean}
                 />
               ) : (
                 <>
