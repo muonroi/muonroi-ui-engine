@@ -105,37 +105,58 @@ function MCollapsibleSection({
 function MNodeInspectorView({
   entry,
   tokens,
-  onShowFullFactBag
+  onShowFullFactBag,
+  factBagClean
 }: {
   entry: MDryRunResult["results"][0];
   tokens: MFlowThemeTokens;
   onShowFullFactBag: () => void;
+  factBagClean?: Record<string, unknown>;
 }): React.JSX.Element {
-  // Compute output data: prefer businessFacts if available, else filter outputs
-  const outputData: Record<string, unknown> = entry.businessFacts
-    ? entry.businessFacts
-    : entry.outputs
-      ? Object.fromEntries(
-          Object.entries(entry.outputs).filter(
-            ([k]) =>
-              !k.startsWith("__graph.") &&
-              !k.startsWith("__node.") &&
-              !["executed", "passed", "errored", "result"].includes(k)
-          )
-        )
-      : {};
+  // Compute output data: prefer businessFacts, then extract 'result' payload
+  // from outputs (graph execution stores isPass/message/errorCode there)
+  const outputData: Record<string, unknown> = {};
+  if (entry.businessFacts) {
+    Object.assign(outputData, entry.businessFacts);
+  }
+  if (entry.outputs) {
+    // The 'result' field from graph execution has the actual evaluation payload
+    const resultPayload = entry.outputs["result"];
+    if (resultPayload && typeof resultPayload === "object") {
+      const rp = resultPayload as Record<string, unknown>;
+      if (rp["message"] != null) outputData["message"] = rp["message"];
+      if (rp["errorCode"] != null) outputData["errorCode"] = rp["errorCode"];
+    }
+    // Include any non-metadata keys from outputs
+    for (const [k, v] of Object.entries(entry.outputs)) {
+      if (!["executed", "passed", "errored", "result"].includes(k)) {
+        outputData[k] = v;
+      }
+    }
+  }
 
   const outputKeys = Object.keys(outputData);
   const elapsedMs = entry.status?.elapsedMs ?? entry.elapsedMs;
 
+  // Build relevant FactBag keys for this node (keys that aren't __graph.* or __node.*)
+  // This gives visibility into what business data exists in the pipeline
+  const nodeFactBag: Record<string, unknown> = {};
+  if (factBagClean) {
+    for (const [k, v] of Object.entries(factBagClean)) {
+      if (!k.startsWith("__")) nodeFactBag[k] = v;
+    }
+  }
+
+  const monoFont = "var(--mu-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)";
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {/* Back button */}
       <button
         type="button"
         onClick={onShowFullFactBag}
         style={{
-          fontSize: 12,
+          fontSize: 13,
           color: tokens.textSecondary,
           cursor: "pointer",
           padding: "6px 10px",
@@ -151,12 +172,12 @@ function MNodeInspectorView({
       </button>
 
       {/* Status section — always visible, not collapsible */}
-      <div style={{ padding: "6px 8px", borderRadius: 6, background: "color-mix(in oklch, var(--mu-border-subtle) 40%, transparent)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: entry.status?.message || (entry.errors && entry.errors.length > 0) ? 6 : 0 }}>
+      <div style={{ padding: "8px 12px", borderRadius: 6, background: "color-mix(in oklch, var(--mu-border-subtle) 40%, transparent)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: entry.status?.message || (entry.errors && entry.errors.length > 0) ? 8 : 0 }}>
           {/* Pass/Fail badge */}
           <span style={{
-            display: "inline-block", width: 18, height: 18, borderRadius: "50%",
-            lineHeight: "18px", textAlign: "center", fontSize: 11, fontWeight: 700,
+            display: "inline-block", width: 22, height: 22, borderRadius: "50%",
+            lineHeight: "22px", textAlign: "center", fontSize: 13, fontWeight: 700,
             background: entry.isSuccess
               ? "color-mix(in oklch, var(--mu-color-success-text) 15%, transparent)"
               : "color-mix(in oklch, var(--mu-color-error) 15%, transparent)",
@@ -164,13 +185,15 @@ function MNodeInspectorView({
           }}>
             {entry.isSuccess ? "\u2713" : "\u2717"}
           </span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: entry.isSuccess ? "var(--mu-color-success-text)" : "var(--mu-color-error)" }}>
+          <span style={{ fontSize: 15, fontWeight: 600, color: entry.isSuccess ? "var(--mu-color-success-text)" : "var(--mu-color-error)" }}>
             {entry.isSuccess ? "Passed" : "Failed"}
           </span>
-          {/* Execution time badge */}
+          {entry.status?.executed === false ? (
+            <span style={{ fontSize: 12, color: "var(--mu-text-muted)", fontStyle: "italic" }}>skipped</span>
+          ) : null}
           {elapsedMs !== undefined ? (
             <span style={{
-              fontSize: 11, padding: "2px 8px", borderRadius: 12, marginLeft: "auto",
+              fontSize: 12, padding: "2px 10px", borderRadius: 12, marginLeft: "auto",
               background: "color-mix(in oklch, var(--mu-color-success-text) 15%, transparent)",
               color: "var(--mu-color-success-text)",
               fontWeight: 600
@@ -180,22 +203,20 @@ function MNodeInspectorView({
           ) : null}
         </div>
 
-        {/* Status message */}
         {entry.status?.message ? (
           <div style={{
-            fontSize: 12,
+            fontSize: 13,
             color: entry.isSuccess ? tokens.textSecondary : "var(--mu-color-error)",
-            ...(entry.isSuccess ? {} : { borderLeft: "3px solid var(--mu-color-error)", paddingLeft: 8 })
+            ...(entry.isSuccess ? {} : { borderLeft: "3px solid var(--mu-color-error)", paddingLeft: 10 })
           }}>
             {entry.status.message}
           </div>
         ) : null}
 
-        {/* Error list */}
         {entry.errors && entry.errors.length > 0 ? (
-          <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 4 }}>
             {entry.errors.map((err, i) => (
-              <div key={i} style={{ fontSize: 11, color: "var(--mu-color-error)", borderLeft: "3px solid var(--mu-color-error)", paddingLeft: 8 }}>
+              <div key={i} style={{ fontSize: 12, color: "var(--mu-color-error)", borderLeft: "3px solid var(--mu-color-error)", paddingLeft: 10 }}>
                 {err}
               </div>
             ))}
@@ -206,20 +227,20 @@ function MNodeInspectorView({
       {/* Output section */}
       <MCollapsibleSection
         title="Output"
-        count={entry.changedKeys ? entry.changedKeys.length : undefined}
+        count={outputKeys.length > 0 ? outputKeys.length : undefined}
         defaultExpanded={true}
       >
         {outputKeys.length > 0 ? (
           <div style={{
             display: "flex",
             flexDirection: "column",
-            gap: 2,
-            padding: "4px 8px",
-            fontFamily: "var(--mu-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)"
+            gap: 4,
+            padding: "6px 10px",
+            fontFamily: monoFont,
           }}>
             {outputKeys.map((key) => (
-              <div key={key} style={{ display: "flex", gap: 6, flexWrap: "wrap", fontSize: 12 }}>
-                <span style={{ fontWeight: 600, color: tokens.textSecondary }}>{key}:</span>
+              <div key={key} style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 13 }}>
+                <span style={{ fontWeight: 600, color: tokens.textSecondary, minWidth: 80 }}>{key}:</span>
                 <span style={{ color: tokens.textPrimary }}>
                   {typeof outputData[key] === "object" && outputData[key] !== null
                     ? JSON.stringify(outputData[key])
@@ -229,35 +250,36 @@ function MNodeInspectorView({
             ))}
           </div>
         ) : (
-          <div style={{ padding: "4px 8px", fontSize: 11, color: tokens.textMuted, fontStyle: "italic" }}>
-            No output facts
+          <div style={{ padding: "6px 10px", fontSize: 13, color: tokens.textMuted, fontStyle: "italic" }}>
+            No output facts — code-first rule writes directly to FactBag
           </div>
         )}
       </MCollapsibleSection>
 
-      {/* Input section */}
+      {/* Input / FactBag Context section */}
       <MCollapsibleSection
-        title="Input"
+        title="FactBag Context"
+        count={Object.keys(nodeFactBag).length > 0 ? Object.keys(nodeFactBag).length : undefined}
         defaultExpanded={false}
       >
-        {entry.inputSnapshot ? (
+        {Object.keys(nodeFactBag).length > 0 ? (
           <pre style={{
             margin: 0,
-            fontSize: 11,
-            lineHeight: 1.5,
+            fontSize: 12,
+            lineHeight: 1.6,
             whiteSpace: "pre-wrap",
             wordBreak: "break-word",
-            fontFamily: "var(--mu-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)",
+            fontFamily: monoFont,
             color: tokens.textPrimary,
-            maxHeight: 200,
+            maxHeight: 250,
             overflowY: "auto",
-            padding: "4px 8px",
+            padding: "6px 10px",
           }}>
-            {JSON.stringify(entry.inputSnapshot, null, 2)}
+            {JSON.stringify(nodeFactBag, null, 2)}
           </pre>
         ) : (
-          <div style={{ padding: "4px 8px", fontSize: 11, color: tokens.textMuted, fontStyle: "italic" }}>
-            Input data not available (run via consumer runtime for full input capture)
+          <div style={{ padding: "6px 10px", fontSize: 13, color: tokens.textMuted, fontStyle: "italic" }}>
+            No FactBag data available
           </div>
         )}
       </MCollapsibleSection>
@@ -276,7 +298,7 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
   return (
     <div style={{
       borderTop: `2px solid ${tokens.sidebarBorder.replace("1px solid ", "")}`,
-      height: 380, overflow: "hidden", display: "flex", flexDirection: "column",
+      height: "45vh", minHeight: 280, overflow: "hidden", display: "flex", flexDirection: "column",
       background: tokens.inspectorBg
     }}>
       {/* Header */}
@@ -386,6 +408,7 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
                   entry={selectedEntry}
                   tokens={tokens}
                   onShowFullFactBag={() => setSelectedRule(null)}
+                  factBagClean={result?.factBagClean}
                 />
               ) : (
                 <>
@@ -425,9 +448,9 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
 }
 
 const MThStyle: React.CSSProperties = {
-  padding: "6px 12px",
+  padding: "10px 12px",
   textAlign: "left",
-  fontSize: 11,
+  fontSize: 12,
   fontWeight: 600,
   textTransform: "uppercase",
   letterSpacing: "0.5px"

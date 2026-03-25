@@ -1,7 +1,7 @@
 {
   "name": "@muonroi/ui-engine-workspace",
   "private": true,
-  "version": "0.1.17",
+  "version": "0.1.18",
   "description": "Muonroi UI Engine runtime workspace",
   "workspaces": [
     "packages/*"
