@@ -113,29 +113,33 @@ function MNodeInspectorView({
   tokens: MFlowThemeTokens;
   onShowFullFactBag: () => void;
 }): React.JSX.Element {
-  // Compute output data: prefer businessFacts, then extract 'result' payload
-  // from outputs (graph execution stores isPass/message/errorCode there)
+  // Compute output: prefer outputSnapshot (actual runtime diff), then businessFacts, then graph result
   const outputData: Record<string, unknown> = {};
-  if (entry.businessFacts) {
+  if (entry.outputSnapshot && Object.keys(entry.outputSnapshot).length > 0) {
+    Object.assign(outputData, entry.outputSnapshot);
+  } else if (entry.businessFacts) {
     Object.assign(outputData, entry.businessFacts);
-  }
-  if (entry.outputs) {
-    // The 'result' field from graph execution has the actual evaluation payload
-    const resultPayload = entry.outputs["result"];
-    if (resultPayload && typeof resultPayload === "object") {
-      const rp = resultPayload as Record<string, unknown>;
-      if (rp["message"] != null) outputData["message"] = rp["message"];
-      if (rp["errorCode"] != null) outputData["errorCode"] = rp["errorCode"];
-    }
-    // Include any non-metadata keys from outputs
+  } else if (entry.outputs) {
     for (const [k, v] of Object.entries(entry.outputs)) {
       if (!["executed", "passed", "errored", "result"].includes(k)) {
         outputData[k] = v;
       }
     }
+    if (Object.keys(outputData).length === 0) {
+      const resultPayload = entry.outputs["result"];
+      if (resultPayload && typeof resultPayload === "object") {
+        const rp = resultPayload as Record<string, unknown>;
+        outputData["isPass"] = rp["isPass"] ?? null;
+        if (rp["message"] != null) outputData["message"] = rp["message"];
+        if (rp["errorCode"] != null) outputData["errorCode"] = rp["errorCode"];
+      }
+    }
   }
 
   const outputKeys = Object.keys(outputData);
+
+  // Input: prefer inputSnapshot (actual FactBag state before this rule ran)
+  const inputData = entry.inputSnapshot;
   const elapsedMs = entry.status?.elapsedMs ?? entry.elapsedMs;
 
   const monoFont = "var(--mu-font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace)";
@@ -242,10 +246,34 @@ function MNodeInspectorView({
           </div>
         ) : (
           <div style={{ padding: "6px 10px", fontSize: 13, color: tokens.textMuted, fontStyle: "italic" }}>
-            No output facts — code-first rule writes directly to FactBag
+            No per-node output data
           </div>
         )}
       </MCollapsibleSection>
+
+      {/* Input section — actual FactBag state before this rule ran */}
+      {inputData ? (
+        <MCollapsibleSection
+          title="Input"
+          count={Object.keys(inputData).length}
+          defaultExpanded={false}
+        >
+          <pre style={{
+            margin: 0,
+            fontSize: 12,
+            lineHeight: 1.6,
+            whiteSpace: "pre-wrap",
+            wordBreak: "break-word",
+            fontFamily: monoFont,
+            color: tokens.textPrimary,
+            maxHeight: 300,
+            overflowY: "auto",
+            padding: "6px 10px",
+          }}>
+            {JSON.stringify(inputData, null, 2)}
+          </pre>
+        </MCollapsibleSection>
+      ) : null}
 
     </div>
   );
