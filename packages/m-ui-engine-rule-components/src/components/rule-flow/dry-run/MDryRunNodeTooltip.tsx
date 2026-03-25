@@ -4,7 +4,7 @@ import type { MFlowThemeTokens } from "../rule-flow-theme.js";
 export interface MDryRunNodeTooltipProps {
   nodeName: string;
   isSuccess: boolean;
-  evaluationResult?: boolean;
+  evaluationResult?: boolean | string;
   outputs?: Record<string, unknown>;
   errors?: string[];
   position: { x: number; y: number };
