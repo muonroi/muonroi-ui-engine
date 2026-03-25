@@ -40,6 +40,8 @@ export interface MDryRunPanelProps {
   error: string | null;
   onSelectNode?: (ruleName: string) => void;
   onClose: () => void;
+  onRerun?: () => void;
+  onEditInput?: () => void;
   tokens: MFlowThemeTokens;
 }
 
@@ -287,20 +289,29 @@ function MNodeInspectorView({
   );
 }
 
-export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, tokens }: MDryRunPanelProps): React.JSX.Element {
+export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, onRerun, onEditInput, tokens }: MDryRunPanelProps): React.JSX.Element {
   const [selectedRule, setSelectedRule] = useState<string | null>(null);
+  const [fullscreen, setFullscreen] = useState(false);
 
   const selectedEntry = result?.results.find((r) => r.ruleName === selectedRule);
 
   const passCount = result?.results.filter((r) => r.isSuccess).length ?? 0;
   const failCount = result?.results.filter((r) => !r.isSuccess).length ?? 0;
 
+  const panelStyle: React.CSSProperties = fullscreen
+    ? {
+        position: "fixed", top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+        display: "flex", flexDirection: "column",
+        background: tokens.inspectorBg,
+      }
+    : {
+        borderTop: `2px solid ${tokens.sidebarBorder.replace("1px solid ", "")}`,
+        flex: "1 1 auto", minHeight: 200, overflow: "hidden", display: "flex", flexDirection: "column",
+        background: tokens.inspectorBg,
+      };
+
   return (
-    <div style={{
-      borderTop: `2px solid ${tokens.sidebarBorder.replace("1px solid ", "")}`,
-      flex: "1 1 auto", minHeight: 200, overflow: "hidden", display: "flex", flexDirection: "column",
-      background: tokens.inspectorBg
-    }}>
+    <div style={panelStyle}>
       {/* Header */}
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -322,17 +333,24 @@ export function MDryRunPanel({ result, loading, error, onSelectNode, onClose, to
             </span>
           ) : null}
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          style={{
-            background: "transparent", border: "none", cursor: "pointer",
-            color: tokens.textMuted, fontSize: 14, padding: 2
-          }}
-          title="Close results"
-        >
-          X
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {onEditInput ? (
+            <button type="button" onClick={onEditInput} style={{ background: "transparent", border: "none", cursor: "pointer", color: tokens.textMuted, fontSize: 13, padding: "2px 6px" }} title="Edit input JSON">
+              &#9998;
+            </button>
+          ) : null}
+          {onRerun ? (
+            <button type="button" onClick={onRerun} style={{ background: "transparent", border: "none", cursor: "pointer", color: tokens.textMuted, fontSize: 13, padding: "2px 6px" }} title="Re-run dry run">
+              &#8635;
+            </button>
+          ) : null}
+          <button type="button" onClick={() => setFullscreen(!fullscreen)} style={{ background: "transparent", border: "none", cursor: "pointer", color: tokens.textMuted, fontSize: 13, padding: "2px 6px" }} title={fullscreen ? "Exit fullscreen" : "Fullscreen"}>
+            {fullscreen ? "\u2716" : "\u26F6"}
+          </button>
+          <button type="button" onClick={() => { if (fullscreen) setFullscreen(false); onClose(); }} style={{ background: "transparent", border: "none", cursor: "pointer", color: tokens.textMuted, fontSize: 14, padding: 2 }} title="Close results">
+            X
+          </button>
+        </div>
       </div>
 
       {/* Body */}
