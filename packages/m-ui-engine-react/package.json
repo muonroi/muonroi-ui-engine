@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-react",
-  "version": "0.1.19",
+  "version": "0.1.20",
   "description": "React helper mappings for Muonroi UI Engine",
   "type": "module",
   "main": "dist/index.js",

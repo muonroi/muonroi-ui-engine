@@ -2296,7 +2296,7 @@ export function MuRuleFlowEditor({
                 onPointerLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = tokens.sidebarBorder.replace("1px solid ", ""); }}
               />
               <div style={{ flex: `0 0 ${dryRunPanelHeight}%`, overflow: "hidden", display: "flex", flexDirection: "column", background: tokens.sidebarBg }}>
-                <div style={{ flex: "1 1 auto", overflowY: "auto", minHeight: 0 }}>
+                <div style={{ flex: (dryRunResult || dryRunLoading || dryRunError) ? "0 1 120px" : "1 1 auto", overflowY: "auto", minHeight: 0 }}>
                   <MDryRunInputEditor
                     value={dryRunInput}
                     onChange={setDryRunInput}
