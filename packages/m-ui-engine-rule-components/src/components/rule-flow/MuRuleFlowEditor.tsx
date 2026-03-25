@@ -2296,40 +2296,46 @@ export function MuRuleFlowEditor({
                 onPointerLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = tokens.sidebarBorder.replace("1px solid ", ""); }}
               />
               <div style={{ flex: `0 0 ${dryRunPanelHeight}%`, overflow: "hidden", display: "flex", flexDirection: "column", background: tokens.sidebarBg }}>
-                <div style={{ flex: (dryRunResult || dryRunLoading || dryRunError) ? "0 1 120px" : "1 1 auto", overflowY: "auto", minHeight: 0 }}>
-                  <MDryRunInputEditor
-                    value={dryRunInput}
-                    onChange={setDryRunInput}
-                    onReset={() => setDryRunInput(generateDefaultInputJson())}
-                    tokens={tokens}
-                    editorRoot={editorRoot}
-                  />
-                </div>
-                <div style={{ display: "flex", gap: 8, padding: "8px 12px", background: tokens.sidebarBg, flexShrink: 0, borderTop: `1px solid ${tokens.sidebarBorder.replace("1px solid ", "")}` }}>
-                  <button
-                    type="button"
-                    onClick={() => { void executeDryRun(); }}
-                    disabled={dryRunLoading || !apiBaseUrl || !workflowCode}
-                    style={{
-                      padding: "6px 16px", borderRadius: 6, border: "none", cursor: "pointer",
-                      background: "var(--mu-color-success)", color: "var(--mu-text-on-accent)", fontWeight: 600, fontSize: 12,
-                      opacity: dryRunLoading ? 0.6 : 1
-                    }}
-                  >
-                    {dryRunLoading ? "Executing..." : "Execute"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={closeDryRun}
-                    style={{
-                      padding: "6px 16px", borderRadius: 6, cursor: "pointer",
-                      background: "transparent", border: tokens.actionSecondaryBorder,
-                      color: tokens.textSecondary, fontWeight: 500, fontSize: 12
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
+                {/* Input editor + action buttons — hidden when results are showing */}
+                {!(dryRunResult || dryRunLoading || dryRunError) ? (
+                  <>
+                    <div style={{ flex: "1 1 auto", overflowY: "auto", minHeight: 0 }}>
+                      <MDryRunInputEditor
+                        value={dryRunInput}
+                        onChange={setDryRunInput}
+                        onReset={() => setDryRunInput(generateDefaultInputJson())}
+                        tokens={tokens}
+                        editorRoot={editorRoot}
+                      />
+                    </div>
+                    <div style={{ display: "flex", gap: 8, padding: "8px 12px", background: tokens.sidebarBg, flexShrink: 0, borderTop: `1px solid ${tokens.sidebarBorder.replace("1px solid ", "")}` }}>
+                      <button
+                        type="button"
+                        onClick={() => { void executeDryRun(); }}
+                        disabled={dryRunLoading || !apiBaseUrl || !workflowCode}
+                        style={{
+                          padding: "6px 16px", borderRadius: 6, border: "none", cursor: "pointer",
+                          background: "var(--mu-color-success)", color: "var(--mu-text-on-accent)", fontWeight: 600, fontSize: 12,
+                          opacity: dryRunLoading ? 0.6 : 1
+                        }}
+                      >
+                        Execute
+                      </button>
+                      <button
+                        type="button"
+                        onClick={closeDryRun}
+                        style={{
+                          padding: "6px 16px", borderRadius: 6, cursor: "pointer",
+                          background: "transparent", border: tokens.actionSecondaryBorder,
+                          color: tokens.textSecondary, fontWeight: 500, fontSize: 12
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                ) : null}
+                {/* Results panel — takes full space when visible */}
                 {(dryRunResult || dryRunLoading || dryRunError) ? (
                   <div style={{ flex: "1 1 auto", minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
                     <MDryRunPanel
@@ -2337,6 +2343,8 @@ export function MuRuleFlowEditor({
                       loading={dryRunLoading}
                       error={dryRunError}
                       onClose={closeDryRun}
+                      onRerun={() => { void executeDryRun(); }}
+                      onEditInput={() => { setDryRunResult(null); setDryRunError(null); }}
                       onSelectNode={(ruleName) => {
                         const match = nodesRef.current.find((n) => n.data.ruleCode === ruleName || n.data.label === ruleName);
                         if (match) selectNodeById(match.id);
