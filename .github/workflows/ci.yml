@@ -50,7 +50,6 @@ jobs:
 
       - name: test (vitest)
         run: pnpm run --if-present test
-        continue-on-error: true
 
       - name: dotnet test with coverage
         run: dotnet test Muonroi.Ui.Engine.sln -v minimal --collect:"XPlat Code Coverage" --results-directory ./TestResults /m:1
@@ -58,7 +57,7 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
         with:
-          files: ./TestResults/**/coverage.cobertura.xml
+          files: ./TestResults/**/coverage.cobertura.xml,./packages/m-ui-engine-core/coverage/lcov.info,./packages/m-ui-engine-rule-components/coverage/lcov.info,./packages/m-ui-engine-angular/coverage/lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
           verbose: true

@@ -12,6 +12,13 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
-    css: true
+    css: true,
+    coverage: {
+      provider: "v8",
+      reporter: ["lcov", "text"],
+      reportsDirectory: "./coverage",
+      include: ["src/**/*.ts"],
+      exclude: ["**/*.spec.ts", "**/*.test.ts", "**/*.d.ts"]
+    }
   }
 });
