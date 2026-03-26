@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "build": "npm run -w @muonroi/ui-engine-core build && npm run -w @muonroi/ui-engine-rule-components build && tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run --coverage"
   },
   "dependencies": {
     "@muonroi/ui-engine-core": "workspace:^",
@@ -26,5 +26,8 @@
     "@angular/common": ">=17",
     "@angular/core": ">=17",
     "rxjs": ">=7"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9"
   }
 }

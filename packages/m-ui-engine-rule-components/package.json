@@ -17,7 +17,7 @@
   "scripts": {
     "build": "npm run -w @muonroi/ui-engine-core build && vite build && vite build -c vite.trace.config.ts && vite build -c vite.flow.config.ts && tsc -p tsconfig.json --emitDeclarationOnly",
     "build:flow": "vite build -c vite.flow.config.ts",
-    "test": "vitest run"
+    "test": "vitest run --coverage"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.1",
@@ -49,6 +49,7 @@
     "@testing-library/react": "^16.3.0",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "@vitest/coverage-v8": "^2.1.9",
     "happy-dom": "^15.10.2",
     "jsdom": "^29.0.0",
     "postcss": "^8.5.6",
