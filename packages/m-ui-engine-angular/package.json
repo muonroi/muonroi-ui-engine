@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-angular",
-  "version": "0.1.0",
+  "version": "0.1.22",
   "description": "Angular helper mappings for Muonroi UI Engine",
   "type": "module",
   "main": "dist/index.js",
@@ -15,15 +15,19 @@
     "dist"
   ],
   "scripts": {
-    "build": "npm run -w @muonroi/ui-engine-core build && npm run -w @muonroi/ui-engine-rule-components build && tsc -p tsconfig.json"
+    "build": "npm run -w @muonroi/ui-engine-core build && npm run -w @muonroi/ui-engine-rule-components build && tsc -p tsconfig.json",
+    "test": "vitest run --coverage"
   },
   "dependencies": {
-    "@muonroi/ui-engine-core": "workspace:*",
-    "@muonroi/ui-engine-rule-components": "workspace:*"
+    "@muonroi/ui-engine-core": "workspace:^",
+    "@muonroi/ui-engine-rule-components": "workspace:^"
   },
   "peerDependencies": {
     "@angular/common": ">=17",
     "@angular/core": ">=17",
     "rxjs": ">=7"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9"
   }
 }

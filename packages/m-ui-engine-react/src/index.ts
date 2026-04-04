@@ -1,7 +1,11 @@
-import type { MUiEngineAction, MUiEngineNavigationGroup, MUiEngineScreen } from "@muonroi/ui-engine-core";
+import {
+  MLicenseVerifier,
+  type MUiEngineAction,
+  type MUiEngineNavigationGroup,
+  type MUiEngineScreen
+} from "@muonroi/ui-engine-core";
 import React from "react";
 import { createComponent } from "@lit/react";
-import "@muonroi/ui-engine-rule-components";
 
 export interface MReactNavigationItem {
   id: string;
@@ -21,6 +25,26 @@ export interface MReactUiModel {
   navigation: MReactNavigationGroup[];
   screens: MUiEngineScreen[];
   actions: MUiEngineAction[];
+}
+
+export interface MLoadRuleEngineCustomElementsOptions {
+  activationProof?: string | null;
+  publicKeyPem?: string;
+}
+
+export async function MLoadRuleEngineCustomElements(options?: MLoadRuleEngineCustomElementsOptions): Promise<void> {
+  const activationProof = options?.activationProof?.trim() ?? "";
+  if (activationProof) {
+    try {
+      await MLicenseVerifier.initialize(activationProof, {
+        publicKeyPem: options?.publicKeyPem
+      });
+    } catch {
+      // RSA verification failed — components will use license-gated defaults
+    }
+  }
+
+  await import("@muonroi/ui-engine-rule-components");
 }
 
 export function MCreateReactUiModel(
@@ -56,6 +80,13 @@ export interface MRuleComponentEvents {
   onSave?: (event: Event) => void;
   onValidate?: (event: Event) => void;
   onChange?: (event: Event) => void;
+  onGraphChange?: (event: Event) => void;
+  onPublish?: (event: Event) => void;
+}
+
+export interface MRuleFlowComponentEvents extends MRuleComponentEvents {
+  onGraphChange?: (event: Event) => void;
+  onPublish?: (event: Event) => void;
 }
 
 const MDefaultElementClass =
@@ -65,7 +96,9 @@ const MDefaultElementClass =
 const MEventMap = {
   onSave: "save",
   onValidate: "validate",
-  onChange: "change"
+  onChange: "change",
+  onGraphChange: "graph-change",
+  onPublish: "publish"
 } as const;
 
 export const MuDecisionTableReact = createComponent({
@@ -108,5 +141,9 @@ export const MuRuleFlowDesignerReact = createComponent({
   elementClass:
     ((typeof customElements !== "undefined" ? customElements.get("mu-rule-flow-designer") : undefined) ??
       class extends HTMLElement {}) as typeof HTMLElement,
-  events: MEventMap
+  events: {
+    ...MEventMap,
+    onGraphChange: "graph-change",
+    onPublish: "publish"
+  }
 });

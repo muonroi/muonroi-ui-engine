@@ -28,7 +28,7 @@ export class MuDtHitPolicySelector extends LitElement {
       <label class="inline-flex items-center gap-2 text-sm">
         <span class="font-semibold">Hit policy</span>
         <select
-          class="rounded-md border border-[var(--color-mu-border)] bg-white px-2 py-1"
+          class="rounded-md border border-[var(--color-mu-border)] bg-[var(--mu-surface-input)] px-2 py-1"
           .value=${this.value}
           @change=${this.MHandleChange}
         >

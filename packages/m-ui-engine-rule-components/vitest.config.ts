@@ -4,10 +4,22 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   resolve: {
     alias: {
-      "monaco-editor": resolve(__dirname, "tests/stubs/monaco-editor.ts")
+      "@xyflow/react/dist/style.css": resolve(__dirname, "tests/stubs/xyflow-style.css"),
+      "@xyflow/react": resolve(__dirname, "tests/stubs/xyflow-react.tsx"),
+      "monaco-editor": resolve(__dirname, "tests/stubs/monaco-editor.ts"),
+      "@muonroi/ui-engine-core": resolve(__dirname, "../m-ui-engine-core/src/index.ts")
     }
   },
   test: {
-    environment: "happy-dom"
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+    css: true,
+    coverage: {
+      provider: "v8",
+      reporter: ["lcov", "text"],
+      reportsDirectory: "./coverage",
+      include: ["src/**/*.ts"],
+      exclude: ["**/*.spec.ts", "**/*.test.ts", "**/*.d.ts"]
+    }
   }
 });

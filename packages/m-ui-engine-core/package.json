@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-core",
-  "version": "0.1.0",
+  "version": "0.1.22",
   "description": "Muonroi UI engine core runtime",
   "type": "module",
   "main": "dist/index.js",
@@ -16,6 +16,9 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "vitest run"
+    "test": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9"
   }
 }

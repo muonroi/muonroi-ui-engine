@@ -1,6 +1,9 @@
-﻿import { LitElement, html, unsafeCSS } from "lit";
+import { LitElement, html, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
+
+const M_FEATURE_KEY = "cep-window-config";
 
 @customElement("mu-cep-window-config")
 export class MuCepWindowConfig extends LitElement {
@@ -33,6 +36,11 @@ export class MuCepWindowConfig extends LitElement {
   }
 
   render() {
+    const licenseGate = MRenderCommercialLicenseGate(M_FEATURE_KEY);
+    if (licenseGate) {
+      return licenseGate;
+    }
+
     const options = this.windowTypes.split(",").map((item) => item.trim()).filter(Boolean);
     return html`
       <section class="space-y-3 rounded-lg border border-[var(--color-mu-border)] bg-white p-4">
@@ -53,4 +61,5 @@ export class MuCepWindowConfig extends LitElement {
     `;
   }
 }
+
 

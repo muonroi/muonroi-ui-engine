@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-react",
-  "version": "0.1.0",
+  "version": "0.1.22",
   "description": "React helper mappings for Muonroi UI Engine",
   "type": "module",
   "main": "dist/index.js",
@@ -18,14 +18,21 @@
     "build": "npm run -w @muonroi/ui-engine-core build && tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@muonroi/ui-engine-core": "workspace:*",
-    "@muonroi/ui-engine-rule-components": "workspace:*",
     "@lit/react": "^1.0.8"
   },
   "peerDependencies": {
+    "@muonroi/ui-engine-core": ">=0.1.0",
+    "@muonroi/ui-engine-rule-components": ">=0.1.0",
     "react": ">=18"
   },
+  "peerDependenciesMeta": {
+    "@muonroi/ui-engine-rule-components": {
+      "optional": true
+    }
+  },
   "devDependencies": {
-    "@types/react": "^19.2.2"
+    "@muonroi/ui-engine-core": "workspace:^",
+    "@muonroi/ui-engine-rule-components": "workspace:^",
+    "@types/react": "^18.3.12"
   }
 }

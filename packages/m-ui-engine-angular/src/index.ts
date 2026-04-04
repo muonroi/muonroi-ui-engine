@@ -4,6 +4,7 @@ import type {
   MUiEngineNavigationNode,
   MUiEngineScreen
 } from "@muonroi/ui-engine-core";
+import { MLicenseVerifier } from "@muonroi/ui-engine-core";
 
 export interface MAngularRouteDefinition {
   path: string;
@@ -168,9 +169,49 @@ export function MAngularApiServiceFactory<TService>(
   return create(options.baseApiUrl, options.authProfile, options.authContext);
 }
 
-export async function MLoadRuleEngineCustomElements(): Promise<void> {
-  await import("@muonroi/ui-engine-rule-components");
+export interface MLoadRuleEngineCustomElementsOptions {
+  activationProof?: string | null;
+  publicKeyPem?: string;
+  tenantId?: string | null;
+  mGetTenantId?: () => string | null;
+  headers?: Record<string, string> | null;
+  mGetHeaders?: () => Record<string, string> | null;
 }
+
+export async function MLoadRuleEngineCustomElements(options?: MLoadRuleEngineCustomElementsOptions): Promise<void> {
+  const activationProof = options?.activationProof?.trim() ?? "";
+  console.info("[muonroi-debug] MLoadRuleEngineCustomElements start", {
+    hasActivationProof: activationProof.length > 0,
+    tenantId: options?.tenantId ?? options?.mGetTenantId?.() ?? null
+  });
+  if (activationProof) {
+    console.info("[muonroi-debug] before MLicenseVerifier.initialize");
+    await MLicenseVerifier.initialize(activationProof, {
+      publicKeyPem: options?.publicKeyPem
+    });
+    console.info("[muonroi-debug] after MLicenseVerifier.initialize", MLicenseVerifier.current);
+  }
+
+  console.info("[muonroi-debug] before runtime import");
+  const runtime = await import("@muonroi/ui-engine-rule-components");
+  console.info("[muonroi-debug] after runtime import");
+  runtime.MConfigureRuleComponentRuntime({
+    tenantId: options?.tenantId,
+    mGetTenantId: options?.mGetTenantId,
+    headers: options?.headers ?? undefined,
+    mGetHeaders: options?.mGetHeaders
+  });
+  console.info("[muonroi-debug] runtime configured");
+
+  // Patch Shadow DOM :host tokens — LightningCSS (Vite 6+) strips :host
+  // selectors from CSS during dep pre-bundling. This observer patches
+  // mu-* custom elements after they connect to the DOM.
+  MPatchShadowDomTokens();
+}
+
+// Re-export for testing and direct use
+export { MPatchElement, MPatchShadowDomTokens, M_PATCHED_ROOTS } from "./m-patch-shadow-tokens.js";
+import { MPatchShadowDomTokens } from "./m-patch-shadow-tokens.js";
 
 export function MBindCustomElementEvent<T>(
   callback: (detail: T, event: CustomEvent<T>) => void

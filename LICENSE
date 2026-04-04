@@ -1,0 +1,14 @@
+Muonroi UI Engine - Dual License
+
+This repository contains two licensed components:
+
+1. OSS Core
+   Packages: m-ui-engine-core, m-ui-engine-react, m-ui-engine-angular, m-ui-engine-primeng
+   License: Apache License 2.0 - see LICENSE-APACHE
+
+2. Commercial Modules
+   Packages: m-ui-engine-rule-components, m-ui-engine-rule-components-primeng,
+             m-ui-engine-signalr, m-ui-engine-sync
+   License: Muonroi Commercial License - see LICENSE-COMMERCIAL
+
+Copyright (c) 2024-2026 Le Anh Phi / Muonroi Framework

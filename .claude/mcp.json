@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "muonroi-dev": {
+      "command": "dotnet",
+      "args": [
+        "run",
+        "--project",
+        "../muonroi-building-block/tools/Muonroi.RuleGen.Mcp/Muonroi.RuleGen.Mcp.csproj"
+      ],
+      "transport": "stdio"
+    }
+  }
+}

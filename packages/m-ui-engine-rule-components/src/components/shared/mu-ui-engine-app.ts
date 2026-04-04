@@ -8,6 +8,7 @@ import type {
   MUiEngineNavigationNode,
   MUiEngineScreen
 } from "@muonroi/ui-engine-core";
+import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
 
 interface MUiSchemaHashPayload {
@@ -16,6 +17,8 @@ interface MUiSchemaHashPayload {
   openApiHash?: string | null;
   generatedAtUtc: string;
 }
+
+const M_FEATURE_KEY = "ui-engine-app";
 
 @customElement("mu-ui-engine-app")
 export class MuUiEngineApp extends LitElement {
@@ -47,6 +50,12 @@ export class MuUiEngineApp extends LitElement {
 
   @property({ type: String, attribute: "decision-table-history-endpoint" })
   decisionTableHistoryEndpoint = "/api/v1/decision-tables/{id}/versions";
+
+  @property({ type: String, attribute: "decision-table-history-version-endpoint" })
+  decisionTableHistoryVersionEndpoint = "/api/v1/decision-tables/{id}/versions/{v}";
+
+  @property({ type: String, attribute: "decision-table-diff-endpoint" })
+  decisionTableDiffEndpoint = "/api/v1/decision-tables/{id}/versions/{v1}/diff/{v2}";
 
   @property({ type: String, attribute: "decision-table-reorder-endpoint" })
   decisionTableReorderEndpoint = "/api/v1/decision-tables/{id}/rows/reorder";
@@ -235,6 +244,8 @@ export class MuUiEngineApp extends LitElement {
             export-endpoint=${this.decisionTableExportEndpoint}
             feel-endpoint=${this.feelAutocompleteEndpoint}
             history-endpoint=${this.decisionTableHistoryEndpoint}
+            history-version-endpoint=${this.decisionTableHistoryVersionEndpoint}
+            diff-endpoint=${this.decisionTableDiffEndpoint}
             reorder-endpoint=${this.decisionTableReorderEndpoint}
             table-id=${component.props?.tableId ?? ""}
           ></mu-decision-table>
@@ -263,6 +274,11 @@ export class MuUiEngineApp extends LitElement {
   }
 
   render() {
+    const licenseGate = MRenderCommercialLicenseGate(M_FEATURE_KEY);
+    if (licenseGate) {
+      return licenseGate;
+    }
+
     if (this.mLoading) {
       return html`<section class="rounded-lg border border-dashed border-[var(--color-mu-border)] bg-white p-4">Loading runtime...</section>`;
     }
@@ -379,3 +395,4 @@ export class MuUiEngineApp extends LitElement {
     `;
   }
 }
+

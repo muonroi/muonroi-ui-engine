@@ -1,4 +1,4 @@
-﻿import { defineConfig } from "vite";
+import { defineConfig } from "vite";
 import { resolve } from "node:path";
 
 export default defineConfig({
@@ -11,7 +11,11 @@ export default defineConfig({
         format === "iife" ? "muonroi-rule-components.iife.js" : "muonroi-rule-components.esm.js"
     },
     rollupOptions: {
+      external: ["@muonroi/ui-engine-core"],
       output: {
+        globals: {
+          "@muonroi/ui-engine-core": "MuonroiUiEngineCore"
+        },
         assetFileNames: (chunkInfo) =>
           chunkInfo.name?.endsWith(".css") ? "muonroi-rule-components.css" : "assets/[name]-[hash][extname]"
       }

@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+  pull_request:
+    branches:
+      - develop
+      - main
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Setup .NET 9
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: install
+        run: pnpm install --frozen-lockfile
+
+      - name: build
+        run: pnpm build
+
+      - name: type-check
+        run: pnpm -r --if-present run type-check
+
+      - name: lint
+        run: pnpm -r --if-present run lint
+
+      - name: test (vitest)
+        run: pnpm run --if-present test
+
+      - name: dotnet test with coverage
+        run: dotnet test Muonroi.Ui.Engine.sln -v minimal --collect:"XPlat Code Coverage" --results-directory ./TestResults /m:1
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: ./TestResults/**/coverage.cobertura.xml,./packages/m-ui-engine-core/coverage/lcov.info,./packages/m-ui-engine-rule-components/coverage/lcov.info,./packages/m-ui-engine-angular/coverage/lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+          verbose: true

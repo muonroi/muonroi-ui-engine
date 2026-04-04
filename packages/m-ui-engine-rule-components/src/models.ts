@@ -47,12 +47,49 @@ export interface MValidationResultPayload {
   warnings?: string[];
 }
 
-export interface MDecisionTableVersionSnapshot {
+export interface MDecisionTableVersionInfo {
   tableId: string;
   version: number;
   changeType: string;
   actor?: string | null;
   reason?: string | null;
   timestamp: string;
+}
+
+export interface MDecisionTableVersionSnapshot extends MDecisionTableVersionInfo {
   table: MDecisionTableModel;
 }
+
+export type MDiffKind = "Added" | "Removed" | "Modified";
+
+export interface MDecisionTableColumnChange {
+  kind: MDiffKind;
+  columnName: string;
+  oldLabel?: string | null;
+  newLabel?: string | null;
+}
+
+export interface MDecisionTableCellDiff {
+  columnName: string;
+  oldValue?: string | null;
+  newValue?: string | null;
+}
+
+export interface MDecisionTableRowDiff {
+  kind: MDiffKind;
+  rowOrder?: number | null;
+  rowId?: string | null;
+  cellDiffs: MDecisionTableCellDiff[];
+}
+
+export interface MDecisionTableDiff {
+  fromVersion: number;
+  toVersion: number;
+  hasChanges: boolean;
+  columnChanges: MDecisionTableColumnChange[];
+  rowDiffs: MDecisionTableRowDiff[];
+}
+
+export * from "./models/rule-flow.js";
+export * from "./models/trace-models.js";
+export * from "./models/result-models.js";

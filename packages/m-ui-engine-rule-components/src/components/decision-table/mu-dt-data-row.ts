@@ -75,13 +75,18 @@ export class MuDtDataRow extends LitElement {
     const errorSet = new Set(this.errorColumnIds);
     return html`
       <div
-        class="grid gap-2"
-        style=${`grid-template-columns: 72px repeat(${this.inputColumns.length + this.outputColumns.length}, minmax(180px, 1fr));`}
+        role="row"
+        aria-rowindex=${this.rowIndex + 2}
+        class="grid"
+        style=${`grid-template-columns: 72px repeat(${this.inputColumns.length + this.outputColumns.length}, minmax(180px, 1fr)); gap: var(--mu-space-sm);`}
         @dragover=${this.MAllowDrop}
         @drop=${this.MOnDrop}
       >
         <button
-          class="flex cursor-grab items-center justify-center rounded border border-[var(--color-mu-border)] bg-zinc-50 text-xs text-zinc-500"
+          role="gridcell"
+          aria-label=${"Drag to reorder row " + (this.rowIndex + 1)}
+          class="sticky left-0 z-[5] flex cursor-grab items-center justify-center rounded border border-[var(--color-mu-border)] bg-[var(--color-mu-surface)] text-xs text-[var(--mu-text-muted)]"
+          style="min-height: 40px; padding: var(--mu-space-xs) var(--mu-space-sm);"
           draggable="true"
           @dragstart=${this.MOnDragStart}
         >
@@ -90,27 +95,37 @@ export class MuDtDataRow extends LitElement {
 
         ${this.row.inputCells.map((cell, index) => {
           const dataType = this.inputColumns[index]?.dataType ?? "string";
+          const hasError = errorSet.has(cell.columnId);
           return html`
-            <mu-dt-cell
-              .rowId=${this.row?.id ?? ""}
-              .columnId=${cell.columnId}
-              .value=${cell.expression}
-              .feelEndpoint=${this.feelEndpoint}
-              .dataType=${dataType}
-              .hasError=${errorSet.has(cell.columnId)}
-              @cell-change=${this.MHandleCellChange}
-            ></mu-dt-cell>
+            <div role="gridcell" ?aria-invalid=${hasError}>
+              <mu-dt-cell
+                .rowId=${this.row?.id ?? ""}
+                .columnId=${cell.columnId}
+                .value=${cell.expression}
+                .feelEndpoint=${this.feelEndpoint}
+                .dataType=${dataType}
+                .hasError=${hasError}
+                @cell-change=${this.MHandleCellChange}
+              ></mu-dt-cell>
+              ${hasError ? html`<span style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;">Error in this cell</span>` : ""}
+            </div>
           `;
         })}
-        ${this.row.outputCells.map((cell) => html`
-          <mu-dt-cell
-            .rowId=${this.row?.id ?? ""}
-            .columnId=${cell.columnId}
-            .value=${cell.expression}
-            .hasError=${errorSet.has(cell.columnId)}
-            @cell-change=${this.MHandleCellChange}
-          ></mu-dt-cell>
-        `)}
+        ${this.row.outputCells.map((cell) => {
+          const hasError = errorSet.has(cell.columnId);
+          return html`
+            <div role="gridcell" ?aria-invalid=${hasError}>
+              <mu-dt-cell
+                .rowId=${this.row?.id ?? ""}
+                .columnId=${cell.columnId}
+                .value=${cell.expression}
+                .hasError=${hasError}
+                @cell-change=${this.MHandleCellChange}
+              ></mu-dt-cell>
+              ${hasError ? html`<span style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;">Error in this cell</span>` : ""}
+            </div>
+          `;
+        })}
       </div>
     `;
   }

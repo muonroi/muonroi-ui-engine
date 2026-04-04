@@ -1,0 +1,20 @@
+codecov:
+  require_ci_to_pass: false
+
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 2%
+    patch:
+      default:
+        target: 80%
+
+ignore:
+  - "dist/"
+  - "node_modules/"
+  - "**/*.test.ts"
+  - "**/*.spec.ts"
+  - "scripts/"
+  - ".planning/"

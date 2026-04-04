@@ -50,16 +50,27 @@ export class MuDtHeaderRow extends LitElement {
   render() {
     return html`
       <div
-        class="sticky top-0 z-10 grid gap-2 bg-[var(--color-mu-surface)] pb-2"
-        style=${`grid-template-columns: 72px repeat(${this.inputColumns.length + this.outputColumns.length}, minmax(180px, 1fr));`}
+        role="row"
+        class="sticky top-0 z-10 grid bg-[var(--color-mu-surface)] pb-2"
+        style=${`grid-template-columns: 72px repeat(${this.inputColumns.length + this.outputColumns.length}, minmax(180px, 1fr)); gap: var(--mu-space-sm);`}
       >
-        <div class="sticky left-0 z-20 flex items-center justify-center rounded border border-[var(--color-mu-border)] bg-zinc-100 text-xs font-semibold text-zinc-500">
+        <div
+          role="columnheader"
+          scope="col"
+          aria-label="Row number"
+          class="sticky left-0 z-20 flex items-center justify-center rounded border border-[var(--color-mu-border)] bg-[var(--color-mu-surface)] text-xs font-semibold text-[var(--mu-text-muted)]"
+          style="min-height: 40px; padding: var(--mu-space-xs) var(--mu-space-sm);"
+        >
           #
         </div>
         ${this.inputColumns.map(
           (column, index) => html`
             <div
-              class="rounded border border-[var(--color-mu-border)] bg-blue-50 px-2 py-2 text-xs font-semibold uppercase tracking-wide"
+              role="columnheader"
+              scope="col"
+              aria-label=${"Input: " + column.label}
+              class="rounded border border-[var(--color-mu-border)] bg-[var(--mu-node-accent-decision-table,_#eff6ff)] px-[var(--mu-space-sm)] py-[var(--mu-space-xs)] text-xs font-semibold uppercase tracking-wide"
+              style="min-height: 40px; display: flex; align-items: center;"
               draggable="true"
               @dragstart=${() => this.MOnDragStart("input", index)}
               @dragover=${this.MAllowDrop}
@@ -72,7 +83,11 @@ export class MuDtHeaderRow extends LitElement {
         ${this.outputColumns.map(
           (column, index) => html`
             <div
-              class="rounded border border-[var(--color-mu-border)] bg-emerald-50 px-2 py-2 text-xs font-semibold uppercase tracking-wide"
+              role="columnheader"
+              scope="col"
+              aria-label=${"Output: " + column.label}
+              class="rounded border border-[var(--color-mu-border)] bg-[var(--mu-color-success-bg,_#ecfdf5)] px-[var(--mu-space-sm)] py-[var(--mu-space-xs)] text-xs font-semibold uppercase tracking-wide"
+              style="min-height: 40px; display: flex; align-items: center;"
               draggable="true"
               @dragstart=${() => this.MOnDragStart("output", index)}
               @dragover=${this.MAllowDrop}

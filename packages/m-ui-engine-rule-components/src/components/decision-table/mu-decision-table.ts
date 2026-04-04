@@ -1,15 +1,22 @@
-﻿import { LitElement, html, unsafeCSS } from "lit";
+import { LitElement, type PropertyValues, html, unsafeCSS } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { MDecisionTableModel, MDecisionTableVersionSnapshot } from "../../models.js";
+import type { MDecisionTableDiff, MDecisionTableModel, MDecisionTableVersionInfo } from "../../models.js";
+import { MRenderCommercialLicenseGate } from "../../license/m-commercial-guard.js";
 import { MCreateDecisionTableStore, type MDecisionTableStore } from "../../store/decision-table-store.js";
 import tailwindStyles from "../../styles/tailwind.css?inline";
+
+const M_DEFAULT_API_BASE = "/api/v1/decision-tables";
+const M_DEFAULT_HISTORY_ENDPOINT = `${M_DEFAULT_API_BASE}/{id}/versions`;
+const M_DEFAULT_HISTORY_VERSION_ENDPOINT = `${M_DEFAULT_API_BASE}/{id}/versions/{v}`;
+const M_DEFAULT_DIFF_ENDPOINT = `${M_DEFAULT_API_BASE}/{id}/versions/{v1}/diff/{v2}`;
+const M_FEATURE_KEY = "decision-table";
 
 @customElement("mu-decision-table")
 export class MuDecisionTable extends LitElement {
   static styles = [unsafeCSS(tailwindStyles)];
 
   @property({ type: String, attribute: "api-base" })
-  apiBase = "/api/v1/decision-tables";
+  apiBase = M_DEFAULT_API_BASE;
 
   @property({ type: String, attribute: "validate-endpoint" })
   validateEndpoint = "/api/v1/decision-tables/{id}/validate";
@@ -21,7 +28,13 @@ export class MuDecisionTable extends LitElement {
   feelEndpoint = "/api/v1/feel/autocomplete";
 
   @property({ type: String, attribute: "history-endpoint" })
-  historyEndpoint = "/api/v1/decision-tables/{id}/versions";
+  historyEndpoint = M_DEFAULT_HISTORY_ENDPOINT;
+
+  @property({ type: String, attribute: "history-version-endpoint" })
+  historyVersionEndpoint = M_DEFAULT_HISTORY_VERSION_ENDPOINT;
+
+  @property({ type: String, attribute: "diff-endpoint" })
+  diffEndpoint = M_DEFAULT_DIFF_ENDPOINT;
 
   @property({ type: String, attribute: "reorder-endpoint" })
   reorderEndpoint = "/api/v1/decision-tables/{id}/rows/reorder";
@@ -45,13 +58,28 @@ export class MuDecisionTable extends LitElement {
   private mValidationWarnings: string[] = [];
 
   @state()
-  private mVersionHistory: MDecisionTableVersionSnapshot[] = [];
+  private mVersionHistory: MDecisionTableVersionInfo[] = [];
 
   @state()
   private mLeftVersion = 0;
 
   @state()
   private mRightVersion = 0;
+
+  @state()
+  private mLeftTable: MDecisionTableModel | null = null;
+
+  @state()
+  private mRightTable: MDecisionTableModel | null = null;
+
+  @state()
+  private mDiffLoading = false;
+
+  @state()
+  private mDiffError = "";
+
+  @state()
+  private mServerDiff: MDecisionTableDiff | null = null;
 
   @state()
   private mDragStartRowIndex = -1;
@@ -61,6 +89,8 @@ export class MuDecisionTable extends LitElement {
 
   private readonly mStore: MDecisionTableStore = MCreateDecisionTableStore();
   private mUnsubscribe?: () => void;
+  private mVersionRequestId = 0;
+  private mLastInitializeKey = "";
 
   connectedCallback(): void {
     super.connectedCallback();
@@ -71,13 +101,47 @@ export class MuDecisionTable extends LitElement {
       this.mVersionHistory = state.versionHistory;
     });
 
-    void this.MInitializeAsync();
+    this.MQueueInitialize();
   }
 
   disconnectedCallback(): void {
     this.mUnsubscribe?.();
     this.mUnsubscribe = undefined;
     super.disconnectedCallback();
+  }
+
+  protected updated(changedProperties: PropertyValues<this>): void {
+    super.updated(changedProperties);
+    if (
+      changedProperties.has("apiBase") ||
+      changedProperties.has("tableId") ||
+      changedProperties.has("historyEndpoint") ||
+      changedProperties.has("historyVersionEndpoint") ||
+      changedProperties.has("diffEndpoint")
+    ) {
+      this.MQueueInitialize();
+    }
+  }
+
+  private MQueueInitialize(): void {
+    if (!this.isConnected) {
+      return;
+    }
+
+    const initializeKey = [
+      this.apiBase,
+      this.tableId,
+      this.historyEndpoint,
+      this.historyVersionEndpoint,
+      this.diffEndpoint
+    ].join("|");
+
+    if (initializeKey === this.mLastInitializeKey) {
+      return;
+    }
+
+    this.mLastInitializeKey = initializeKey;
+    void this.MInitializeAsync().catch(() => undefined);
   }
 
   private async MInitializeAsync(): Promise<void> {
@@ -199,10 +263,14 @@ export class MuDecisionTable extends LitElement {
       this.mLeftVersion = 0;
       this.mRightVersion = 0;
       this.mVersionHistory = [];
+      this.mLeftTable = null;
+      this.mRightTable = null;
+      this.mServerDiff = null;
+      this.mDiffError = "";
       return;
     }
 
-    await this.mStore.getState().loadHistory(this.historyEndpoint).catch(() => undefined);
+    await this.mStore.getState().loadHistory(this.MResolveHistoryEndpoint()).catch(() => undefined);
     if (this.mVersionHistory.length > 0) {
       const sorted = [...this.mVersionHistory].sort((left, right) => right.version - left.version);
       this.mLeftVersion = sorted[0]?.version ?? 0;
@@ -211,14 +279,125 @@ export class MuDecisionTable extends LitElement {
       this.mLeftVersion = 0;
       this.mRightVersion = 0;
     }
+
+    await this.MLoadSelectedVersions();
   }
 
-  private MLeftSnapshot(): MDecisionTableVersionSnapshot | undefined {
-    return this.mVersionHistory.find((x) => x.version === this.mLeftVersion);
+  private MResolveHistoryEndpoint(): string {
+    const trimmed = (this.historyEndpoint ?? "").trim();
+    const apiBaseTrimmed = (this.apiBase ?? "").trim();
+    if (trimmed && !(trimmed === M_DEFAULT_HISTORY_ENDPOINT && apiBaseTrimmed && apiBaseTrimmed !== M_DEFAULT_API_BASE)) {
+      return trimmed;
+    }
+
+    return `${this.apiBase.replace(/\/$/, "")}/{id}/versions`;
   }
 
-  private MRightSnapshot(): MDecisionTableVersionSnapshot | undefined {
-    return this.mVersionHistory.find((x) => x.version === this.mRightVersion);
+  private MResolveVersionEndpoint(): string {
+    const explicit = (this.historyVersionEndpoint ?? "").trim();
+    const apiBaseTrimmed = (this.apiBase ?? "").trim();
+    if (
+      explicit &&
+      !(explicit === M_DEFAULT_HISTORY_VERSION_ENDPOINT && apiBaseTrimmed && apiBaseTrimmed !== M_DEFAULT_API_BASE)
+    ) {
+      return explicit;
+    }
+
+    const history = this.MResolveHistoryEndpoint();
+    if (history.includes("{v}")) {
+      return history;
+    }
+
+    return `${history.replace(/\/$/, "")}/{v}`;
+  }
+
+  private MResolveDiffEndpoint(): string {
+    const explicit = (this.diffEndpoint ?? "").trim();
+    if (explicit) {
+      return explicit;
+    }
+
+    return `${this.apiBase.replace(/\/$/, "")}/{id}/versions/{v1}/diff/{v2}`;
+  }
+
+  private async MLoadSelectedVersions(): Promise<void> {
+    const versionEndpoint = this.MResolveVersionEndpoint();
+    const leftVersion = this.mLeftVersion;
+    const rightVersion = this.mRightVersion;
+
+    if (leftVersion <= 0 && rightVersion <= 0) {
+      this.mLeftTable = null;
+      this.mRightTable = null;
+      this.mServerDiff = null;
+      this.mDiffError = "";
+      return;
+    }
+
+    const requestId = ++this.mVersionRequestId;
+    this.mDiffLoading = true;
+    this.mDiffError = "";
+
+    try {
+      const leftPromise =
+        leftVersion > 0 ? this.mStore.getState().loadVersionSnapshot(versionEndpoint, leftVersion) : Promise.resolve(null);
+      const rightPromise =
+        rightVersion > 0
+          ? rightVersion === leftVersion
+            ? leftPromise
+            : this.mStore.getState().loadVersionSnapshot(versionEndpoint, rightVersion)
+          : Promise.resolve(null);
+      const [left, right] = await Promise.all([leftPromise, rightPromise]);
+      if (requestId !== this.mVersionRequestId) {
+        return;
+      }
+
+      this.mLeftTable = left?.table ?? null;
+      this.mRightTable = right?.table ?? null;
+      await this.MLoadServerDiff(leftVersion, rightVersion);
+    } catch (error) {
+      if (requestId !== this.mVersionRequestId) {
+        return;
+      }
+
+      this.mLeftTable = null;
+      this.mRightTable = null;
+      this.mServerDiff = null;
+      this.mDiffError = error instanceof Error ? error.message : "Failed to load version snapshots.";
+    } finally {
+      if (requestId === this.mVersionRequestId) {
+        this.mDiffLoading = false;
+      }
+    }
+  }
+
+  private async MLoadServerDiff(leftVersion: number, rightVersion: number): Promise<void> {
+    this.mServerDiff = null;
+    const tableId = this.mStore.getState().table?.id?.trim() ?? "";
+    if (!tableId || leftVersion <= 0 || rightVersion <= 0) {
+      return;
+    }
+
+    const endpoint = this.MResolveDiffEndpoint()
+      .replace("{id}", encodeURIComponent(tableId))
+      .replace("{v1}", encodeURIComponent(String(leftVersion)))
+      .replace("{v2}", encodeURIComponent(String(rightVersion)));
+
+    const response = await fetch(endpoint);
+    if (!response.ok) {
+      return;
+    }
+
+    this.mServerDiff = (await response.json()) as MDecisionTableDiff;
+  }
+
+  private MHandleLeftVersionChange(event: Event): void {
+    this.mLeftVersion = Number((event.target as HTMLSelectElement).value || 0);
+    void this.MLoadSelectedVersions();
+  }
+
+  private MHandleRightVersionChange(event: Event): void {
+    this.mRightVersion = Number((event.target as HTMLSelectElement).value || 0);
+    void this.MLoadSelectedVersions();
   }
 
   private MOnScroll(event: Event): void {
@@ -241,7 +420,7 @@ export class MuDecisionTable extends LitElement {
     const bottomSpacer = Math.max(0, rows.length * rowHeight - topSpacer - visibleRows.length * rowHeight);
 
     return html`
-      <div class="max-h-[420px] overflow-auto" @scroll=${this.MOnScroll}>
+      <div role="grid" aria-label=${this.mTable?.name ?? "Decision table"} class="max-h-[420px] overflow-x-auto overflow-y-auto" style="min-width: 0;" @scroll=${this.MOnScroll}>
         <div style=${`height:${topSpacer}px`}></div>
         <div class="space-y-2">
           ${visibleRows.map(
@@ -266,27 +445,31 @@ export class MuDecisionTable extends LitElement {
   }
 
   render() {
+    const licenseGate = MRenderCommercialLicenseGate(M_FEATURE_KEY);
+    if (licenseGate) {
+      return licenseGate;
+    }
+
     if (!this.mTable) {
-      return html`<div class="rounded-lg border border-dashed border-[var(--color-mu-border)] p-6 text-sm text-zinc-500">Loading decision table...</div>`;
+      return html`<div class="rounded-lg border border-dashed border-[var(--color-mu-border)] p-6 text-sm text-[var(--mu-text-muted)]">Loading decision table...</div>`;
     }
 
     const errorColumnIds = this.MResolveErrorColumnIds();
-    const leftSnapshot = this.MLeftSnapshot();
-    const rightSnapshot = this.MRightSnapshot();
+    const sortedHistory = [...this.mVersionHistory].sort((left, right) => right.version - left.version);
 
     return html`
       <section class="space-y-4 rounded-xl border border-[var(--color-mu-border)] bg-[var(--color-mu-surface)] p-4">
         <header class="flex flex-wrap items-center gap-2">
           <h3 class="text-lg font-semibold">${this.mTable.name}</h3>
           <mu-dt-hit-policy-selector .value=${this.mTable.hitPolicy} @policy-change=${this.MHandlePolicyChange}></mu-dt-hit-policy-selector>
-          <button class="rounded bg-[var(--color-mu-primary)] px-3 py-1 text-sm text-white" @click=${this.MAddRow}>Add Row</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MAddInputColumn}>Add Input</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MAddOutputColumn}>Add Output</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MValidate}>Validate</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${this.MSave}>Save</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${() => this.MExport("json")}>Export JSON</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${() => this.MExport("excel")}>Export Excel</button>
-          <button class="rounded border border-[var(--color-mu-border)] px-3 py-1 text-sm" @click=${() => this.MExport("dmn")}>Export DMN</button>
+          <button aria-label="Add new row to decision table" class="inline-flex min-h-[44px] items-center justify-center rounded bg-[var(--color-mu-primary)] px-3 py-2 text-sm text-white" @click=${this.MAddRow}>Add Row</button>
+          <button aria-label="Add input column" class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${this.MAddInputColumn}>Add Input</button>
+          <button aria-label="Add output column" class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${this.MAddOutputColumn}>Add Output</button>
+          <button aria-label="Validate decision table" class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${this.MValidate}>Validate</button>
+          <button aria-label="Save decision table" class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${this.MSave}>Save</button>
+          <button class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${() => this.MExport("json")}>Export JSON</button>
+          <button class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${() => this.MExport("excel")}>Export Excel</button>
+          <button class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-3 py-2 text-sm" @click=${() => this.MExport("dmn")}>Export DMN</button>
         </header>
 
         <mu-dt-header-row
@@ -303,18 +486,18 @@ export class MuDecisionTable extends LitElement {
             @delete-column=${this.MDeleteColumn}
           ></mu-dt-column-config>
 
-          <aside class="space-y-2 rounded border border-[var(--color-mu-border)] bg-white p-3 text-sm">
+          <aside class="space-y-2 rounded border border-[var(--color-mu-border)] bg-[var(--mu-surface-base)] p-3 text-sm">
             <h4 class="font-semibold">Validation panel</h4>
             <div>
-              <div class="text-xs font-medium text-zinc-600">Errors</div>
-              <ul class="list-disc pl-5 text-xs text-red-700">
+              <div class="text-xs font-medium text-[var(--mu-text-secondary)]">Errors</div>
+              <ul class="list-disc pl-5 text-xs text-[var(--mu-color-error-text)]">
                 ${this.mValidationErrors.length === 0
                   ? html`<li>None</li>`
                   : this.mValidationErrors.map((error) => html`<li>${error}</li>`)}
               </ul>
             </div>
             <div>
-              <div class="text-xs font-medium text-zinc-600">Warnings (gaps)</div>
+              <div class="text-xs font-medium text-[var(--mu-text-secondary)]">Warnings (gaps)</div>
               <ul class="list-disc pl-5 text-xs text-amber-700">
                 ${this.mValidationWarnings.length === 0
                   ? html`<li>None</li>`
@@ -327,10 +510,12 @@ export class MuDecisionTable extends LitElement {
         ${!this.enableVersionDiff
           ? html``
           : html`
-              <section class="space-y-2 rounded border border-[var(--color-mu-border)] bg-white p-3">
+              <section class="space-y-2 rounded border border-[var(--color-mu-border)] bg-[var(--mu-surface-base)] p-3">
                 <header class="flex flex-wrap items-center gap-2">
                   <h4 class="font-semibold">Version diff</h4>
-                  <button class="rounded border border-[var(--color-mu-border)] px-2 py-1 text-xs" @click=${this.MLoadHistory}>
+                  ${this.mDiffLoading ? html`<span class="animate-pulse text-xs text-[var(--mu-text-placeholder)]">Loading...</span>` : html``}
+                  ${this.mDiffError ? html`<span class="text-xs text-[var(--mu-color-error)]">${this.mDiffError}</span>` : html``}
+                  <button class="inline-flex min-h-[44px] items-center justify-center rounded border border-[var(--color-mu-border)] px-2 py-2 text-xs" @click=${this.MLoadHistory}>
                     Reload history
                   </button>
                   <label class="text-xs">
@@ -338,11 +523,9 @@ export class MuDecisionTable extends LitElement {
                     <select
                       class="rounded border border-[var(--color-mu-border)] px-1 py-0.5"
                       .value=${String(this.mLeftVersion)}
-                      @change=${(e: Event) => (this.mLeftVersion = Number((e.target as HTMLSelectElement).value || 0))}
+                      @change=${this.MHandleLeftVersionChange}
                     >
-                      ${this.mVersionHistory
-                        .sort((left, right) => right.version - left.version)
-                        .map((item) => html`<option value=${item.version}>v${item.version}</option>`)}
+                      ${sortedHistory.map((item) => html`<option value=${item.version}>v${item.version} (${item.changeType})</option>`)}
                     </select>
                   </label>
                   <label class="text-xs">
@@ -350,20 +533,24 @@ export class MuDecisionTable extends LitElement {
                     <select
                       class="rounded border border-[var(--color-mu-border)] px-1 py-0.5"
                       .value=${String(this.mRightVersion)}
-                      @change=${(e: Event) => (this.mRightVersion = Number((e.target as HTMLSelectElement).value || 0))}
+                      @change=${this.MHandleRightVersionChange}
                     >
-                      ${this.mVersionHistory
-                        .sort((left, right) => right.version - left.version)
-                        .map((item) => html`<option value=${item.version}>v${item.version}</option>`)}
+                      ${sortedHistory.map((item) => html`<option value=${item.version}>v${item.version} (${item.changeType})</option>`)}
                     </select>
                   </label>
                 </header>
                 <mu-dt-version-diff
                   .leftVersion=${this.mLeftVersion}
                   .rightVersion=${this.mRightVersion}
-                  .leftTable=${leftSnapshot?.table ?? null}
-                  .rightTable=${rightSnapshot?.table ?? null}
+                  .leftTable=${this.mLeftTable}
+                  .rightTable=${this.mRightTable}
                 ></mu-dt-version-diff>
+                ${this.mServerDiff
+                  ? html`<p class="text-xs text-[var(--mu-text-muted)]">
+                      Server diff: ${this.mServerDiff.columnChanges.length} column changes,
+                      ${this.mServerDiff.rowDiffs.length} row changes.
+                    </p>`
+                  : html``}
               </section>
             `}
       </section>
