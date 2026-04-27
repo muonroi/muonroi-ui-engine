@@ -4,6 +4,21 @@ This file defines the unified working rules for all Muonroi repositories.
 
 ---
 
+# Experience Engine Hooks
+
+PreToolUse hooks may inject experience-based warnings before write/edit/shell calls.
+
+- Treat hook output as live risk input; each warning includes an experience ID and collection.
+- Follow high-confidence warnings unless current repo evidence proves they do not apply.
+- The engine can auto-learn noise through PostToolUse reconciliation, prompt-stale reconciliation, and the async judge.
+- If the verdict is clear, report it directly:
+  - `exp-feedback followed <pointId> <collection>`
+  - `exp-feedback ignored <pointId> <collection>`
+  - `exp-feedback noise <pointId> <collection> <wrong_repo|wrong_language|wrong_task|stale_rule>`
+- Tell the user when a repeated warning is wrong or noisy; do not silently ignore repeated bad suggestions.
+
+---
+
 # Tool Priority Rule (HIGHEST PRIORITY)
 
 ALWAYS prefer MCP tools and available plugins over shell commands.
