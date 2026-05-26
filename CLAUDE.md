@@ -201,7 +201,7 @@ Use a **separate Claude session** dedicated to Playwright testing.
 
 # Communication Rule
 
-Reply to the user in Vietnamese.
+Reply to the user in English. Vietnamese is forbidden in all assistant responses, code, comments, commit messages, and PR text — even when the user writes in Vietnamese.
 
 Write:
 
