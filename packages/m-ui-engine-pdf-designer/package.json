@@ -1,0 +1,44 @@
+{
+  "name": "@muonroi/ui-engine-pdf-designer",
+  "version": "0.1.0",
+  "description": "Muonroi PDF template designer React component",
+  "type": "module",
+  "main": "dist/muonroi-pdf-designer.esm.js",
+  "types": "dist/index.d.ts",
+  "license": "SEE LICENSE IN LICENSE-COMMERCIAL",
+  "exports": {
+    ".": {
+      "import": "./dist/muonroi-pdf-designer.esm.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE-COMMERCIAL"
+  ],
+  "scripts": {
+    "build": "npm run -w @muonroi/ui-engine-core build && vite build && tsc -p tsconfig.json --emitDeclarationOnly",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@microsoft/signalr": "^8.0.7",
+    "monaco-editor": "^0.52.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "peerDependencies": {
+    "@muonroi/ui-engine-core": ">=0.1.0"
+  },
+  "devDependencies": {
+    "@muonroi/ui-engine-core": "workspace:^",
+    "@testing-library/react": "^16.3.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitest/coverage-v8": "^2.1.9",
+    "happy-dom": "^15.10.2",
+    "jsdom": "^25.0.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.0.0",
+    "vitest": "^2.1.8"
+  }
+}
