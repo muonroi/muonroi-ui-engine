@@ -11,12 +11,13 @@ export default defineConfig({
         format === "iife" ? "muonroi-pdf-designer.iife.js" : "muonroi-pdf-designer.esm.js"
     },
     rollupOptions: {
-      external: ["@muonroi/ui-engine-core", "react", "react-dom"],
+      external: ["@muonroi/ui-engine-core", "react", "react-dom", "monaco-editor"],
       output: {
         globals: {
           "@muonroi/ui-engine-core": "MuonroiUiEngineCore",
           "react": "React",
-          "react-dom": "ReactDOM"
+          "react-dom": "ReactDOM",
+          "monaco-editor": "monaco"
         },
         assetFileNames: (chunkInfo) =>
           chunkInfo.name?.endsWith(".css") ? "muonroi-pdf-designer.css" : "assets/[name]-[hash][extname]"

@@ -7,7 +7,10 @@
     "useDefineForClassFields": false,
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM"],
-    "types": ["vite/client"]
+    "types": ["vite/client"],
+    "paths": {
+      "monaco-editor": ["../../node_modules/.pnpm/monaco-editor@0.52.2/node_modules/monaco-editor"]
+    }
   },
   "include": [
     "src/**/*.ts",
