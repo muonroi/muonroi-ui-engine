@@ -1,6 +1,6 @@
 {
   "name": "@muonroi/ui-engine-pdf-designer",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Muonroi PDF template designer React component",
   "type": "module",
   "main": "dist/muonroi-pdf-designer.esm.js",
