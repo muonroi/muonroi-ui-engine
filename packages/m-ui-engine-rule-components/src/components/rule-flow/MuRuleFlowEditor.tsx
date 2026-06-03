@@ -138,6 +138,9 @@ const M_DRAG_NODE_TYPE_KEY = "application/muonroi-rule-flow-node-type";
 const M_DRAG_RULE_TEMPLATE_KEY = "application/muonroi-rule-flow-rule-template";
 const M_FIT_VIEW_OPTIONS = { duration: 0, padding: 0.22, minZoom: 0.18, maxZoom: 1.1 };
 const M_COMPACT_LAYOUT_BREAKPOINT = 860;
+// Below this width the canvas node-editor is too cramped for comfortable touch editing;
+// we keep it pannable/zoomable but surface a hint to edit on a larger screen.
+const M_TINY_LAYOUT_BREAKPOINT = 560;
 const M_EDGE_TYPE_LABELS: Record<MRuleFlowEdgeType, string> = {
   always: "\u2192 Always",
   "on-true": "\u2713 On Pass",
@@ -1299,6 +1302,7 @@ export function MuRuleFlowEditor({
 
   const computedHeight = typeof height === "number" ? `${height}px` : height;
   const isCompactLayout = shellWidth > 0 && shellWidth < M_COMPACT_LAYOUT_BREAKPOINT;
+  const isTinyLayout = shellWidth > 0 && shellWidth < M_TINY_LAYOUT_BREAKPOINT;
   const resolvedCanvasHeight = isCompactLayout ? "min(52vh, 520px)" : computedHeight;
   const tokens = MGetThemeTokens(theme as MFlowTheme);
   const themeStyles: React.CSSProperties = { color: tokens.textPrimary };
@@ -2048,7 +2052,10 @@ export function MuRuleFlowEditor({
           ...MLeftPanelStyle,
           background: tokens.sidebarBg,
           border: tokens.sidebarBorder,
-          width: sidebarCollapsed ? 48 : sidebarWidth,
+          // In compact layout the shell is a single column, so the palette fills the
+          // available width instead of keeping its fixed desktop sidebar width.
+          width: isCompactLayout ? "100%" : (sidebarCollapsed ? 48 : sidebarWidth),
+          maxWidth: "100%",
           transition: isDraggingSidebarRef.current ? "none" : "width 200ms ease",
           overflow: sidebarCollapsed ? "hidden" : "auto",
           position: "relative"
@@ -2090,8 +2097,8 @@ export function MuRuleFlowEditor({
               ))}
             </div>
           ) : palettePanel}
-          {/* Drag handle for resizing */}
-          {!sidebarCollapsed && (
+          {/* Drag handle for resizing — desktop only (col-resize is meaningless on a single-column touch layout). */}
+          {!sidebarCollapsed && !isCompactLayout && (
             <div
               style={{
                 position: "absolute",
@@ -2164,6 +2171,14 @@ export function MuRuleFlowEditor({
               50% { box-shadow: 0 0 20px var(--mu-color-interactive-border), 0 0 40px var(--mu-color-interactive-subtle); }
             }
           `}</style>
+          {/* View-first hint on very small screens: keep the canvas pannable/zoomable but
+              steer fine editing to a larger screen (touch drag-to-connect is fiddly). */}
+          {isTinyLayout ? (
+            <div data-testid="rule-flow-tiny-hint" style={{ flex: "0 0 auto", display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", margin: 8, borderRadius: 12, background: tokens.overlayBg, border: tokens.overlayBorder, color: tokens.textMuted, fontSize: 12, lineHeight: 1.4, zIndex: 4 }}>
+              <span aria-hidden="true" style={{ fontSize: 14, flexShrink: 0 }}>{"ⓘ"}</span>
+              <span>Best edited on a larger screen — pan &amp; zoom to explore the flow here.</span>
+            </div>
+          ) : null}
           {/* Top: ReactFlow canvas area */}
           <div style={{ flex: dryRunOpen ? `0 0 ${100 - dryRunPanelHeight}%` : "1 1 auto", position: "relative", overflow: "hidden" }}>
           {/* Floating toolbar */}
