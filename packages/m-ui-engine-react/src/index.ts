@@ -158,3 +158,14 @@ export const MuLivingDocsReact = createComponent({
     onNodeTraceRequested: "living-docs-node-trace-requested"
   }
 });
+
+export const MuTraceabilityMatrixReact = createComponent({
+  react: React,
+  tagName: "mu-traceability-matrix",
+  elementClass:
+    ((typeof customElements !== "undefined" ? customElements.get("mu-traceability-matrix") : undefined) ??
+      class extends HTMLElement {}) as typeof HTMLElement,
+  events: {
+    onFilterChange: "matrix-filter-change"
+  }
+});
