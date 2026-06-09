@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Docs Intelligent — Living Docs Preview</title>
+    <!-- --mu-* design tokens cascade into the components' shadow roots -->
+    <link rel="stylesheet" href="/src/styles/design-tokens.css" />
+    <style>
+      :root {
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        color: var(--mu-color-text, #1a1a1a);
+        background: var(--mu-color-bg, #f7f8fa);
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; }
+      #app { max-width: 1100px; margin: 0 auto; padding: 0 24px 64px; }
+      .topbar {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 0; border-bottom: 1px solid var(--mu-color-border, #e2e5ea);
+      }
+      .topbar__title { display: flex; flex-direction: column; gap: 2px; }
+      .topbar__title strong { font-size: 20px; font-weight: 600; }
+      .topbar__sub { font-size: 13px; color: var(--mu-color-text-muted, #6b7280); }
+      .topbar__actions { display: flex; gap: 8px; }
+      .primary-btn, .ghost-btn, .banner__btn {
+        font-size: 14px; padding: 8px 14px; border-radius: 8px; cursor: pointer;
+        border: 1px solid var(--mu-color-border, #e2e5ea);
+      }
+      .primary-btn {
+        background: var(--mu-color-primary, #2563eb); color: #fff; border-color: transparent;
+      }
+      .ghost-btn { background: transparent; color: var(--mu-color-text, #1a1a1a); }
+      .banner {
+        display: flex; align-items: center; gap: 12px; margin-top: 16px;
+        padding: 12px 16px; border-radius: 8px;
+        background: var(--mu-color-info-bg, #e0f2fe); color: var(--mu-color-info-text, #075985);
+        border: 1px solid var(--mu-color-info-text, #075985);
+      }
+      .banner__btn { background: #fff; }
+      .tabs { display: flex; gap: 4px; margin: 20px 0 16px; }
+      .tab {
+        font-size: 14px; padding: 8px 16px; border-radius: 8px 8px 0 0;
+        border: none; background: transparent; cursor: pointer;
+        color: var(--mu-color-text-muted, #6b7280); border-bottom: 2px solid transparent;
+      }
+      .tab--active {
+        color: var(--mu-color-text, #1a1a1a); font-weight: 600;
+        border-bottom-color: var(--mu-color-primary, #2563eb);
+      }
+      .content { min-height: 400px; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/preview/main.ts"></script>
+  </body>
+</html>
