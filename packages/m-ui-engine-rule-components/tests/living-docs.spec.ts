@@ -56,6 +56,9 @@ describe("mu-living-docs", () => {
       makeSection("node-002", "Container Weight Rule")
     ]);
     el.docJson = JSON.stringify(doc);
+    // First updateComplete: processes property change and triggers updated()
+    // Second updateComplete: catches the _doc state change set inside updated()
+    await el.updateComplete;
     await el.updateComplete;
 
     const shadow = el.shadowRoot!;
@@ -68,6 +71,7 @@ describe("mu-living-docs", () => {
     const section = makeSection("node-001", "VGM Tolerance Check");
     const doc = makeDoc([section]);
     el.docJson = JSON.stringify(doc);
+    await el.updateComplete;
     await el.updateComplete;
 
     let capturedDetail: { nodeId: string } | null = null;
