@@ -218,25 +218,25 @@ export class MuTraceabilityMatrix extends LitElement {
 
   private _renderRow(row: TraceabilityMatrixRow) {
     return html`
-      <tr class="matrix-row" key="${row.nodeId}">
-        <td class="matrix-cell matrix-cell--node">
+      <div class="matrix-row" role="row" key="${row.nodeId}">
+        <div class="matrix-cell matrix-cell--node" role="cell">
           <span class="node-id">${row.nodeId}</span>
           <span class="node-title">${row.title}</span>
-        </td>
-        <td class="matrix-cell matrix-cell--type">
+        </div>
+        <div class="matrix-cell matrix-cell--type" role="cell">
           <span class="node-type">${row.nodeType}</span>
-        </td>
-        <td class="matrix-cell matrix-cell--coverage">
+        </div>
+        <div class="matrix-cell matrix-cell--coverage" role="cell">
           ${this._renderBadge(row.testCoverage.state)}
-        </td>
-        <td class="matrix-cell matrix-cell--actions">
+        </div>
+        <div class="matrix-cell matrix-cell--actions" role="cell">
           <button
             class="trace-btn"
             aria-label="Trace rule ${row.title} in matrix"
             @click=${() => this._dispatchTraceRule(row.nodeId)}
           >&#x2197;</button>
-        </td>
-      </tr>
+        </div>
+      </div>
     `;
   }
 
@@ -306,33 +306,27 @@ export class MuTraceabilityMatrix extends LitElement {
 
         ${!this._loading && this._filteredRows.length > 0
           ? html`
-              <div class="matrix-body">
-                <table class="matrix-table">
-                  <thead>
-                    <tr>
-                      <th class="matrix-th">Rule</th>
-                      <th class="matrix-th">Type</th>
-                      <th class="matrix-th">Coverage</th>
-                      <th class="matrix-th"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${virtualize({
-                      items: virtualItems,
-                      renderItem: (item) =>
-                        item.type === "header"
-                          ? html`
-                              <tr class="matrix-req-header">
-                                <td colspan="4" class="matrix-req-title">
-                                  <span class="req-id">${item.group.requirementId}</span>
-                                  <span class="req-label">${item.group.title}</span>
-                                </td>
-                              </tr>
-                            `
-                          : this._renderRow(item.row)
-                    })}
-                  </tbody>
-                </table>
+              <div class="matrix-colhead" role="row">
+                <span class="matrix-th" role="columnheader">Rule</span>
+                <span class="matrix-th" role="columnheader">Type</span>
+                <span class="matrix-th" role="columnheader">Coverage</span>
+                <span class="matrix-th" role="columnheader" aria-label="Actions"></span>
+              </div>
+              <div class="matrix-body" role="rowgroup" aria-label="Traceability matrix">
+                ${virtualize({
+                  items: virtualItems,
+                  renderItem: (item) =>
+                    item.type === "header"
+                      ? html`
+                          <div class="matrix-req-header" role="rowgroup">
+                            <div class="matrix-req-title">
+                              <span class="req-id">${item.group.requirementId}</span>
+                              <span class="req-label">${item.group.title}</span>
+                            </div>
+                          </div>
+                        `
+                      : this._renderRow(item.row)
+                })}
               </div>
             `
           : nothing}
@@ -436,17 +430,46 @@ export class MuTraceabilityMatrix extends LitElement {
       font-size: 13px;
     }
 
-    /* Virtualized body — CSS fallback: contain:strict + overflow-y:auto */
+    /* Virtualized scroll body. Use contain:content (layout/paint/style) NOT
+       contain:strict — strict adds size containment, which collapses the
+       element to height:0 when only max-height is set, giving the virtualizer
+       a zero-height viewport so it renders no rows. content-containment keeps
+       the perf isolation while letting the body size to its content up to
+       max-height. */
     .matrix-body {
       max-height: 600px;
       overflow-y: auto;
-      contain: strict;
+      contain: content;
     }
 
-    .matrix-table {
+    /* Shared 4-column grid template for the column header and every data row.
+       The matrix uses CSS grid (not <table>) because @lit-labs/virtualizer
+       forces display:block on its managed children, which collapses native
+       table-cell column alignment. */
+    .matrix-colhead,
+    .matrix-row {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.2fr) 64px;
+      align-items: center;
+      /* virtualizer positions items absolutely → without an explicit width a
+         grid container shrinks to content and the fr tracks collapse. Force
+         full width so columns line up with .matrix-colhead. */
       width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
+      box-sizing: border-box;
+    }
+
+    .matrix-req-header {
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* Column header sits ABOVE the virtualized scroll body (not inside it):
+       the virtualizer absolutely-positions its items from the scroller's top,
+       which would overlap an in-scroller sticky header. Both use the same grid
+       template + scrollbar-gutter so columns stay aligned. */
+    .matrix-colhead {
+      background: var(--mu-surface-raised);
+      border-bottom: 1px solid var(--mu-border-subtle);
     }
 
     .matrix-th {
@@ -454,14 +477,9 @@ export class MuTraceabilityMatrix extends LitElement {
       text-align: left;
       font-size: 13px;
       font-weight: 600;
-      background: var(--mu-surface-raised);
-      border-bottom: 1px solid var(--mu-border-subtle);
-      position: sticky;
-      top: 0;
-      z-index: 1;
     }
 
-    /* Requirement group header row (D-09) */
+    /* Requirement group header row (D-09) — spans the full width */
     .matrix-req-header {
       background: var(--mu-surface-canvas);
     }
