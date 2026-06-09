@@ -147,3 +147,14 @@ export const MuRuleFlowDesignerReact = createComponent({
     onPublish: "publish"
   }
 });
+
+export const MuLivingDocsReact = createComponent({
+  react: React,
+  tagName: "mu-living-docs",
+  elementClass:
+    ((typeof customElements !== "undefined" ? customElements.get("mu-living-docs") : undefined) ??
+      class extends HTMLElement {}) as typeof HTMLElement,
+  events: {
+    onNodeTraceRequested: "living-docs-node-trace-requested"
+  }
+});

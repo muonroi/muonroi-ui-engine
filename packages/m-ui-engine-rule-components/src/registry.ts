@@ -21,6 +21,7 @@ import "./components/shared/mu-schema-watcher.js";
 import "./components/shared/mu-ui-engine-app.js";
 import "./components/trace-viewer/mu-rule-trace-viewer.js";
 import "./components/result-panel/mu-rule-result-panel.js";
+import "./components/living-docs/mu-living-docs.js";
 
 export function MRegisterRuleComponents(): void {
   // Imports above call customElements.define() as a side effect.
