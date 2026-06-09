@@ -240,21 +240,25 @@ export class MuTraceabilityMatrix extends LitElement {
     `;
   }
 
-  private _renderGroup(group: RequirementGroup) {
-    return html`
-      <tr class="matrix-req-header">
-        <td colspan="4" class="matrix-req-title">
-          <span class="req-id">${group.requirementId}</span>
-          <span class="req-label">${group.title}</span>
-        </td>
-      </tr>
-      ${group.rows.map((row) => this._renderRow(row))}
-    `;
+  /**
+   * Builds a flat list of items representing the grouped row structure, where each
+   * item is either a requirement-group header sentinel or a data row.
+   * This flat list is passed to @lit-labs/virtualizer so the DOM is windowed
+   * while requirement headers and rule rows all appear in sorted order (D-09).
+   */
+  private _buildVirtualItems(): Array<{ type: "header"; group: RequirementGroup } | { type: "row"; row: TraceabilityMatrixRow }> {
+    const items: Array<{ type: "header"; group: RequirementGroup } | { type: "row"; row: TraceabilityMatrixRow }> = [];
+    for (const group of this._groupedRows) {
+      items.push({ type: "header", group });
+      for (const row of group.rows) {
+        items.push({ type: "row", row });
+      }
+    }
+    return items;
   }
 
   render() {
-    const groups = this._groupedRows;
-    const allRows: TraceabilityMatrixRow[] = groups.flatMap((g) => g.rows);
+    const virtualItems = this._buildVirtualItems();
 
     return html`
       <div class="matrix-wrapper">
@@ -314,8 +318,18 @@ export class MuTraceabilityMatrix extends LitElement {
                   </thead>
                   <tbody>
                     ${virtualize({
-                      items: allRows,
-                      renderItem: (row) => this._renderRow(row)
+                      items: virtualItems,
+                      renderItem: (item) =>
+                        item.type === "header"
+                          ? html`
+                              <tr class="matrix-req-header">
+                                <td colspan="4" class="matrix-req-title">
+                                  <span class="req-id">${item.group.requirementId}</span>
+                                  <span class="req-label">${item.group.title}</span>
+                                </td>
+                              </tr>
+                            `
+                          : this._renderRow(item.row)
                     })}
                   </tbody>
                 </table>
