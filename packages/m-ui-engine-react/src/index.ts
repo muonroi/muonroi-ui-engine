@@ -169,3 +169,14 @@ export const MuTraceabilityMatrixReact = createComponent({
     onFilterChange: "matrix-filter-change"
   }
 });
+
+export const MuImpactListReact = createComponent({
+  react: React,
+  tagName: "mu-impact-list",
+  elementClass:
+    ((typeof customElements !== "undefined" ? customElements.get("mu-impact-list") : undefined) ??
+      class extends HTMLElement {}) as typeof HTMLElement,
+  events: {
+    onNodeTraceRequested: "living-docs-node-trace-requested"
+  }
+});
