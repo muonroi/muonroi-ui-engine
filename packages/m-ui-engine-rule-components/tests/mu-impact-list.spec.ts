@@ -31,6 +31,7 @@ function makeEl(): MuImpactListEl {
   return el as MuImpactListEl;
 }
 
+/** Full response with both DryRunExampleOnly and UnitTestLinked rows. */
 const SAMPLE_RESPONSE: ImpactListResponse = {
   workflow: "FCD_V4",
   fromVersion: 1,
@@ -81,6 +82,46 @@ const SAMPLE_RESPONSE: ImpactListResponse = {
   ]
 };
 
+/** Response with ONLY a DryRunExampleOnly row — for badge-honesty isolation tests. */
+const DRY_RUN_ONLY_RESPONSE: ImpactListResponse = {
+  workflow: "FCD_V4",
+  fromVersion: 1,
+  toVersion: 2,
+  rows: [
+    {
+      nodeId: "vgm-check",
+      title: "VGM Check",
+      requirements: [
+        {
+          id: "00000000-0000-0000-0000-000000000001",
+          title: "VGM Requirement",
+          sourceRef: null,
+          approver: "John Doe"
+        }
+      ],
+      testCoverage: {
+        state: "DryRunExampleOnly",
+        exampleId: "abc123",
+        unitTestCode: null
+      },
+      impactType: "allow→block"
+    }
+  ],
+  uatChecklist: [
+    {
+      nodeId: "vgm-check",
+      title: "VGM Check",
+      cases: [
+        {
+          exampleId: "abc123",
+          expectedOutcome: "block",
+          coverageBadge: "DryRunExampleOnly"
+        }
+      ]
+    }
+  ]
+};
+
 async function setData(el: MuImpactListEl, data: ImpactListResponse) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (el as any)._data = data;
@@ -105,7 +146,8 @@ describe("mu-impact-list", () => {
   // -------------------------------------------------------------------------
   describe("C-01 — DryRunExampleOnly badge honesty", () => {
     it("renders badge--info for DryRunExampleOnly UAT case (never badge--success)", async () => {
-      await setData(el, SAMPLE_RESPONSE);
+      // Use DRY_RUN_ONLY_RESPONSE so only a DryRunExampleOnly row is present
+      await setData(el, DRY_RUN_ONLY_RESPONSE);
 
       const shadow = el.shadowRoot!;
       const infoBadges    = shadow.querySelectorAll(".badge--info");
@@ -116,7 +158,7 @@ describe("mu-impact-list", () => {
     });
 
     it("badge--info element contains 'Example only' text for DryRunExampleOnly", async () => {
-      await setData(el, SAMPLE_RESPONSE);
+      await setData(el, DRY_RUN_ONLY_RESPONSE);
 
       const shadow = el.shadowRoot!;
       const infoBadges = Array.from(shadow.querySelectorAll(".badge--info"));
@@ -127,6 +169,7 @@ describe("mu-impact-list", () => {
     });
 
     it("UnitTestLinked row has badge--success", async () => {
+      // SAMPLE_RESPONSE includes the weight-check UnitTestLinked row
       await setData(el, SAMPLE_RESPONSE);
 
       const shadow = el.shadowRoot!;
