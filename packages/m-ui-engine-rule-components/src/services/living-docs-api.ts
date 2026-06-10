@@ -1,4 +1,4 @@
-import type { LivingDocModel, TraceabilityMatrixRow } from "../models/living-docs-models.js";
+import type { ImpactListResponse, LivingDocModel, TraceabilityMatrixRow } from "../models/living-docs-models.js";
 
 /**
  * Response shape for GET /api/v1/traceability/{workflow}/{version}.
@@ -77,5 +77,21 @@ export class LivingDocsApiClient {
       );
     }
     return (await response.json()) as TraceRuleResponse;
+  }
+
+  /**
+   * GET {base}/traceability/{workflow}/impact?from={from}&to={to}
+   * Returns the impact list + UAT checklist for the two given versions.
+   * No tenant override — the client cannot widen scope (T-05-09).
+   */
+  async getImpactList(workflow: string, from: number, to: number): Promise<ImpactListResponse> {
+    const url = `${this.base}/traceability/${encodeURIComponent(workflow)}/impact?from=${from}&to=${to}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(
+        `[LivingDocsApiClient] getImpactList failed — workflow=${workflow} from=${from} to=${to} status=${response.status}`
+      );
+    }
+    return (await response.json()) as ImpactListResponse;
   }
 }

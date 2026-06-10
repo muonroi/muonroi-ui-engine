@@ -30,7 +30,7 @@ function makeRow(
     nodeId,
     title,
     nodeType: "feel",
-    requirements: requirementIds.map((id) => ({ requirementId: id, title: `Req ${id}` })),
+    requirements: requirementIds.map((id) => ({ id, title: `Req ${id}` })),
     testCoverage: { state }
   };
 }

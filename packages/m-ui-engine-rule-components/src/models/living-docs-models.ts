@@ -57,30 +57,91 @@ export interface LivingDocModel {
 }
 
 /**
- * Mirrors C# TestCoverageInfo (inner object in TraceabilityMatrixRow).
+ * Mirrors C# TestCoverageInfo (inner object in TraceabilityMatrixRow + ImpactRow).
+ *
+ * Authoritative shape from plan-01 serialized ImpactListResponse:
+ *   { state, exampleId?, unitTestCode? }
+ * DRIFT FIX: replaced stale { linkedTestIds?, exampleCount? } with correct fields.
  */
 export interface TestCoverageInfo {
   state: TestCoverageState;
-  linkedTestIds?: string[] | null;
-  exampleCount?: number | null;
+  exampleId?: string | null;
+  unitTestCode?: string | null;
 }
 
 /**
- * Mirrors C# RequirementRef (inner object in TraceabilityMatrixRow).
+ * Mirrors C# RequirementRef (inner object in TraceabilityMatrixRow + ImpactRow).
+ *
+ * Authoritative shape from plan-01 serialized ImpactListResponse:
+ *   { id, title, sourceRef?, approver? }
+ * DRIFT FIX: replaced stale { requirementId, title?, source? } with correct camelCase fields.
+ * approver is required for the D-05 Approver column.
  */
 export interface RequirementRef {
-  requirementId: string;
+  id: string;
   title?: string | null;
-  source?: string | null;
+  sourceRef?: string | null;
+  approver?: string | null;
 }
 
 /**
  * Mirrors C# DecisionTableCellInfo (optional inner object in TraceabilityMatrixRow).
+ *
+ * DRIFT FIX: replaced stale { columnCount, rowCount, hitPolicy } with full 5-field shape.
  */
 export interface DecisionTableCellInfo {
-  columnCount: number;
-  rowCount: number;
+  tableId: string;
   hitPolicy: string;
+  inputColumnCount: number;
+  outputColumnCount: number;
+  rowCount: number;
+}
+
+// ---------------------------------------------------------------------------
+// Impact analysis types (plan-01 ImpactListResponse — Phase 05)
+// ---------------------------------------------------------------------------
+
+/**
+ * One row in the impact list (D-05 columns).
+ * Mirrors C# ImpactRow (ImpactListResponse.cs).
+ */
+export interface ImpactRow {
+  nodeId: string;
+  title: string;
+  /** RequirementRef MUST carry approver after the drift fix above. */
+  requirements: RequirementRef[];
+  /** Three-state coverage. DryRunExampleOnly is NEVER "covered" (C-01). */
+  testCoverage: TestCoverageInfo;
+  /** "allow→block" | "block→allow" | "none" (Unicode → U+2192) */
+  impactType: string;
+}
+
+/**
+ * One UAT checklist case (D-02 — grouped under a UatRuleGroup).
+ * Mirrors C# UatCase (ImpactListResponse.cs).
+ */
+export interface UatCase {
+  exampleId: string;
+  expectedOutcome: "allow" | "block";
+  /** Three-state; DryRunExampleOnly is NEVER badge--success (C-01). */
+  coverageBadge: TestCoverageState;
+}
+
+/**
+ * Top-level impact list response.
+ * Mirrors C# ImpactListResponse (ImpactListResponse.cs).
+ * Authoritative JSON shape confirmed in plan-01 SUMMARY §ImpactListResponse JSON Shape.
+ */
+export interface ImpactListResponse {
+  workflow: string;
+  fromVersion: number;
+  toVersion: number;
+  rows: ImpactRow[];
+  uatChecklist: {
+    nodeId: string;
+    title: string;
+    cases: UatCase[];
+  }[];
 }
 
 /**

@@ -7,6 +7,7 @@ import { LivingDocsApiClient } from "../../services/living-docs-api.js";
 type FilterCoverage = "all" | "none" | "dry-run-example-only" | "unit-test-linked";
 
 interface RequirementGroup {
+  /** The unique key for this group (requirement id or "__no_req__"). */
   requirementId: string;
   title: string;
   rows: TraceabilityMatrixRow[];
@@ -162,14 +163,14 @@ export class MuTraceabilityMatrix extends LitElement {
         map.get(key)!.rows.push(row);
       } else {
         for (const req of row.requirements) {
-          if (!map.has(req.requirementId)) {
-            map.set(req.requirementId, {
-              requirementId: req.requirementId,
-              title: req.title ?? req.requirementId,
+          if (!map.has(req.id)) {
+            map.set(req.id, {
+              requirementId: req.id,
+              title: req.title ?? req.id,
               rows: []
             });
           }
-          map.get(req.requirementId)!.rows.push(row);
+          map.get(req.id)!.rows.push(row);
         }
       }
     }
