@@ -273,11 +273,8 @@ export class MuImpactList extends LitElement {
               </div>
               <div class="impact-body" role="rowgroup" aria-label="Impact list">
                 ${virtualize({
-                  items: virtualItems.filter((i) => i.type === "impact-row"),
-                  renderItem: (item) =>
-                    item.type === "impact-row"
-                      ? this._renderImpactRow(item.row)
-                      : nothing
+                  items: virtualItems.filter((i) => i.type === "impact-row") as Array<{ type: "impact-row"; row: ImpactRow }>,
+                  renderItem: (item) => this._renderImpactRow(item.row)
                 })}
               </div>
 
@@ -289,21 +286,16 @@ export class MuImpactList extends LitElement {
                       ${virtualize({
                         items: virtualItems.filter(
                           (i) => i.type === "uat-group-header" || i.type === "uat-case"
-                        ),
-                        renderItem: (item) => {
-                          if (item.type === "uat-group-header") {
-                            return html`
-                              <div class="uat-group-header">
-                                <span class="uat-node-id">${item.nodeId}</span>
-                                <span class="uat-node-title">${item.title}</span>
-                              </div>
-                            `;
-                          }
-                          if (item.type === "uat-case") {
-                            return this._renderUatCase(item.case_);
-                          }
-                          return nothing;
-                        }
+                        ) as Array<{ type: "uat-group-header"; nodeId: string; title: string } | { type: "uat-case"; case_: UatCase; nodeId: string }>,
+                        renderItem: (item) =>
+                          item.type === "uat-group-header"
+                            ? html`
+                                <div class="uat-group-header">
+                                  <span class="uat-node-id">${item.nodeId}</span>
+                                  <span class="uat-node-title">${item.title}</span>
+                                </div>
+                              `
+                            : this._renderUatCase(item.case_)
                       })}
                     </div>
                   `
