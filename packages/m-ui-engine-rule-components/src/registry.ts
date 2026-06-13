@@ -24,6 +24,7 @@ import "./components/result-panel/mu-rule-result-panel.js";
 import "./components/living-docs/mu-living-docs.js";
 import "./components/traceability-matrix/mu-traceability-matrix.js";
 import "./components/impact-list/mu-impact-list.js";
+import "./components/journey-home/mu-journey-home.js";
 
 export function MRegisterRuleComponents(): void {
   // Imports above call customElements.define() as a side effect.

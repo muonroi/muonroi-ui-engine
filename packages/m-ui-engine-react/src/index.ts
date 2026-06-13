@@ -180,3 +180,14 @@ export const MuImpactListReact = createComponent({
     onNodeTraceRequested: "living-docs-node-trace-requested"
   }
 });
+
+export const MuJourneyHomeReact = createComponent({
+  react: React,
+  tagName: "mu-journey-home",
+  elementClass:
+    ((typeof customElements !== "undefined" ? customElements.get("mu-journey-home") : undefined) ??
+      class extends HTMLElement {}) as typeof HTMLElement,
+  events: {
+    onStageNavigate: "journey-stage-navigate",
+  },
+});
