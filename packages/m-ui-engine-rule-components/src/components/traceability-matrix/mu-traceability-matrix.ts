@@ -37,6 +37,7 @@ export class MuTraceabilityMatrix extends LitElement {
    * (T-17-16). sourceRef is the display field.
    */
   @property({ attribute: "source-document-id" }) sourceDocumentId: string | null = null;
+  @property({ attribute: "auth-token" }) authToken = "";
 
   @state() private _rows: TraceabilityMatrixRow[] = [];
   @state() private _loading = false;
@@ -47,7 +48,7 @@ export class MuTraceabilityMatrix extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     if (this.apiBaseUrl) {
-      this._apiClient = new LivingDocsApiClient(this.apiBaseUrl);
+      this._apiClient = new LivingDocsApiClient(this.apiBaseUrl, this.authToken);
     }
     if (this.apiBaseUrl && this.workflow && this.version) {
       void this._loadMatrix();
@@ -55,14 +56,15 @@ export class MuTraceabilityMatrix extends LitElement {
   }
 
   updated(changed: Map<string, unknown>) {
-    if (changed.has("apiBaseUrl") && this.apiBaseUrl) {
-      this._apiClient = new LivingDocsApiClient(this.apiBaseUrl);
+    if ((changed.has("apiBaseUrl") || changed.has("authToken")) && this.apiBaseUrl) {
+      this._apiClient = new LivingDocsApiClient(this.apiBaseUrl, this.authToken);
     }
     if (changed.has("filterCoverage")) {
       this._activeCoverageFilter = this.filterCoverage;
     }
     const needsLoad =
       changed.has("apiBaseUrl") ||
+      changed.has("authToken") ||
       changed.has("workflow") ||
       changed.has("version");
     if (needsLoad && this.apiBaseUrl && this.workflow && this.version) {

@@ -29,6 +29,7 @@ export class MuLivingDocs extends LitElement {
   @property({ type: Number, attribute: "version" }) version = 0;
   @property({ attribute: "doc-json" }) docJson = "";
   @property({ type: Boolean, attribute: "read-only" }) readOnly = true;
+  @property({ attribute: "auth-token" }) authToken = "";
 
   @state() private _doc: LivingDocModel | null = null;
   @state() private _loading = false;
@@ -39,7 +40,7 @@ export class MuLivingDocs extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     if (this.apiBaseUrl) {
-      this._apiClient = new LivingDocsApiClient(this.apiBaseUrl);
+      this._apiClient = new LivingDocsApiClient(this.apiBaseUrl, this.authToken);
     }
     if (!this.docJson && this.apiBaseUrl && this.workflow && this.version) {
       void this._loadDoc();
@@ -59,13 +60,13 @@ export class MuLivingDocs extends LitElement {
       return;
     }
 
-    // Update API client when base URL changes
-    if (changed.has("apiBaseUrl") && this.apiBaseUrl) {
-      this._apiClient = new LivingDocsApiClient(this.apiBaseUrl);
+    // Update API client when base URL or auth token changes
+    if ((changed.has("apiBaseUrl") || changed.has("authToken")) && this.apiBaseUrl) {
+      this._apiClient = new LivingDocsApiClient(this.apiBaseUrl, this.authToken);
     }
 
     // Trigger fetch when any relevant property changes (and no doc-json bypass)
-    const triggerKeys = ["apiBaseUrl", "workflow", "version"];
+    const triggerKeys = ["apiBaseUrl", "authToken", "workflow", "version"];
     const shouldFetch = triggerKeys.some((k) => changed.has(k));
     if (shouldFetch && !this.docJson && this.apiBaseUrl && this.workflow && this.version) {
       void this._loadDoc();

@@ -11,6 +11,7 @@ export class MuImpactList extends LitElement {
   @property({ attribute: "workflow" }) workflow = "";
   @property({ type: Number, attribute: "from-version" }) fromVersion = 0;
   @property({ type: Number, attribute: "to-version" }) toVersion = 0;
+  @property({ attribute: "auth-token" }) authToken = "";
 
   @state() private _data: ImpactListResponse | null = null;
   @state() private _loading = false;
@@ -20,7 +21,7 @@ export class MuImpactList extends LitElement {
   connectedCallback() {
     super.connectedCallback();
     if (this.apiBaseUrl) {
-      this._apiClient = new LivingDocsApiClient(this.apiBaseUrl);
+      this._apiClient = new LivingDocsApiClient(this.apiBaseUrl, this.authToken);
     }
     if (this.apiBaseUrl && this.workflow && this.fromVersion && this.toVersion) {
       void this._load();
@@ -28,11 +29,12 @@ export class MuImpactList extends LitElement {
   }
 
   updated(changed: Map<string, unknown>) {
-    if (changed.has("apiBaseUrl") && this.apiBaseUrl) {
-      this._apiClient = new LivingDocsApiClient(this.apiBaseUrl);
+    if ((changed.has("apiBaseUrl") || changed.has("authToken")) && this.apiBaseUrl) {
+      this._apiClient = new LivingDocsApiClient(this.apiBaseUrl, this.authToken);
     }
     const needsLoad =
       changed.has("apiBaseUrl") ||
+      changed.has("authToken") ||
       changed.has("workflow") ||
       changed.has("fromVersion") ||
       changed.has("toVersion");

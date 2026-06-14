@@ -27,9 +27,22 @@ export interface TraceRuleResponse {
  */
 export class LivingDocsApiClient {
   private readonly base: string;
+  private readonly authToken: string;
 
-  constructor(apiBaseUrl: string) {
+  constructor(apiBaseUrl: string, authToken = "") {
     this.base = apiBaseUrl.replace(/\/$/, "");
+    this.authToken = authToken;
+  }
+
+  /**
+   * Request headers. When the host app supplies a bearer token, attaches
+   * `Authorization: Bearer <token>` so the API's auth gate (cp.viewer policy, C-08) is satisfied.
+   * Without a token the request stays anonymous (dev / auth-disabled environments) — the API then
+   * 401s under enabled auth, which is the correct fail-closed behavior. The client never reads the
+   * token from storage itself (no coupling to a consumer's storage key — library-first).
+   */
+  private headers(): HeadersInit | undefined {
+    return this.authToken ? { Authorization: `Bearer ${this.authToken}` } : undefined;
   }
 
   /**
@@ -39,7 +52,7 @@ export class LivingDocsApiClient {
    */
   async getLivingDoc(workflow: string, version: number | "active"): Promise<LivingDocModel> {
     const url = `${this.base}/living-docs/${encodeURIComponent(workflow)}/${version}`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: this.headers() });
     if (!response.ok) {
       throw new Error(
         `[LivingDocsApiClient] getLivingDoc failed — workflow=${workflow} version=${version} status=${response.status}`
@@ -54,7 +67,7 @@ export class LivingDocsApiClient {
    */
   async getTraceabilityMatrix(workflow: string, version: number | "active"): Promise<TraceabilityMatrixResponse> {
     const url = `${this.base}/traceability/${encodeURIComponent(workflow)}/${version}`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: this.headers() });
     if (!response.ok) {
       throw new Error(
         `[LivingDocsApiClient] getTraceabilityMatrix failed — workflow=${workflow} version=${version} status=${response.status}`
@@ -70,7 +83,7 @@ export class LivingDocsApiClient {
    */
   async traceRule(workflow: string, nodeId: string): Promise<TraceRuleResponse> {
     const url = `${this.base}/traceability/trace/${encodeURIComponent(workflow)}/${encodeURIComponent(nodeId)}`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: this.headers() });
     if (!response.ok) {
       throw new Error(
         `[LivingDocsApiClient] traceRule failed — workflow=${workflow} nodeId=${nodeId} status=${response.status}`
@@ -86,7 +99,7 @@ export class LivingDocsApiClient {
    */
   async getImpactList(workflow: string, from: number, to: number): Promise<ImpactListResponse> {
     const url = `${this.base}/traceability/${encodeURIComponent(workflow)}/impact?from=${from}&to=${to}`;
-    const response = await fetch(url);
+    const response = await fetch(url, { headers: this.headers() });
     if (!response.ok) {
       throw new Error(
         `[LivingDocsApiClient] getImpactList failed — workflow=${workflow} from=${from} to=${to} status=${response.status}`
