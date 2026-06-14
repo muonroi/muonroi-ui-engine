@@ -1,13 +1,13 @@
-import type { ImpactListResponse, LivingDocModel, TraceabilityMatrixRow } from "../models/living-docs-models.js";
+import type {
+  ImpactListResponse,
+  LivingDocModel,
+  TraceabilityMatrixRow,
+  TraceabilityMatrixResponse,
+} from "../models/living-docs-models.js";
 
-/**
- * Response shape for GET /api/v1/traceability/{workflow}/{version}.
- */
-export interface TraceabilityMatrixResponse {
-  rows: TraceabilityMatrixRow[];
-  workflow: string;
-  version: number;
-}
+// Re-export the canonical envelope shape (incl. D-06 source-doc provenance) so existing
+// importers of TraceabilityMatrixResponse from this module keep compiling.
+export type { TraceabilityMatrixResponse } from "../models/living-docs-models.js";
 
 /**
  * Response shape for GET /api/v1/traceability/trace/{workflow}/{nodeId}.

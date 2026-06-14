@@ -23,6 +23,20 @@ export class MuTraceabilityMatrix extends LitElement {
   @property({ attribute: "filter-rule" }) filterRule = "";
   /** Coverage-state quick filter (D-10). Default "all" = no filter. */
   @property({ attribute: "filter-coverage" }) filterCoverage: FilterCoverage = "all";
+  /**
+   * Round-trip source-document reference (D-06 / TRACE-01, Phase 17). When this version was
+   * produced from an ingested source document, the consumer passes the human-readable issue/page
+   * key here and the component renders "Ingested from {sourceRef}". Null/empty ⇒ no provenance
+   * surface (honest — a manually-authored / NL-copilot version shows NO fabricated source link).
+   * Version-scoped (envelope-level), NOT per-node. Auto-populated from the matrix response when the
+   * component fetches its own data, or set explicitly by the consumer.
+   */
+  @property({ attribute: "source-ref" }) sourceRef: string | null = null;
+  /**
+   * Tenant-internal source-document GUID (D-06). Carried for linking only — NEVER rendered raw
+   * (T-17-16). sourceRef is the display field.
+   */
+  @property({ attribute: "source-document-id" }) sourceDocumentId: string | null = null;
 
   @state() private _rows: TraceabilityMatrixRow[] = [];
   @state() private _loading = false;
@@ -66,6 +80,11 @@ export class MuTraceabilityMatrix extends LitElement {
         this.version
       );
       this._rows = response.rows;
+      // D-06 / TRACE-01: surface the round-trip source-document provenance from the envelope
+      // (version-scoped). Null for non-ingested versions ⇒ no provenance shown. A consumer that
+      // sets source-ref explicitly takes precedence only when it has not been overwritten here.
+      this.sourceRef = response.sourceRef ?? null;
+      this.sourceDocumentId = response.sourceDocumentId ?? null;
     } catch (err) {
       this._error =
         err instanceof Error ? err.message : String(err);
@@ -268,6 +287,20 @@ export class MuTraceabilityMatrix extends LitElement {
           <span class="matrix-count">${this._filteredRows.length} rule(s)</span>
         </div>
 
+        <!-- D-06 / TRACE-01: round-trip source-document provenance (version-scoped). Rendered ONLY
+             when sourceRef is present — a non-ingested version shows nothing (honest, T-17-14). -->
+        ${this.sourceRef
+          ? html`
+              <div class="matrix-source-doc" role="note">
+                <span class="matrix-source-doc__icon" aria-hidden="true">&#x1F517;</span>
+                <span class="matrix-source-doc__label"
+                  >Ingested from
+                  <span class="matrix-source-doc__ref">${this.sourceRef}</span></span
+                >
+              </div>
+            `
+          : nothing}
+
         <!-- Coverage-state filter bar (D-10): "No coverage" is FIRST explicit filter -->
         <div class="filter-bar" role="group" aria-label="Coverage filter">
           <button
@@ -365,6 +398,27 @@ export class MuTraceabilityMatrix extends LitElement {
     .matrix-count {
       font-size: 12px;
       color: var(--mu-text-muted);
+    }
+
+    /* Source-document provenance (D-06 / TRACE-01) — only rendered for ingested versions */
+    .matrix-source-doc {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: var(--mu-color-info-bg, var(--mu-surface-raised));
+      color: var(--mu-color-info-text, var(--mu-text-muted));
+      border-bottom: 1px solid var(--mu-border-subtle);
+      font-size: 13px;
+    }
+
+    .matrix-source-doc__icon {
+      font-size: 13px;
+    }
+
+    .matrix-source-doc__ref {
+      font-family: var(--mu-font-mono, monospace);
+      font-weight: 600;
     }
 
     /* Filter bar (D-10) */

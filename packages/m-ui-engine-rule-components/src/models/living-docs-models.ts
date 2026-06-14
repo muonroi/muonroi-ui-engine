@@ -158,3 +158,28 @@ export interface TraceabilityMatrixRow {
   testCoverage: TestCoverageInfo;
   decisionTable?: DecisionTableCellInfo | null;
 }
+
+/**
+ * Mirrors the C# record: Muonroi.ControlPlane.Api.LivingDocs.Traceability.Models.TraceabilityMatrixResponse
+ *
+ * The top-level envelope from GET /api/v1/traceability/{workflow}/{version}.
+ *
+ * Round-trip provenance (D-06 / TRACE-01, Phase 17): when this version was produced from an
+ * ingested source document, `sourceDocumentId` (tenant-internal GUID) and `sourceRef` (human-readable
+ * issue/page key for display) are non-null. For manually-authored / NL-copilot versions both are null —
+ * the UI then shows NO provenance (honest: never a fabricated source link).
+ *
+ * The provenance is VERSION-scoped (envelope-level), NOT per-node. Mirror of the C# record:
+ *   TraceabilityMatrixResponse(string Workflow, int Version, IReadOnlyList<TraceabilityMatrixRow> Rows,
+ *                              Guid? SourceDocumentId = null, string? SourceRef = null)
+ * JSON (camelCase): workflow, version, rows, sourceDocumentId (string|null GUID), sourceRef (string|null).
+ */
+export interface TraceabilityMatrixResponse {
+  workflow: string;
+  version: number;
+  rows: TraceabilityMatrixRow[];
+  /** Tenant-internal source-document GUID; non-null only for ingested versions. Carried for linking, not rendered raw (T-17-16). */
+  sourceDocumentId?: string | null;
+  /** Human-readable source reference (issue/page key) for display; non-null only for ingested versions. */
+  sourceRef?: string | null;
+}

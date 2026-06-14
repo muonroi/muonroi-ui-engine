@@ -228,6 +228,45 @@ describe("mu-traceability-matrix", () => {
   });
 
   // -------------------------------------------------------------------------
+  // D-06 / TRACE-01: source-document round-trip provenance (Phase 17)
+  // -------------------------------------------------------------------------
+  describe("D-06 — source-document provenance (TRACE-01)", () => {
+    it("renders 'Ingested from {sourceRef}' when sourceRef is present", async () => {
+      await setRows(el, [ROW_UNIT_TESTED]);
+      // Envelope-level provenance (version-scoped, not per-node).
+      (el as unknown as { sourceRef: string })["sourceRef"] = "JIRA-1234";
+      await el.updateComplete;
+      await el.updateComplete;
+
+      const shadow = el.shadowRoot!;
+      const provenance = shadow.querySelector(".matrix-source-doc");
+      expect(provenance).not.toBeNull();
+      expect(provenance!.textContent).toContain("Ingested from");
+      expect(provenance!.textContent).toContain("JIRA-1234");
+    });
+
+    it("renders NO provenance surface when sourceRef is null (honest — non-ingested version)", async () => {
+      await setRows(el, [ROW_UNIT_TESTED]);
+      (el as unknown as { sourceRef: string | null })["sourceRef"] = null;
+      await el.updateComplete;
+      await el.updateComplete;
+
+      const shadow = el.shadowRoot!;
+      const provenance = shadow.querySelector(".matrix-source-doc");
+      expect(provenance).toBeNull();
+    });
+
+    it("renders NO provenance surface when sourceRef is absent (default)", async () => {
+      await setRows(el, [ROW_UNIT_TESTED]);
+      await el.updateComplete;
+
+      const shadow = el.shadowRoot!;
+      const provenance = shadow.querySelector(".matrix-source-doc");
+      expect(provenance).toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // D-11: filter-rule pre-filter
   // -------------------------------------------------------------------------
   describe("D-11 — filter-rule pre-filter", () => {
