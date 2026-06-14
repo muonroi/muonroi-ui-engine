@@ -65,9 +65,9 @@ export const JOURNEY_STAGES: JourneyStage[] = [
     beforeText: "Hand-edit JSON or ask a developer to write rules.",
     afterLabel: "With the platform",
     afterText:
-      "Author rules in natural language via AI Copilot — returns a validated draft, never auto-active.",
-    linkPath: "/rules",
-    linkLabel: "Go to Rules",
+      "Place rule nodes on a visual canvas, wire them with drag-and-drop, and save a validated Draft — never auto-active. Approver activates separately.",
+    linkPath: "/studio/:workflow",
+    linkLabel: "Open Visual Studio",
   },
   {
     id: "validate",
