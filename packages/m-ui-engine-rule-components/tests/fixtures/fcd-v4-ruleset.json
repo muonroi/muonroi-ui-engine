@@ -1,0 +1,437 @@
+{
+  "workflowName": "FCD_V4",
+  "description": "ePort Cat Lai Full Container Delivery (FCD) full gate sequence — FCD_V4 reference ruleset. Vendored fixture for ui-engine converter round-trip tests (STUDIO-04). Original: muonroi-control-plane seed-data/living-docs/FcdV4Ruleset.json",
+  "flowGraph": {
+    "metadata": { "version": 1 },
+    "nodes": [
+      {
+        "id": "iso-booking-match",
+        "type": "feel",
+        "label": "ISO Booking Match",
+        "data": {
+          "label": "ISO Booking Match",
+          "order": 1,
+          "description": "Eligibility: verifies the container ISO code matches the booked ISO type.",
+          "expression": {
+            "language": "FEEL",
+            "body": "isoCode = isoBooking"
+          },
+          "outputFields": [
+            {
+              "path": "result.isoBookingMatch",
+              "valueExpression": "isoCode = isoBooking",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "id": "booking-validity",
+        "type": "feel",
+        "label": "Booking Validity",
+        "data": {
+          "label": "Booking Validity",
+          "order": 2,
+          "description": "Eligibility: confirms the booking reference, liner code, and agent are all valid and non-empty.",
+          "expression": {
+            "language": "FEEL",
+            "body": "bookingNo != null and linerCode != null and agent != null"
+          },
+          "outputFields": [
+            {
+              "path": "result.bookingValid",
+              "valueExpression": "bookingNo != null and linerCode != null and agent != null",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "id": "vgm-check",
+        "type": "feel",
+        "label": "VGM Check",
+        "data": {
+          "label": "VGM Check",
+          "order": 3,
+          "description": "Eligibility: verifies the container has a valid VGM declaration and that its weight does not exceed the maximum gross mass.",
+          "expression": {
+            "language": "FEEL",
+            "body": "vgm.isVgm = true and vgm.wgt <= maxGross"
+          },
+          "outputFields": [
+            {
+              "path": "result.vgmAllowed",
+              "valueExpression": "vgm.isVgm = true and vgm.wgt <= maxGross",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "id": "reefer-check",
+        "type": "feel",
+        "label": "Reefer Check",
+        "data": {
+          "label": "Reefer Check",
+          "order": 4,
+          "description": "Eligibility: for reefer containers, verifies that the required plugin is available and temperature/humidity settings are within tolerance.",
+          "expression": {
+            "language": "FEEL",
+            "body": "reefer.isNoRequiredPlugin = false"
+          },
+          "outputFields": [
+            {
+              "path": "result.reeferAllowed",
+              "valueExpression": "reefer.isNoRequiredPlugin = false",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "id": "oog-check",
+        "type": "feel",
+        "label": "OOG Check",
+        "data": {
+          "label": "OOG Check",
+          "order": 5,
+          "description": "Eligibility: checks that the container is not out-of-gauge (OOG).",
+          "expression": {
+            "language": "FEEL",
+            "body": "oog.isOog = false"
+          },
+          "outputFields": [
+            {
+              "path": "result.oogAllowed",
+              "valueExpression": "oog.isOog = false",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "id": "customs-clearance-check",
+        "type": "feel",
+        "label": "Customs Clearance Check",
+        "data": {
+          "label": "Customs Clearance Check",
+          "order": 6,
+          "description": "Legal/financial hold: confirms customs status is cleared, a valid declaration number exists, and the customs release date has passed.",
+          "expression": {
+            "language": "FEEL",
+            "body": "customsStatus = \"CLEARED\" and declarationNo != null and customsReleaseDate != null"
+          },
+          "outputFields": [
+            {
+              "path": "result.customsCleared",
+              "valueExpression": "customsStatus = \"CLEARED\" and declarationNo != null and customsReleaseDate != null",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "id": "demurrage-storage-settlement-check",
+        "type": "decision-table",
+        "label": "Demurrage & Storage Settlement Check",
+        "data": {
+          "label": "Demurrage & Storage Settlement Check",
+          "order": 7,
+          "description": "Legal/financial hold: evaluates demurrage and storage charges using a decision table.",
+          "decisionTableId": "fcd-demurrage-settlement-dt",
+          "decisionTableCode": "fcd-demurrage-settlement-dt",
+          "failOnNoMatch": false
+        }
+      },
+      {
+        "id": "delivery-order-check",
+        "type": "decision-table",
+        "label": "Delivery Order Check",
+        "data": {
+          "label": "Delivery Order Check",
+          "order": 8,
+          "description": "Legal/financial hold: verifies the delivery order is valid, not expired, and has no hold flags set.",
+          "decisionTableId": "fcd-delivery-order-dt",
+          "decisionTableCode": "fcd-delivery-order-dt",
+          "failOnNoMatch": false
+        }
+      },
+      {
+        "id": "seal-verification",
+        "type": "feel",
+        "label": "Seal Verification",
+        "data": {
+          "label": "Seal Verification",
+          "order": 9,
+          "description": "Physical/safety: verifies the container seal number is present and matches the manifest.",
+          "expression": {
+            "language": "FEEL",
+            "body": "sealNo != null and sealMatch = true"
+          },
+          "outputFields": [
+            {
+              "path": "result.sealVerified",
+              "valueExpression": "sealNo != null and sealMatch = true",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "id": "eir-damage-check",
+        "type": "feel",
+        "label": "EIR Damage Check",
+        "data": {
+          "label": "EIR Damage Check",
+          "order": 10,
+          "description": "Physical/safety: verifies the Equipment Interchange Receipt (EIR) is present and that no damage code has been recorded.",
+          "expression": {
+            "language": "FEEL",
+            "body": "eirNo != null and (damageCode = null or damageCode = \"NONE\")"
+          },
+          "outputFields": [
+            {
+              "path": "result.eirDamageAllowed",
+              "valueExpression": "eirNo != null and (damageCode = null or damageCode = \"NONE\")",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "id": "dg-imdg-check",
+        "type": "feel",
+        "label": "DG / IMDG Check",
+        "data": {
+          "label": "DG / IMDG Check",
+          "order": 11,
+          "description": "Physical/safety: blocks dangerous goods containers unless they have a valid IMDG class and UN number declared.",
+          "expression": {
+            "language": "FEEL",
+            "body": "isDangerousGoods = false or (imdgClass != null and unNumber != null)"
+          },
+          "outputFields": [
+            {
+              "path": "result.dgAllowed",
+              "valueExpression": "isDangerousGoods = false or (imdgClass != null and unNumber != null)",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "id": "gate-out-authorization",
+        "type": "feel",
+        "label": "Gate-Out Authorization",
+        "data": {
+          "label": "Gate-Out Authorization",
+          "order": 12,
+          "description": "Terminal: aggregate gate-out decision combining all upstream pass results with truck visit and appointment validity.",
+          "dependsOn": [
+            "iso-booking-match",
+            "booking-validity",
+            "vgm-check",
+            "reefer-check",
+            "oog-check",
+            "customs-clearance-check",
+            "demurrage-storage-settlement-check",
+            "delivery-order-check",
+            "seal-verification",
+            "eir-damage-check",
+            "dg-imdg-check"
+          ],
+          "expression": {
+            "language": "FEEL",
+            "body": "result.isoBookingMatch = true and result.bookingValid = true and result.vgmAllowed = true and result.reeferAllowed = true and result.oogAllowed = true and result.customsCleared = true and result.sealVerified = true and result.eirDamageAllowed = true and result.dgAllowed = true and truckVisit != null and appointmentValid = true"
+          },
+          "outputFields": [
+            {
+              "path": "result.gateOutAuthorized",
+              "valueExpression": "result.isoBookingMatch = true and result.bookingValid = true and result.vgmAllowed = true and result.reeferAllowed = true and result.oogAllowed = true and result.customsCleared = true and result.sealVerified = true and result.eirDamageAllowed = true and result.dgAllowed = true and truckVisit != null and appointmentValid = true",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "id": "slot-allocation",
+        "type": "feel",
+        "label": "Slot Allocation",
+        "data": {
+          "label": "Slot Allocation",
+          "order": 13,
+          "description": "Terminal: validates that a terminal slot code has been assigned and that this is an e-booking item.",
+          "expression": {
+            "language": "FEEL",
+            "body": "slotCode != null and isEbookingItem = true"
+          },
+          "outputFields": [
+            {
+              "path": "result.slotAllocated",
+              "valueExpression": "slotCode != null and isEbookingItem = true",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      },
+      {
+        "id": "pod-routing",
+        "type": "feel",
+        "label": "POD Routing",
+        "data": {
+          "label": "POD Routing",
+          "order": 14,
+          "description": "Terminal: confirms the port-of-discharge (POD) LL routing code is present for final dispatch.",
+          "expression": {
+            "language": "FEEL",
+            "body": "llPodCode != null"
+          },
+          "outputFields": [
+            {
+              "path": "result.podRouted",
+              "valueExpression": "llPodCode != null",
+              "dataType": "boolean"
+            }
+          ]
+        }
+      }
+    ],
+    "edges": [
+      { "id": "e1", "source": "iso-booking-match", "target": "booking-validity", "type": "success" },
+      { "id": "e2", "source": "booking-validity", "target": "vgm-check", "type": "success" },
+      { "id": "e3", "source": "vgm-check", "target": "reefer-check", "type": "success" },
+      { "id": "e4", "source": "reefer-check", "target": "oog-check", "type": "success" },
+      { "id": "e5", "source": "oog-check", "target": "customs-clearance-check", "type": "success" },
+      { "id": "e6", "source": "customs-clearance-check", "target": "demurrage-storage-settlement-check", "type": "success" },
+      { "id": "e7", "source": "demurrage-storage-settlement-check", "target": "delivery-order-check", "type": "success" },
+      { "id": "e8", "source": "delivery-order-check", "target": "seal-verification", "type": "success" },
+      { "id": "e9", "source": "seal-verification", "target": "eir-damage-check", "type": "success" },
+      { "id": "e10", "source": "eir-damage-check", "target": "dg-imdg-check", "type": "success" },
+      { "id": "e11", "source": "dg-imdg-check", "target": "gate-out-authorization", "type": "success" },
+      { "id": "e12", "source": "gate-out-authorization", "target": "slot-allocation", "type": "success" },
+      { "id": "e13", "source": "slot-allocation", "target": "pod-routing", "type": "success" }
+    ]
+  },
+  "decisionTables": [
+    {
+      "id": "fcd-demurrage-settlement-dt",
+      "name": "Demurrage & Storage Settlement",
+      "description": "Single-hit (HitPolicy.First) decision table for demurrage and storage charge settlement.",
+      "hitPolicy": "First",
+      "inputColumns": [
+        { "name": "freeTimeExpiry", "dataType": "string", "label": "Free Time Expiry Status" },
+        { "name": "paymentStatus", "dataType": "string", "label": "Payment Status" }
+      ],
+      "outputColumns": [
+        { "name": "settlementAllowed", "dataType": "boolean", "label": "Settlement Allowed" },
+        { "name": "blockReason", "dataType": "string", "label": "Block Reason" }
+      ],
+      "rows": [
+        {
+          "order": 1,
+          "description": "Free time not expired and payment settled — allow",
+          "inputCells": [
+            { "columnName": "freeTimeExpiry", "expression": "\"NOT_EXPIRED\"" },
+            { "columnName": "paymentStatus", "expression": "-" }
+          ],
+          "outputCells": [
+            { "columnName": "settlementAllowed", "expression": "true" },
+            { "columnName": "blockReason", "expression": "\"\"" }
+          ]
+        },
+        {
+          "order": 2,
+          "description": "Free time expired but payment is settled — allow",
+          "inputCells": [
+            { "columnName": "freeTimeExpiry", "expression": "\"EXPIRED\"" },
+            { "columnName": "paymentStatus", "expression": "\"SETTLED\"" }
+          ],
+          "outputCells": [
+            { "columnName": "settlementAllowed", "expression": "true" },
+            { "columnName": "blockReason", "expression": "\"\"" }
+          ]
+        },
+        {
+          "order": 3,
+          "description": "Free time expired and payment outstanding — block",
+          "inputCells": [
+            { "columnName": "freeTimeExpiry", "expression": "\"EXPIRED\"" },
+            { "columnName": "paymentStatus", "expression": "\"OUTSTANDING\"" }
+          ],
+          "outputCells": [
+            { "columnName": "settlementAllowed", "expression": "false" },
+            { "columnName": "blockReason", "expression": "\"Demurrage charges outstanding — settlement required before gate-out\"" }
+          ]
+        },
+        {
+          "order": 4,
+          "description": "Fallback — block if status unknown",
+          "inputCells": [
+            { "columnName": "freeTimeExpiry", "expression": "-" },
+            { "columnName": "paymentStatus", "expression": "-" }
+          ],
+          "outputCells": [
+            { "columnName": "settlementAllowed", "expression": "false" },
+            { "columnName": "blockReason", "expression": "\"Unknown settlement status — manual review required\"" }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "fcd-delivery-order-dt",
+      "name": "Delivery Order Validity Check",
+      "description": "Multi-hit (HitPolicy.Collect) decision table. Collects all hold flags and validity issues for the delivery order.",
+      "hitPolicy": "Collect",
+      "inputColumns": [
+        { "name": "doStatus", "dataType": "string", "label": "DO Status" },
+        { "name": "doExpiry", "dataType": "string", "label": "DO Expiry Status" },
+        { "name": "holdFlags", "dataType": "string", "label": "Hold Flags" }
+      ],
+      "outputColumns": [
+        { "name": "doIssue", "dataType": "string", "label": "DO Issue Description" },
+        { "name": "severity", "dataType": "string", "label": "Severity" }
+      ],
+      "rows": [
+        {
+          "order": 1,
+          "description": "DO status is not active",
+          "inputCells": [
+            { "columnName": "doStatus", "expression": "not(\"ACTIVE\")" },
+            { "columnName": "doExpiry", "expression": "-" },
+            { "columnName": "holdFlags", "expression": "-" }
+          ],
+          "outputCells": [
+            { "columnName": "doIssue", "expression": "\"Delivery order is not in ACTIVE status\"" },
+            { "columnName": "severity", "expression": "\"BLOCK\"" }
+          ]
+        },
+        {
+          "order": 2,
+          "description": "DO has expired",
+          "inputCells": [
+            { "columnName": "doStatus", "expression": "-" },
+            { "columnName": "doExpiry", "expression": "\"EXPIRED\"" },
+            { "columnName": "holdFlags", "expression": "-" }
+          ],
+          "outputCells": [
+            { "columnName": "doIssue", "expression": "\"Delivery order has expired\"" },
+            { "columnName": "severity", "expression": "\"BLOCK\"" }
+          ]
+        },
+        {
+          "order": 3,
+          "description": "Hold flags set",
+          "inputCells": [
+            { "columnName": "doStatus", "expression": "-" },
+            { "columnName": "doExpiry", "expression": "-" },
+            { "columnName": "holdFlags", "expression": "not(\"NONE\")" }
+          ],
+          "outputCells": [
+            { "columnName": "doIssue", "expression": "\"One or more hold flags are active on the delivery order\"" },
+            { "columnName": "severity", "expression": "\"WARN\"" }
+          ]
+        }
+      ]
+    }
+  ]
+}
