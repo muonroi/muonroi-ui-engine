@@ -28,8 +28,10 @@ import "../coverage-badge/mu-coverage-badge.js";
  *
  * Composes mu-ba-status-badge, mu-source-badge, mu-coverage-badge per row.
  *
- * Threat T-19-01: all text bound via Lit html`` interpolation (auto-escaped); no unsafeHTML.
- * Threat T-19-02: openPath passed through encodeURIComponent before dispatch (ASVS V5).
+ * Threat T-20-01: all text bound via Lit html`` interpolation (auto-escaped); pendingLabel.replace()
+ *   operates on a plain string then is interpolated — still escaped; no unsafeHTML (carried T-19-01).
+ * Threat T-20-02: producer (DocumentsPage.tsx:59) name-only encodes the workflow segment; component
+ *   dispatches openPath verbatim — no whole-path re-encoding (ASVS V5 trust boundary at producer).
  * Threat T-19-03: pending-count null → "N/A" (honesty; no sensitive data).
  */
 
@@ -74,11 +76,14 @@ export class MuDocumentList extends LitElement {
   }
 
   private _dispatchOpen(openPath: string): void {
-    // T-19-02: encodeURIComponent applied to path before dispatch (ASVS V5)
-    const safePath = encodeURIComponent(openPath);
+    // T-20-02: path safety is enforced at the producer (DocumentsPage.tsx:59 name-only encodes
+    // the workflow segment via encodeURIComponent(workflowName)). Re-encoding the full path here
+    // would turn "/" separators into "%2F", which react-router cannot match against "/documents/:workflow".
+    // Component dispatches verbatim; consumer matches a fixed /documents/:workflow segment — no
+    // external-URL navigation possible (ASVS V5 trust boundary held at the producer).
     this.dispatchEvent(
       new CustomEvent("document-open", {
-        detail: { path: safePath },
+        detail: { path: openPath },
         bubbles: true,
         composed: true,
       })
@@ -122,7 +127,7 @@ export class MuDocumentList extends LitElement {
             ? html`<h2 class="doc-heading">${this.heading}</h2>`
             : nothing}
           ${this.pendingLabel
-            ? html`<span class="pending-chip">${countDisplay} ${this.pendingLabel}</span>`
+            ? html`<span class="pending-chip">${this.pendingLabel.replace("{n}", countDisplay)}</span>`
             : nothing}
           <button class="create-cta" @click=${() => this._dispatchCreate()}>
             ${this.createLabel}
