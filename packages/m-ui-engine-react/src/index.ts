@@ -235,3 +235,52 @@ export const MuJourneyHomeReact = createComponent({
     onStageNavigate: "journey-stage-navigate",
   },
 });
+
+// Phase 19 — BA Workspace Shell components (display-only badges, no events)
+
+export const MuBaStatusBadgeReact = createComponent({
+  react: React,
+  tagName: "mu-ba-status-badge",
+  elementClass:
+    ((typeof customElements !== "undefined" ? customElements.get("mu-ba-status-badge") : undefined) ??
+      class extends HTMLElement {}) as typeof HTMLElement,
+});
+
+export const MuSourceBadgeReact = createComponent({
+  react: React,
+  tagName: "mu-source-badge",
+  elementClass:
+    ((typeof customElements !== "undefined" ? customElements.get("mu-source-badge") : undefined) ??
+      class extends HTMLElement {}) as typeof HTMLElement,
+});
+
+export const MuCoverageBadgeReact = createComponent({
+  react: React,
+  tagName: "mu-coverage-badge",
+  elementClass:
+    ((typeof customElements !== "undefined" ? customElements.get("mu-coverage-badge") : undefined) ??
+      class extends HTMLElement {}) as typeof HTMLElement,
+});
+
+export const MuDocumentListReact = createComponent({
+  react: React,
+  tagName: "mu-document-list",
+  elementClass:
+    ((typeof customElements !== "undefined" ? customElements.get("mu-document-list") : undefined) ??
+      class extends HTMLElement {}) as typeof HTMLElement,
+  events: {
+    onDocumentCreate: "document-create",
+    onDocumentOpen: "document-open",
+  },
+});
+
+export const MuEmptyStateReact = createComponent({
+  react: React,
+  tagName: "mu-empty-state",
+  elementClass:
+    ((typeof customElements !== "undefined" ? customElements.get("mu-empty-state") : undefined) ??
+      class extends HTMLElement {}) as typeof HTMLElement,
+  events: {
+    onEmptyCta: "empty-cta",
+  },
+});
