@@ -25,6 +25,11 @@ import "./components/living-docs/mu-living-docs.js";
 import "./components/traceability-matrix/mu-traceability-matrix.js";
 import "./components/impact-list/mu-impact-list.js";
 import "./components/journey-home/mu-journey-home.js";
+import "./components/ba-status-badge/mu-ba-status-badge.js";
+import "./components/source-badge/mu-source-badge.js";
+import "./components/coverage-badge/mu-coverage-badge.js";
+import "./components/empty-state/mu-empty-state.js";
+import "./components/document-list/mu-document-list.js";
 
 export function MRegisterRuleComponents(): void {
   // Imports above call customElements.define() as a side effect.
