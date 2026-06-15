@@ -135,7 +135,7 @@ export const MuFeelPlaygroundReact = createComponent({
   events: MEventMap
 });
 
-export const MuRuleFlowDesignerReact = createComponent({
+const MuRuleFlowDesignerBase = createComponent({
   react: React,
   tagName: "mu-rule-flow-designer",
   elementClass:
@@ -147,6 +147,50 @@ export const MuRuleFlowDesignerReact = createComponent({
     onPublish: "publish"
   }
 });
+
+/**
+ * The flow designer's `graph` prop is a complex object (nodes/edges/metadata).
+ *
+ * `mu-rule-flow-designer` is lazy-registered (via MLoadRuleEngineCustomElements) AFTER this
+ * module evaluates, so at `createComponent` time `customElements.get(...)` is `undefined` and a
+ * bare fallback `HTMLElement` subclass — with NO reactive `graph` property — is captured.
+ * `@lit/react` then has no way to know `graph` is a property, so React serializes the object to a
+ * string ATTRIBUTE (`graph="[object Object]"`) instead of setting the DOM property. The Lit element
+ * keeps its empty default graph and the canvas renders blank.
+ *
+ * Fix: never let React stringify `graph` to an attribute. Strip it from the props handed to the
+ * createComponent base and assign it to the live element as a DOM PROPERTY via ref. Lit captures
+ * pre-upgrade instance properties, so this is correct whether or not the element has upgraded yet.
+ * Primitive props (height/catalogApiBase/tenantId) are left to the base — Lit reads their
+ * lowercased attributes correctly.
+ */
+export const MuRuleFlowDesignerReact = React.forwardRef<HTMLElement, Record<string, unknown>>(
+  function MuRuleFlowDesignerReact(props, forwardedRef) {
+    const { graph, ...rest } = props;
+    const innerRef = React.useRef<HTMLElement | null>(null);
+
+    React.useLayoutEffect(() => {
+      const el = innerRef.current as (HTMLElement & { graph?: unknown }) | null;
+      if (el && graph !== undefined) {
+        el.graph = graph;
+      }
+    }, [graph]);
+
+    const assignRef = React.useCallback(
+      (el: HTMLElement | null) => {
+        innerRef.current = el;
+        if (typeof forwardedRef === "function") {
+          forwardedRef(el);
+        } else if (forwardedRef) {
+          (forwardedRef as React.MutableRefObject<HTMLElement | null>).current = el;
+        }
+      },
+      [forwardedRef]
+    );
+
+    return React.createElement(MuRuleFlowDesignerBase as never, { ...rest, ref: assignRef });
+  }
+);
 
 export const MuLivingDocsReact = createComponent({
   react: React,
