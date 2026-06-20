@@ -112,4 +112,106 @@ describe("RequireCapability", () => {
     expect(screen.queryByTestId("child-content")).toBeNull();
     expect(screen.getByRole("alert")).toBeTruthy();
   });
+
+  // ── pdf.registry gating ───────────────────────────────────────────────────
+
+  it("renders locked stub for pdf.registry when no license is initialized", () => {
+    render(
+      <RequireCapability capability="pdf.registry">
+        <ChildContent />
+      </RequireCapability>
+    );
+
+    expect(screen.queryByTestId("child-content")).toBeNull();
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.getByText(/Enterprise Feature Locked/i)).toBeTruthy();
+  });
+
+  it("locked stub mentions the pdf.registry capability key", () => {
+    render(
+      <RequireCapability capability="pdf.registry">
+        <ChildContent />
+      </RequireCapability>
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("pdf.registry");
+  });
+
+  it("renders children for pdf.registry when hasAnyFeature returns true", () => {
+    vi.spyOn(MLicenseVerifier, "hasAnyFeature").mockReturnValue(true);
+
+    render(
+      <RequireCapability capability="pdf.registry">
+        <ChildContent />
+      </RequireCapability>
+    );
+
+    expect(screen.getByTestId("child-content")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("renders locked stub for pdf.registry when hasAnyFeature returns false", () => {
+    vi.spyOn(MLicenseVerifier, "hasAnyFeature").mockReturnValue(false);
+
+    render(
+      <RequireCapability capability="pdf.registry">
+        <ChildContent />
+      </RequireCapability>
+    );
+
+    expect(screen.queryByTestId("child-content")).toBeNull();
+    expect(screen.getByRole("alert")).toBeTruthy();
+  });
+
+  // ── pdf.canary gating ─────────────────────────────────────────────────────
+
+  it("renders locked stub for pdf.canary when no license is initialized", () => {
+    render(
+      <RequireCapability capability="pdf.canary">
+        <ChildContent />
+      </RequireCapability>
+    );
+
+    expect(screen.queryByTestId("child-content")).toBeNull();
+    expect(screen.getByRole("alert")).toBeTruthy();
+    expect(screen.getByText(/Enterprise Feature Locked/i)).toBeTruthy();
+  });
+
+  it("locked stub mentions the pdf.canary capability key", () => {
+    render(
+      <RequireCapability capability="pdf.canary">
+        <ChildContent />
+      </RequireCapability>
+    );
+
+    const alert = screen.getByRole("alert");
+    expect(alert.textContent).toContain("pdf.canary");
+  });
+
+  it("renders children for pdf.canary when hasAnyFeature returns true", () => {
+    vi.spyOn(MLicenseVerifier, "hasAnyFeature").mockReturnValue(true);
+
+    render(
+      <RequireCapability capability="pdf.canary">
+        <ChildContent />
+      </RequireCapability>
+    );
+
+    expect(screen.getByTestId("child-content")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("renders locked stub for pdf.canary when hasAnyFeature returns false", () => {
+    vi.spyOn(MLicenseVerifier, "hasAnyFeature").mockReturnValue(false);
+
+    render(
+      <RequireCapability capability="pdf.canary">
+        <ChildContent />
+      </RequireCapability>
+    );
+
+    expect(screen.queryByTestId("child-content")).toBeNull();
+    expect(screen.getByRole("alert")).toBeTruthy();
+  });
 });
